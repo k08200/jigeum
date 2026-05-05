@@ -27,6 +27,7 @@ const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:hello@hireeve.com";
 const PUSH_RECEIPT_BASE_URL =
   process.env.PUSH_RECEIPT_BASE_URL || process.env.RENDER_EXTERNAL_URL || "";
+const AGENT_PROPOSAL_PUSH_COOLDOWN_HOURS = 6;
 
 interface PushSubscriptionRow {
   id: string;
@@ -69,6 +70,15 @@ export async function sendPushNotification(
     console.log(`[PUSH] Suppressed by user prefs for ${userId} (${category})`);
     await recordSkipped(userId, payload.title, category, "user_preferences_or_quiet_hours");
     return skipped("user_preferences_or_quiet_hours");
+  }
+
+  if (category === "agent_proposal") {
+    const cooldownHit = await hasRecentAgentProposalPush(userId);
+    if (cooldownHit) {
+      console.log(`[PUSH] Suppressed agent proposal cooldown for ${userId}: "${payload.title}"`);
+      await recordSkipped(userId, payload.title, category, "agent_proposal_cooldown");
+      return skipped("agent_proposal_cooldown");
+    }
   }
 
   // Global per-user rate limit — blocks phone ring; DB notification is
@@ -176,4 +186,18 @@ async function recordSkipped(
 function pushReceiptUrl(deliveryId: string): string | null {
   if (!PUSH_RECEIPT_BASE_URL) return null;
   return `${PUSH_RECEIPT_BASE_URL.replace(/\/+$/, "")}/api/notifications/push/receipts/${deliveryId}`;
+}
+
+async function hasRecentAgentProposalPush(userId: string): Promise<boolean> {
+  const since = new Date(Date.now() - AGENT_PROPOSAL_PUSH_COOLDOWN_HOURS * 60 * 60 * 1000);
+  const recent = await prisma.pushDeliveryLog.findFirst({
+    where: {
+      userId,
+      category: "agent_proposal",
+      status: { in: ["PENDING", "ACCEPTED"] },
+      createdAt: { gte: since },
+    },
+    select: { id: true },
+  });
+  return !!recent;
 }

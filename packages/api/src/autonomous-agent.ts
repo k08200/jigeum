@@ -29,7 +29,12 @@ import type OpenAI from "openai";
 import { resolveActionTarget } from "./action-target.js";
 import { AGENT_SYSTEM_PROMPT, NOTIFY_TOOL, PROPOSE_ACTION_TOOL } from "./agent/prompt.js";
 import { recordDedupKey, wasRecentlyDeduped } from "./agent-dedup.js";
-import { getNotifKey, getToolRisk, TOOL_RISK_LEVELS } from "./agent-logic.js";
+import {
+  areSimilarProposalIssues,
+  getNotifKey,
+  getToolRisk,
+  TOOL_RISK_LEVELS,
+} from "./agent-logic.js";
 import { type AgentMode, getAgentModePolicy, normalizeAgentMode } from "./agent-mode.js";
 import {
   bulkResolveAttentionForPendingActions,
@@ -67,7 +72,13 @@ const CONCURRENCY_LIMIT = 5; // Max users to run concurrently
  */
 // Risk classification and notification key logic live in agent-logic.ts
 // so they can be imported without pulling in the full agent runtime.
-export { getNotifKey, getToolRisk, type RiskLevel, TOOL_RISK_LEVELS } from "./agent-logic.js";
+export {
+  areSimilarProposalIssues,
+  getNotifKey,
+  getToolRisk,
+  type RiskLevel,
+  TOOL_RISK_LEVELS,
+} from "./agent-logic.js";
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -77,6 +88,7 @@ const lastRunTime = new Map<string, number>();
 // DB-based dedup: check if a similar notification was sent recently
 // Survives server restarts (unlike previous in-memory Map approach)
 const NOTIFY_DEDUP_HOURS = 2; // Don't repeat same notification within 2 hours
+const PROPOSAL_DEDUP_HOURS = 24; // Don't re-propose the same underlying issue within a day
 
 async function hasRecentNotification(userId: string, titleKey: string): Promise<boolean> {
   const since = new Date(Date.now() - NOTIFY_DEDUP_HOURS * 60 * 60 * 1000);
@@ -101,6 +113,59 @@ async function hasRecentNotification(userId: string, titleKey: string): Promise<
     take: 50,
   });
   return recentNotifs.some((n) => getNotifKey(n.title) === titleKey);
+}
+
+async function findRecentSimilarProposal(
+  userId: string,
+  proposed: { message: string; toolName: string; toolArgs: unknown },
+): Promise<{ id: string; toolName: string; status: string; createdAt: Date } | null> {
+  const since = new Date(Date.now() - PROPOSAL_DEDUP_HOURS * 60 * 60 * 1000);
+  const recentRows = (await db.pendingAction.findMany({
+    where: {
+      userId,
+      status: { in: ["PENDING", "REJECTED", "EXECUTED"] },
+      createdAt: { gte: since },
+    },
+    select: {
+      id: true,
+      toolName: true,
+      toolArgs: true,
+      reasoning: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 80,
+  })) as Array<{
+    id: string;
+    toolName: string;
+    toolArgs: string;
+    reasoning: string | null;
+    status: string;
+    createdAt: Date;
+  }>;
+
+  for (const row of recentRows) {
+    if (
+      areSimilarProposalIssues(proposed, {
+        message: row.reasoning ?? "",
+        toolName: row.toolName,
+        toolArgs: safeJson(row.toolArgs),
+      })
+    ) {
+      return row;
+    }
+  }
+
+  return null;
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw || "{}");
+  } catch {
+    return raw;
+  }
 }
 
 // DB-based email reply dedup: check AgentLog for recent send_email actions
@@ -1034,14 +1099,29 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
             },
             orderBy: { createdAt: "desc" },
           });
+          const similarRecent = await findRecentSimilarProposal(userId, {
+            message: args.message,
+            toolName: args.toolName,
+            toolArgs: args.toolArgs ?? {},
+          });
           const alreadyNotified = await hasRecentNotification(userId, key);
 
-          if (dedupKeyHit || existingPending || alreadyNotified) {
+          if (dedupKeyHit || existingPending || similarRecent || alreadyNotified) {
             result = JSON.stringify({
               skipped: true,
-              reason: dedupKeyHit ? "duplicate proposal (dedupKey)" : "duplicate proposal",
+              reason: dedupKeyHit
+                ? "duplicate proposal (dedupKey)"
+                : similarRecent
+                  ? "duplicate proposal (similar recent issue)"
+                  : "duplicate proposal",
             });
-            await logAgentAction(userId, "skip", `Dedup proposal: "${args.message.slice(0, 50)}"`);
+            await logAgentAction(
+              userId,
+              "skip",
+              similarRecent
+                ? `Dedup similar proposal (${similarRecent.status} ${similarRecent.toolName} ${similarRecent.id}): "${args.message.slice(0, 50)}"`
+                : `Dedup proposal: "${args.message.slice(0, 50)}"`,
+            );
           } else {
             // Find or create an agent conversation for today
             const todayStart = new Date();
@@ -1317,13 +1397,26 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
               where: { userId, toolName: fnName, status: "PENDING" },
               orderBy: { createdAt: "desc" },
             });
+            const similarRecent = await findRecentSimilarProposal(userId, {
+              message: proposalMessage,
+              toolName: fnName,
+              toolArgs: args,
+            });
 
-            if (existingPending) {
+            if (existingPending || similarRecent) {
               result = JSON.stringify({
                 skipped: true,
-                reason: "duplicate proposal",
+                reason: similarRecent
+                  ? "duplicate proposal (similar recent issue)"
+                  : "duplicate proposal",
               });
-              await logAgentAction(userId, "skip", `Dedup risk-gated proposal: ${fnName}`);
+              await logAgentAction(
+                userId,
+                "skip",
+                similarRecent
+                  ? `Dedup similar risk-gated proposal (${similarRecent.status} ${similarRecent.toolName} ${similarRecent.id}): ${fnName}`
+                  : `Dedup risk-gated proposal: ${fnName}`,
+              );
             } else {
               // Find or create agent conversation for today
               const todayStart = new Date();
