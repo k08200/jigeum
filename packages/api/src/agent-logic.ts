@@ -62,3 +62,109 @@ export function getNotifKey(title: string): string {
     .replace(/[\s.,!?·\-_()[\]{}'"]/g, "")
     .slice(0, 30);
 }
+
+export interface ProposalIssueInput {
+  message?: string | null;
+  toolName?: string | null;
+  toolArgs?: unknown;
+}
+
+const PROPOSAL_STOP_WORDS = new Set([
+  "eve",
+  "상황",
+  "판단",
+  "제안",
+  "확인",
+  "필요",
+  "해드릴까요",
+  "드릴까요",
+  "있어요",
+  "있고",
+  "현재",
+  "오늘",
+  "내일",
+  "여러",
+  "관련",
+  "기존",
+  "최근",
+  "사용자",
+  "정리",
+  "작업",
+  "만들",
+  "만들까",
+  "추가",
+  "삭제",
+  "유지",
+  "업데이트",
+  "리마인더",
+  "알림",
+  "캘린더",
+  "태스크",
+  "시간",
+  "대상",
+  "요청",
+  "내용",
+  "승인",
+  "거절",
+  "pending",
+  "action",
+  "create",
+  "update",
+  "cleanup",
+  "reminder",
+  "calendar",
+  "task",
+  "optional",
+  "single",
+  "highlight",
+]);
+
+const MIN_PROPOSAL_SHARED_TOKENS = 4;
+const MIN_PROPOSAL_OVERLAP_RATIO = 0.28;
+
+export function proposalIssueTokens(input: ProposalIssueInput): Set<string> {
+  const raw = [input.toolName, input.message, stringifyArgs(input.toolArgs)]
+    .filter(Boolean)
+    .join(" ");
+  const normalized = raw
+    .toLowerCase()
+    .replace(/<untrusted_content>|<\/untrusted_content>/g, " ")
+    .replace(/[_/\\|:;,.!?()[\]{}"'`~@#$%^&*+=<>]/g, " ");
+
+  const tokens = normalized.match(/[a-z0-9]+|[가-힣]{2,}/g) ?? [];
+  const kept = tokens
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0)
+    .filter((token) => !PROPOSAL_STOP_WORDS.has(token))
+    .filter((token) => token.length >= 2 || /^\d+$/.test(token));
+
+  return new Set(kept);
+}
+
+export function areSimilarProposalIssues(a: ProposalIssueInput, b: ProposalIssueInput): boolean {
+  const aTokens = proposalIssueTokens(a);
+  const bTokens = proposalIssueTokens(b);
+  if (aTokens.size === 0 || bTokens.size === 0) return false;
+
+  const shared = [...aTokens].filter((token) => bTokens.has(token));
+  if (shared.length < MIN_PROPOSAL_SHARED_TOKENS) return false;
+
+  const overlapRatio = shared.length / Math.min(aTokens.size, bTokens.size);
+  if (overlapRatio < MIN_PROPOSAL_OVERLAP_RATIO) return false;
+
+  const hasNamedAnchor = shared.some(
+    (token) => /^[a-z][a-z0-9]{3,}$/.test(token) || /^[가-힣]{3,}$/.test(token),
+  );
+  const numericAnchors = shared.filter((token) => /^\d+$/.test(token)).length;
+  return hasNamedAnchor || numericAnchors >= 2;
+}
+
+function stringifyArgs(args: unknown): string {
+  if (!args) return "";
+  if (typeof args === "string") return args;
+  try {
+    return JSON.stringify(args);
+  } catch {
+    return "";
+  }
+}

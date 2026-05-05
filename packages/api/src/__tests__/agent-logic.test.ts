@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getNotifKey, getToolRisk, TOOL_RISK_LEVELS } from "../agent-logic.js";
+import {
+  areSimilarProposalIssues,
+  getNotifKey,
+  getToolRisk,
+  proposalIssueTokens,
+  TOOL_RISK_LEVELS,
+} from "../agent-logic.js";
 
 describe("getToolRisk", () => {
   it("returns LOW for safe, reversible tools", () => {
@@ -83,5 +89,55 @@ describe("getNotifKey", () => {
     expect(getNotifKey("")).toBe("");
     expect(getNotifKey("   ")).toBe("");
     expect(getNotifKey("!!!...")).toBe("");
+  });
+});
+
+describe("proposal issue dedup", () => {
+  it("extracts stable anchors from proposal text and tool args", () => {
+    const tokens = proposalIssueTokens({
+      message:
+        "📋 상황: 캘린더에 '🎯 Impact Giving 신청 마감(5/10) PM 8:00'이 있고 리마인더가 많아요.",
+      toolName: "cleanup_reminders",
+      toolArgs: { title: "Impact Giving 신청 마감", due: "2026-05-10T20:00:00+09:00" },
+    });
+
+    expect(tokens.has("impact")).toBe(true);
+    expect(tokens.has("giving")).toBe(true);
+    expect(tokens.has("신청")).toBe(true);
+    expect(tokens.has("마감")).toBe(true);
+  });
+
+  it("collapses repeated Impact Giving proposals even when the action shape changes", () => {
+    const first = {
+      message:
+        "📋 상황: 캘린더에는 '🎯 Impact Giving 신청 마감(5/10) PM 8:00'이 있고, 5/10 AM 9:00·PM 5:00·PM 8:00까지 마감 관련 알림이 다수 잡혀 있어요. ✅ 제안: 오늘 19:05~19:20에 신청 폼 작성 시간 블록을 추가해드릴까요?",
+      toolName: "create_calendar_time_block_and_optional_reminder",
+      toolArgs: { title: "Impact Giving 신청 폼 작성", date: "2026-05-05", deadline: "2026-05-10" },
+    };
+    const second = {
+      message:
+        "📋 상황: 'Impact Giving 신청' 관련 알림이 5/5~5/10에 여러 개 잡혀 있고, 캘린더에는 5/10 PM 8:00 마감이 있어요. ✅ 제안: 오늘 오후 6시 'Impact Giving 신청서 작성 1회차' 태스크를 새로 만들까요?",
+      toolName: "create_task_and_optional_reminder_single_highlight",
+      toolArgs: { title: "Impact Giving 신청서 작성", dueDate: "2026-05-10" },
+    };
+
+    expect(areSimilarProposalIssues(first, second)).toBe(true);
+  });
+
+  it("does not collapse unrelated proposals that only share generic workflow terms", () => {
+    const first = {
+      message:
+        "📋 상황: Impact Giving 신청 마감이 5/10 PM 8:00이에요. ✅ 제안: 제출 전 체크리스트를 만들까요?",
+      toolName: "create_task",
+      toolArgs: { title: "Impact Giving 제출 체크" },
+    };
+    const second = {
+      message:
+        "📋 상황: Vercel 보안 업데이트 메일 확인이 필요해요. ✅ 제안: 보안 업데이트 확인 태스크를 만들까요?",
+      toolName: "create_task",
+      toolArgs: { title: "Vercel Security Update 확인" },
+    };
+
+    expect(areSimilarProposalIssues(first, second)).toBe(false);
   });
 });
