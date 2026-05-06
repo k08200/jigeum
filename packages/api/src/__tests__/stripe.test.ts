@@ -27,6 +27,9 @@ describe("plan device limits", () => {
     expect(planHasFeature("FREE", "email_auto_classify")).toBe(true);
     expect(planHasFeature("FREE", "autonomous_agent")).toBe(true);
     expect(planHasFeature("FREE", "pattern_learning")).toBe(true);
+    expect(planHasFeature("FREE", "calendar_create")).toBe(true);
+    expect(planHasFeature("FREE", "calendar_write")).toBe(false);
+    expect(planHasFeature("FREE", "email_write")).toBe(false);
     expect(planHasFeature("FREE", "email_auto_reply")).toBe(false);
     expect(planHasFeature("FREE", "agent_mode_auto")).toBe(false);
   });
