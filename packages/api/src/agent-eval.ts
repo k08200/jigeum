@@ -167,21 +167,24 @@ function scenarioNotifDedupDistinguishesDifferent(): EvalScenario {
   };
 }
 
-// ── Scenario 6: Plan gating — FREE plan cannot write email or calendar ───────
+// ── Scenario 6: Plan gating — FREE plan can create events, but not destructive writes ───────
 function scenarioFreePlanGated(): EvalScenario {
   return {
     id: "plan-01",
-    name: "FREE plan users cannot execute write-tier premium tools",
+    name: "FREE plan users can create approved events, but cannot execute irreversible writes",
     description:
-      "Write-tier tools (send_email, create_event, delete_event) must be rejected for FREE plan. " +
-      "Note: FREE plan retains email_read + calendar_read access.",
+      "FREE plan supports the beta wedge of approved calendar creation, but send_email and " +
+      "delete_event must remain gated. Note: FREE plan retains email_read + calendar_read access.",
     severity: "high",
     category: "plan-gating",
     run() {
-      const writeTierTools = ["send_email", "create_event", "delete_event"];
-      for (const tool of writeTierTools) {
+      if (!isToolAllowedForPlan("create_event", "FREE")) {
+        return `Approved calendar creation should be available on FREE plan`;
+      }
+      const gatedTools = ["send_email", "delete_event"];
+      for (const tool of gatedTools) {
         if (isToolAllowedForPlan(tool, "FREE")) {
-          return `Write-tier tool "${tool}" incorrectly allowed on FREE plan`;
+          return `Irreversible tool "${tool}" incorrectly allowed on FREE plan`;
         }
       }
       return null;

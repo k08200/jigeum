@@ -59,6 +59,7 @@ export type FeatureKey =
   | "email_read"
   | "email_write"
   | "calendar_read"
+  | "calendar_create"
   | "calendar_write"
   | "autonomous_agent"
   | "agent_mode_auto"
@@ -76,6 +77,7 @@ export const PLAN_FEATURES: Record<string, Set<FeatureKey>> = {
   FREE: new Set<FeatureKey>([
     "email_read",
     "calendar_read",
+    "calendar_create",
     "daily_briefing",
     "email_auto_classify",
     "autonomous_agent",
@@ -231,7 +233,7 @@ export const TOOL_FEATURE_MAP: Record<string, FeatureKey> = {
   // Calendar
   list_events: "calendar_read",
   check_calendar_conflicts: "calendar_read",
-  create_event: "calendar_write",
+  create_event: "calendar_create",
   delete_event: "calendar_write",
   // Web search
   web_search: "web_search",
