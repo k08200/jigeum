@@ -2,7 +2,21 @@ import Fastify from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signToken } from "../auth.js";
 
-vi.mock("../email.js", () => ({ sendVerificationEmail: vi.fn(), sendPasswordResetEmail: vi.fn() }));
+const sendBetaInviteEmailSpy = vi.fn(async () => true);
+vi.mock("../email.js", () => ({
+  sendVerificationEmail: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+  sendBetaInviteEmail: (...args: unknown[]) => sendBetaInviteEmailSpy(...args),
+}));
+
+type StoredWaitlist = {
+  id: string;
+  email: string;
+  name: string | null;
+  status: string;
+  approvedAt: Date | null;
+};
+const waitlistById = new Map<string, StoredWaitlist>();
 vi.mock("../gmail.js", () => ({
   getAuthUrl: vi.fn(),
   getLoginAuthUrl: vi.fn(),
@@ -70,6 +84,28 @@ vi.mock("../db.js", () => {
     testRun: { deleteMany: vi.fn(async () => ({})) },
     agent: { deleteMany: vi.fn(async () => ({})) },
     workspaceMember: { deleteMany: vi.fn(async () => ({})) },
+    waitlist: {
+      findMany: vi.fn(async () => Array.from(waitlistById.values())),
+      groupBy: vi.fn(async () => []),
+      findUnique: vi.fn(async ({ where }: { where: { id: string } }) => {
+        return waitlistById.get(where.id) ?? null;
+      }),
+      update: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: { status: string; approvedAt: Date | null };
+        }) => {
+          const entry = waitlistById.get(where.id);
+          if (!entry) throw new Error("Waitlist entry not found");
+          const updated = { ...entry, status: data.status, approvedAt: data.approvedAt };
+          waitlistById.set(where.id, updated);
+          return updated;
+        },
+      ),
+    },
     $transaction: vi.fn(async (ops: unknown[]) => ops),
     device: {
       findUnique: vi.fn(async () => ({ id: "d1" })),
@@ -181,5 +217,95 @@ describe("admin routes", () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toMatch(/admin/i);
     await app.close();
+  });
+});
+
+describe("PATCH /api/admin/waitlist/:id", () => {
+  beforeEach(() => {
+    delete process.env.ADMIN_EMAILS;
+    waitlistById.clear();
+    sendBetaInviteEmailSpy.mockClear();
+  });
+
+  function seedWaitlistEntry(entry: Partial<StoredWaitlist> & { id: string; email: string }) {
+    waitlistById.set(entry.id, {
+      name: null,
+      status: "PENDING",
+      approvedAt: null,
+      ...entry,
+    });
+  }
+
+  it("sends an invite email when transitioning PENDING → APPROVED", async () => {
+    seedWaitlistEntry({ id: "w-1", email: "applicant@example.com", name: "Applicant" });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/waitlist/w-1",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { status: "APPROVED" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    // Invite email is fire-and-forget — let the microtask queue flush.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(sendBetaInviteEmailSpy).toHaveBeenCalledWith("applicant@example.com", "Applicant");
+  });
+
+  it("does not re-send invite when entry is already APPROVED", async () => {
+    seedWaitlistEntry({
+      id: "w-2",
+      email: "alreadyin@example.com",
+      status: "APPROVED",
+      approvedAt: new Date(),
+    });
+    const app = await buildApp();
+    await app.inject({
+      method: "PATCH",
+      url: "/api/admin/waitlist/w-2",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { status: "APPROVED" },
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(sendBetaInviteEmailSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not send invite when transitioning to REJECTED", async () => {
+    seedWaitlistEntry({ id: "w-3", email: "rejected@example.com" });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/waitlist/w-3",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { status: "REJECTED" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(sendBetaInviteEmailSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the waitlist entry does not exist", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/waitlist/missing",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { status: "APPROVED" },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("rejects invalid status with 400", async () => {
+    seedWaitlistEntry({ id: "w-4", email: "x@example.com" });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "PATCH",
+      url: "/api/admin/waitlist/w-4",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      payload: { status: "GARBAGE" },
+    });
+    expect(res.statusCode).toBe(400);
   });
 });

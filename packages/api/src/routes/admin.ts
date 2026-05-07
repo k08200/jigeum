@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { runAllScenarios, summarizeEval } from "../agent-eval.js";
 import { requireAdmin } from "../auth.js";
 import { db, prisma } from "../db.js";
+import { sendBetaInviteEmail } from "../email.js";
 import { getPerfSnapshot } from "../perf-monitor.js";
 
 type FeedbackGroup = { signal: string; _count: { signal: number } };
@@ -310,13 +311,25 @@ export async function adminRoutes(app: FastifyInstance) {
     return { entries, counts };
   });
 
-  // PATCH /api/admin/waitlist/:id — mark approved or rejected
+  // PATCH /api/admin/waitlist/:id — mark approved or rejected. On the
+  // PENDING/REJECTED → APPROVED transition, fire-and-forget an invite email so
+  // the applicant knows they can sign up. Idempotent: re-PATCHing an already-
+  // APPROVED entry does not re-send the email.
   app.patch("/waitlist/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const { status } = request.body as { status?: string };
     if (status !== "APPROVED" && status !== "REJECTED" && status !== "PENDING") {
       return reply.code(400).send({ error: "status must be APPROVED, REJECTED, or PENDING" });
     }
+
+    const previous = await db.waitlist.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!previous) {
+      return reply.code(404).send({ error: "Waitlist entry not found" });
+    }
+
     const entry = await db.waitlist.update({
       where: { id },
       data: {
@@ -324,6 +337,13 @@ export async function adminRoutes(app: FastifyInstance) {
         approvedAt: status === "APPROVED" ? new Date() : null,
       },
     });
+
+    if (status === "APPROVED" && previous.status !== "APPROVED") {
+      sendBetaInviteEmail(entry.email, entry.name).catch((err) => {
+        console.error("[ADMIN] Failed to send beta invite email:", err);
+      });
+    }
+
     return entry;
   });
 

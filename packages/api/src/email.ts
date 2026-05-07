@@ -109,6 +109,51 @@ export async function sendWaitlistAdminAlert(entry: {
   }
 }
 
+export async function sendBetaInviteEmail(to: string, name?: string | null): Promise<boolean> {
+  const loginUrl = `${WEB_URL}/login`;
+  const safeAddr = maskEmail(to);
+  const greeting = name?.trim() ? `Hi ${name.trim().replace(/[<>]/g, "")},` : "Hi,";
+
+  if (!resend) {
+    console.log("[EMAIL] No RESEND_API_KEY — invite link generated for", safeAddr);
+    return true;
+  }
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: "You're in — early access to EVE",
+      html: `
+        <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+          <h2 style="color: #3b82f6; margin-bottom: 24px;">Welcome to EVE</h2>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            ${greeting}
+          </p>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+            You're approved for early access. Create your account with the email you signed up with, and EVE will start watching your Gmail and Calendar — quietly handling the low-risk stuff and only interrupting you when something actually matters.
+          </p>
+          <a href="${loginUrl}" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0;">
+            Create your account
+          </a>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+            Heads-up: the first few days EVE is still learning your line. Tell it "less" or "more" and it adjusts.
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+          <p style="color: #9ca3af; font-size: 12px;">
+            EVE — Your AI Chief of Staff
+          </p>
+        </div>
+      `,
+    });
+    console.log("[EMAIL] Beta invite email sent to", safeAddr);
+    return true;
+  } catch (err) {
+    console.error("[EMAIL] Failed to send invite email:", err);
+    return false;
+  }
+}
+
 export async function sendVerificationEmail(to: string, verifyToken: string): Promise<boolean> {
   const verifyUrl = `${WEB_URL}/verify-email?token=${verifyToken}`;
   const safeAddr = maskEmail(to);
