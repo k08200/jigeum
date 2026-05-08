@@ -167,6 +167,21 @@ export function authRoutes(app: FastifyInstance) {
       return reply.code(409).send({ error: "Email already registered" });
     }
 
+    // Beta auto-PRO: when the gate is OFF and BETA_AUTO_PRO_ENABLED=true, the
+    // first BETA_AUTO_PRO_LIMIT signups silently get PRO (so a private URL can
+    // be shared without per-user admin work). Past the cap the column stays
+    // null and the user falls back to FREE — no error surface.
+    const betaAutoProEnabled =
+      !betaGateEnabled && process.env.BETA_AUTO_PRO_ENABLED === "true";
+    const betaAutoProLimit = Number.parseInt(process.env.BETA_AUTO_PRO_LIMIT || "50", 10);
+    let grantBetaAutoPro = false;
+    if (betaAutoProEnabled && Number.isFinite(betaAutoProLimit) && betaAutoProLimit > 0) {
+      const grantedCount = await prisma.user.count({
+        where: { betaProGrantedAt: { not: null } },
+      });
+      grantBetaAutoPro = grantedCount < betaAutoProLimit;
+    }
+
     const verifyToken = crypto.randomBytes(32).toString("hex");
     const verifyTokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -176,6 +191,7 @@ export function authRoutes(app: FastifyInstance) {
         passwordHash: await hashPassword(password),
         name: normalizedName || normalizedEmail.split("@")[0],
         ...(betaGateEnabled && { plan: "PRO" }),
+        ...(grantBetaAutoPro && { plan: "PRO", betaProGrantedAt: new Date() }),
         verifyToken,
         verifyTokenExp,
       },

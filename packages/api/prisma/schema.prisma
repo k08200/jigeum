@@ -24,6 +24,7 @@ model User {
   verifyTokenExp      DateTime?
   resetToken          String?
   resetTokenExp       DateTime?
+  betaProGrantedAt    DateTime?
   agents              Agent[]
   testRuns            TestRun[]
   conversations       Conversation[]

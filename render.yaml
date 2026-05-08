@@ -35,3 +35,7 @@ services:
         value: "https://hireeve.com,https://www.hireeve.com,https://hire-eve-web.vercel.app"
       - key: RENDER_EXTERNAL_URL
         value: "https://hireeve.onrender.com"
+      - key: BETA_AUTO_PRO_ENABLED
+        sync: false
+      - key: BETA_AUTO_PRO_LIMIT
+        sync: false
