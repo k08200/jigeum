@@ -171,8 +171,7 @@ export function authRoutes(app: FastifyInstance) {
     // first BETA_AUTO_PRO_LIMIT signups silently get PRO (so a private URL can
     // be shared without per-user admin work). Past the cap the column stays
     // null and the user falls back to FREE — no error surface.
-    const betaAutoProEnabled =
-      !betaGateEnabled && process.env.BETA_AUTO_PRO_ENABLED === "true";
+    const betaAutoProEnabled = !betaGateEnabled && process.env.BETA_AUTO_PRO_ENABLED === "true";
     const betaAutoProLimit = Number.parseInt(process.env.BETA_AUTO_PRO_LIMIT || "50", 10);
     let grantBetaAutoPro = false;
     if (betaAutoProEnabled && Number.isFinite(betaAutoProLimit) && betaAutoProLimit > 0) {
