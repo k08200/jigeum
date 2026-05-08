@@ -145,6 +145,23 @@ export function authRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Name cannot be empty" });
     }
 
+    // Beta gate: when BETA_GATE_ENABLED=true, registration is restricted to
+    // waitlist entries that an admin has approved. APPROVED registrants are
+    // auto-granted PRO so yongrean doesn't have to run prod SQL after every
+    // signup.
+    const betaGateEnabled = process.env.BETA_GATE_ENABLED === "true";
+    const waitlistEntry = betaGateEnabled
+      ? await prisma.waitlist.findUnique({
+          where: { email: normalizedEmail },
+          select: { status: true },
+        })
+      : null;
+    if (betaGateEnabled && waitlistEntry?.status !== "APPROVED") {
+      return reply.code(403).send({
+        error: "Early access is invite-only. Request access at /early-access.",
+      });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return reply.code(409).send({ error: "Email already registered" });
@@ -158,6 +175,7 @@ export function authRoutes(app: FastifyInstance) {
         email: normalizedEmail,
         passwordHash: await hashPassword(password),
         name: normalizedName || normalizedEmail.split("@")[0],
+        ...(betaGateEnabled && { plan: "PRO" }),
         verifyToken,
         verifyTokenExp,
       },

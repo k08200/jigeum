@@ -6,9 +6,11 @@ import { signToken, verifyToken } from "../auth.js";
 // but we want to assert it was called with the right token.
 const sendVerificationEmailSpy = vi.fn(async () => true);
 const sendPasswordResetEmailSpy = vi.fn(async () => true);
+const sendBetaInviteEmailSpy = vi.fn(async () => true);
 vi.mock("../email.js", () => ({
   sendVerificationEmail: (...args: unknown[]) => sendVerificationEmailSpy(...args),
   sendPasswordResetEmail: (...args: unknown[]) => sendPasswordResetEmailSpy(...args),
+  sendBetaInviteEmail: (...args: unknown[]) => sendBetaInviteEmailSpy(...args),
 }));
 
 // Stub gmail OAuth helpers so we don't hit googleapis in tests.
@@ -38,8 +40,17 @@ const userStore = new Map<string, StoredUser>();
 const userByEmail = new Map<string, string>();
 let nextUserId = 1;
 
+type StoredWaitlist = { email: string; status: string };
+const waitlistByEmail = new Map<string, StoredWaitlist>();
+
 vi.mock("../db.js", () => {
   const prisma = {
+    waitlist: {
+      findUnique: vi.fn(async ({ where }: { where: { email?: string } }) => {
+        if (!where.email) return null;
+        return waitlistByEmail.get(where.email) ?? null;
+      }),
+    },
     user: {
       findUnique: vi.fn(async ({ where }: { where: { email?: string; id?: string } }) => {
         if (where.email) return userStore.get(userByEmail.get(where.email) || "") ?? null;
@@ -70,7 +81,7 @@ vi.mock("../db.js", () => {
           return null;
         },
       ),
-      create: vi.fn(async ({ data }: { data: Omit<StoredUser, "id" | "plan" | "role"> }) => {
+      create: vi.fn(async ({ data }: { data: Omit<StoredUser, "id" | "role"> }) => {
         const id = `user-${nextUserId++}`;
         const user: StoredUser = { id, plan: "FREE", role: "USER", ...data };
         userStore.set(id, user);
@@ -111,9 +122,12 @@ async function buildApp() {
 function resetStores() {
   userStore.clear();
   userByEmail.clear();
+  waitlistByEmail.clear();
   nextUserId = 1;
   sendVerificationEmailSpy.mockClear();
   sendPasswordResetEmailSpy.mockClear();
+  sendBetaInviteEmailSpy.mockClear();
+  delete process.env.BETA_GATE_ENABLED;
 }
 
 /** Register a user via the route and return the JWT token. */
@@ -247,6 +261,78 @@ describe("POST /api/auth/register", () => {
       },
     });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+});
+
+describe("POST /api/auth/register — beta gate", () => {
+  beforeEach(resetStores);
+
+  it("rejects with 403 when BETA_GATE_ENABLED and email is not on the waitlist", async () => {
+    process.env.BETA_GATE_ENABLED = "true";
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "stranger@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toMatch(/invite-only/i);
+    await app.close();
+  });
+
+  it("rejects with 403 when waitlist entry is PENDING", async () => {
+    process.env.BETA_GATE_ENABLED = "true";
+    waitlistByEmail.set("waiting@example.com", { email: "waiting@example.com", status: "PENDING" });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "waiting@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("rejects with 403 when waitlist entry is REJECTED", async () => {
+    process.env.BETA_GATE_ENABLED = "true";
+    waitlistByEmail.set("nope@example.com", { email: "nope@example.com", status: "REJECTED" });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "nope@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("creates a PRO account when BETA_GATE_ENABLED and waitlist entry is APPROVED", async () => {
+    process.env.BETA_GATE_ENABLED = "true";
+    waitlistByEmail.set("approved@example.com", {
+      email: "approved@example.com",
+      status: "APPROVED",
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "approved@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("PRO");
+    await app.close();
+  });
+
+  it("does not check waitlist when BETA_GATE_ENABLED is unset (preserves old behavior)", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "open@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("FREE");
     await app.close();
   });
 });
