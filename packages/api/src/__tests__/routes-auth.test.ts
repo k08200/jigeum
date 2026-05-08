@@ -35,6 +35,7 @@ type StoredUser = {
   emailVerified?: boolean;
   resetToken?: string | null;
   resetTokenExp?: Date | null;
+  betaProGrantedAt?: Date | null;
 };
 const userStore = new Map<string, StoredUser>();
 const userByEmail = new Map<string, string>();
@@ -97,6 +98,14 @@ vi.mock("../db.js", () => {
           return updated;
         },
       ),
+      count: vi.fn(async ({ where }: { where?: { betaProGrantedAt?: { not: null } } } = {}) => {
+        if (where?.betaProGrantedAt?.not === null) {
+          let n = 0;
+          for (const u of userStore.values()) if (u.betaProGrantedAt) n += 1;
+          return n;
+        }
+        return userStore.size;
+      }),
     },
     userToken: { findFirst: vi.fn(async () => null) },
     automationConfig: { create: vi.fn(async () => ({})), upsert: vi.fn(async () => ({})) },
@@ -128,6 +137,8 @@ function resetStores() {
   sendPasswordResetEmailSpy.mockClear();
   sendBetaInviteEmailSpy.mockClear();
   delete process.env.BETA_GATE_ENABLED;
+  delete process.env.BETA_AUTO_PRO_ENABLED;
+  delete process.env.BETA_AUTO_PRO_LIMIT;
 }
 
 /** Register a user via the route and return the JWT token. */
@@ -330,6 +341,115 @@ describe("POST /api/auth/register — beta gate", () => {
       method: "POST",
       url: "/api/auth/register",
       payload: { email: "open@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("FREE");
+    await app.close();
+  });
+});
+
+describe("POST /api/auth/register — beta auto pro", () => {
+  beforeEach(resetStores);
+
+  it("grants PRO and stamps betaProGrantedAt for the first signup under the cap", async () => {
+    process.env.BETA_AUTO_PRO_ENABLED = "true";
+    process.env.BETA_AUTO_PRO_LIMIT = "2";
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "first@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("PRO");
+    const stored = userStore.get(res.json().user.id);
+    expect(stored?.betaProGrantedAt).toBeInstanceOf(Date);
+    await app.close();
+  });
+
+  it("silently falls back to FREE once the cap is reached", async () => {
+    process.env.BETA_AUTO_PRO_ENABLED = "true";
+    process.env.BETA_AUTO_PRO_LIMIT = "1";
+    const app = await buildApp();
+    const a = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "early@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(a.statusCode).toBe(201);
+    expect(a.json().user.plan).toBe("PRO");
+
+    const b = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "late@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(b.statusCode).toBe(201);
+    expect(b.json().user.plan).toBe("FREE");
+    const lateUser = userStore.get(b.json().user.id);
+    expect(lateUser?.betaProGrantedAt ?? null).toBeNull();
+    await app.close();
+  });
+
+  it("defaults the cap to 50 when BETA_AUTO_PRO_LIMIT is unset", async () => {
+    process.env.BETA_AUTO_PRO_ENABLED = "true";
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "default@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("PRO");
+    await app.close();
+  });
+
+  it("does not grant when BETA_AUTO_PRO_ENABLED is unset (regression check)", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "plain@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("FREE");
+    const stored = userStore.get(res.json().user.id);
+    expect(stored?.betaProGrantedAt ?? null).toBeNull();
+    await app.close();
+  });
+
+  it("does not consume the auto-pro cap when BETA_GATE_ENABLED takes priority", async () => {
+    // Both flags on: gate path should win, auto-pro path must not even count.
+    process.env.BETA_GATE_ENABLED = "true";
+    process.env.BETA_AUTO_PRO_ENABLED = "true";
+    process.env.BETA_AUTO_PRO_LIMIT = "1";
+    waitlistByEmail.set("approved@example.com", {
+      email: "approved@example.com",
+      status: "APPROVED",
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "approved@example.com", password: "correcthorsebatterystaple" },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.plan).toBe("PRO");
+    // Gate-path PRO should NOT stamp betaProGrantedAt — that column is the
+    // auto-pro cap counter.
+    const stored = userStore.get(res.json().user.id);
+    expect(stored?.betaProGrantedAt ?? null).toBeNull();
+    await app.close();
+  });
+
+  it("treats BETA_AUTO_PRO_LIMIT=0 as effectively disabled", async () => {
+    process.env.BETA_AUTO_PRO_ENABLED = "true";
+    process.env.BETA_AUTO_PRO_LIMIT = "0";
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: { email: "zero@example.com", password: "correcthorsebatterystaple" },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().user.plan).toBe("FREE");
