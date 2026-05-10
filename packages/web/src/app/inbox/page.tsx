@@ -156,8 +156,8 @@ function InboxView() {
               흩어진 신호를 승인 가능한 결정으로 정리합니다.
             </h1>
             <p className="mt-3 text-sm leading-6 text-gray-400">
-              EVE가 실행하기 전에 무엇을 봤고, 왜 중요하다고 판단했으며, 어떤 행동을
-              준비했는지 확인하세요.
+              EVE가 실행하기 전에 무엇을 봤고, 왜 중요하다고 판단했으며, 어떤 행동을 준비했는지
+              확인하세요.
             </p>
           </div>
           <button
@@ -421,12 +421,20 @@ function ActionCard({
             <DecisionSection
               label="Signal"
               title="EVE가 본 신호"
-              body={reasoning.situation || action.conversationTitle || "연결된 대화와 작업 신호를 확인했어요."}
+              body={
+                reasoning.situation ||
+                action.conversationTitle ||
+                "연결된 대화와 작업 신호를 확인했어요."
+              }
             />
             <DecisionSection
               label="Judgment"
               title="지금 중요한 이유"
-              body={reasoning.judgment || action.reasoning || "실행 전 사용자의 확인이 필요한 변경이에요."}
+              body={
+                reasoning.judgment ||
+                action.reasoning ||
+                "실행 전 사용자의 확인이 필요한 변경이에요."
+              }
             />
             <DecisionSection
               label="Move"
@@ -563,7 +571,9 @@ function splitReasoning(reasoning: string | null): {
   const read = (label: "상황" | "판단" | "제안"): string | null => {
     const labels = ["상황", "판단", "제안"].filter((item) => item !== label).join("|");
     const match = reasoning.match(
-      new RegExp(`(?:📋|💡|✅)?\\s*${label}\\s*[:：]\\s*([\\s\\S]*?)(?=(?:📋|💡|✅)?\\s*(?:${labels})\\s*[:：]|$)`),
+      new RegExp(
+        `(?:📋|💡|✅)?\\s*${label}\\s*[:：]\\s*([\\s\\S]*?)(?=(?:📋|💡|✅)?\\s*(?:${labels})\\s*[:：]|$)`,
+      ),
     );
     return match?.[1]?.trim() || null;
   };

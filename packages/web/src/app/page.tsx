@@ -242,7 +242,9 @@ export default function LandingPage() {
                 <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">
                   Decision Queue
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-white">Prepare investor follow-up</h3>
+                <h3 className="mt-1 text-lg font-semibold text-white">
+                  Prepare investor follow-up
+                </h3>
               </div>
               <span className="rounded border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-200">
                 Approval needed
@@ -251,7 +253,10 @@ export default function LandingPage() {
 
             <div className="grid gap-3">
               {decisionCards.map((card) => (
-                <article key={card.label} className="rounded-md border border-white/8 bg-white/[0.025] p-4">
+                <article
+                  key={card.label}
+                  className="rounded-md border border-white/8 bg-white/[0.025] p-4"
+                >
                   <div className="flex items-start gap-3">
                     <span
                       className={`mt-0.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${card.tone}`}
@@ -362,7 +367,10 @@ export default function LandingPage() {
           </div>
           <div className="grid gap-0 overflow-hidden rounded-lg border border-white/10 md:grid-cols-5">
             {trustRows.map(([stage, body], index) => (
-              <div key={stage} className="border-white/10 bg-white/[0.025] p-4 md:border-r md:last:border-r-0">
+              <div
+                key={stage}
+                className="border-white/10 bg-white/[0.025] p-4 md:border-r md:last:border-r-0"
+              >
                 <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#d8a45d]">
                   L{index}
                 </p>
