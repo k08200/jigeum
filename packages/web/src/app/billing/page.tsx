@@ -42,7 +42,7 @@ const PLANS = [
     features: [
       "Everything in Free",
       "Email send & Calendar create",
-      "EVE autonomous agent (Suggest + Auto)",
+      "Decision agent modes (Suggest + Auto)",
       "Daily briefing & Email auto-classify",
       "Email auto-reply & Pattern learning",
       "Slack & Notion integrations",
@@ -131,39 +131,50 @@ function BillingContent() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-12">
-      <h1 className="text-3xl font-bold mb-2">Billing</h1>
-      <p className="text-gray-400 mb-8">Choose a plan that fits your workflow</p>
+    <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 sm:px-6 md:py-10">
+      <header className="mb-6 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-sm shadow-black/20">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">
+          Plan Ledger
+        </p>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
+          EVE 운영 한도와 실행 권한
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-400">
+          메시지, 토큰, 실행 모드를 한곳에서 확인하고 팀의 결정 흐름에 맞는 플랜으로 조정합니다.
+        </p>
+      </header>
 
       {success && (
-        <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-6">
+        <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
           Subscription activated successfully!
         </div>
       )}
       {canceled && (
-        <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-6">
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
           Checkout was canceled.
         </div>
       )}
 
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {["s1", "s2", "s3", "s4"].map((sk) => (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {["s1", "s2", "s3"].map((sk) => (
             <CardSkeleton key={sk} />
           ))}
         </div>
       )}
 
       {!loading && status && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-10">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8 rounded-2xl border border-stone-700/45 bg-stone-950/40 p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-gray-500">Current Plan</p>
-              <p className="text-xl font-bold">{status.planName}</p>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                Current Plan
+              </p>
+              <p className="mt-1 text-xl font-semibold text-stone-50">{status.planName}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {status.estimatedCost > 0 && (
-                <span className="text-xs text-gray-500">
+                <span className="rounded-full border border-stone-700 bg-stone-900/70 px-3 py-1 text-xs text-stone-400">
                   ~${status.estimatedCost.toFixed(4)} this month
                 </span>
               )}
@@ -171,7 +182,7 @@ function BillingContent() {
                 <button
                   type="button"
                   onClick={handleManage}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition"
+                  className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-400/15"
                 >
                   Manage Subscription
                 </button>
@@ -179,25 +190,25 @@ function BillingContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Messages usage */}
             <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-400">Messages</span>
-                <span className="text-gray-300">
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="text-stone-400">Messages</span>
+                <span className="text-stone-300">
                   {status.messageCount} /{" "}
                   {status.messageLimit === Infinity ? "∞" : status.messageLimit.toLocaleString()}
                 </span>
               </div>
               {status.messageLimit !== Infinity && status.messageLimit > 0 && (
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-stone-800">
                   <div
                     className={`h-2 rounded-full transition-all duration-500 ${
                       status.messageCount / status.messageLimit > 0.9
                         ? "bg-red-500"
                         : status.messageCount / status.messageLimit > 0.7
-                          ? "bg-yellow-500"
-                          : "bg-blue-500"
+                          ? "bg-amber-400"
+                          : "bg-emerald-400"
                     }`}
                     style={{
                       width: `${Math.min((status.messageCount / status.messageLimit) * 100, 100)}%`,
@@ -209,22 +220,22 @@ function BillingContent() {
 
             {/* Tokens usage */}
             <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-400">Tokens</span>
-                <span className="text-gray-300">
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="text-stone-400">Tokens</span>
+                <span className="text-stone-300">
                   {formatTokens(status.tokenUsage)} /{" "}
                   {status.tokenLimit === Infinity ? "∞" : formatTokens(status.tokenLimit)}
                 </span>
               </div>
               {status.tokenLimit !== Infinity && status.tokenLimit > 0 && (
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="h-2 w-full rounded-full bg-stone-800">
                   <div
                     className={`h-2 rounded-full transition-all duration-500 ${
                       status.tokenUsage / status.tokenLimit > 0.9
                         ? "bg-red-500"
                         : status.tokenUsage / status.tokenLimit > 0.7
-                          ? "bg-yellow-500"
-                          : "bg-cyan-500"
+                          ? "bg-amber-400"
+                          : "bg-teal-400"
                     }`}
                     style={{
                       width: `${Math.min((status.tokenUsage / status.tokenLimit) * 100, 100)}%`,
@@ -237,43 +248,43 @@ function BillingContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {PLANS.map((plan) => {
           const isCurrent = status?.plan === plan.key;
           return (
             <div
               key={plan.key}
-              className={`bg-gray-900 border rounded-xl p-6 flex flex-col ${
+              className={`flex flex-col rounded-2xl border bg-stone-950/35 p-6 ${
                 isCurrent
-                  ? "border-blue-500"
+                  ? "border-amber-300/70"
                   : plan.key === "PRO"
-                    ? "border-blue-500/50 ring-1 ring-blue-500/20"
-                    : "border-gray-800"
+                    ? "border-amber-400/45 ring-1 ring-amber-400/15"
+                    : "border-stone-700/45"
               }`}
             >
               {plan.key === "PRO" && (
-                <span className="text-[10px] uppercase bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium mb-2 self-start">
-                  Most Popular
+                <span className="mb-2 self-start rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-950">
+                  Recommended
                 </span>
               )}
-              <p className="text-lg font-bold mb-1">{plan.name}</p>
-              <p className="text-2xl font-bold mb-1">
+              <p className="mb-1 text-lg font-semibold text-stone-50">{plan.name}</p>
+              <p className="mb-1 text-2xl font-semibold text-stone-50">
                 {plan.price}
-                <span className="text-sm text-gray-500 font-normal">{plan.period}</span>
+                <span className="text-sm font-normal text-stone-500">{plan.period}</span>
               </p>
-              <p className="text-sm text-gray-400 mb-4">{plan.limit}</p>
+              <p className="mb-4 text-sm text-stone-400">{plan.limit}</p>
 
-              <ul className="space-y-2 mb-6 flex-1">
+              <ul className="mb-6 flex-1 space-y-2">
                 {plan.features.map((f) => (
-                  <li key={f} className="text-sm text-gray-300 flex items-start gap-2">
-                    <span className="text-green-400 mt-0.5">✓</span>
+                  <li key={f} className="flex items-start gap-2 text-sm text-stone-300">
+                    <span className="mt-0.5 text-emerald-300">✓</span>
                     {f}
                   </li>
                 ))}
               </ul>
 
               {isCurrent ? (
-                <div className="text-center text-sm text-blue-400 font-medium py-2">
+                <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 py-2 text-center text-sm font-medium text-amber-100">
                   Current Plan
                 </div>
               ) : plan.key === "FREE" ? (
@@ -281,7 +292,7 @@ function BillingContent() {
               ) : plan.key === "ENTERPRISE" ? (
                 <a
                   href="mailto:sales@hireeve.com"
-                  className="block text-center bg-gray-800 hover:bg-gray-700 text-white py-2.5 rounded-lg text-sm font-medium transition"
+                  className="block rounded-lg border border-stone-700 bg-stone-900/70 py-2.5 text-center text-sm font-medium text-stone-100 transition hover:border-stone-500"
                 >
                   Contact Sales
                 </a>
@@ -289,7 +300,7 @@ function BillingContent() {
                 <button
                   type="button"
                   onClick={() => handleUpgrade(plan.key as "PRO")}
-                  className="bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-medium transition"
+                  className="rounded-lg bg-amber-300 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
                 >
                   Upgrade to {plan.name}
                 </button>
