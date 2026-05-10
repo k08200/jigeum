@@ -389,7 +389,7 @@ export default function Sidebar({
             type="button"
             onClick={createChat}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-700/60 bg-stone-900/40 text-stone-400 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
-            title="New command"
+            title="New decision thread"
           >
             <svg
               aria-hidden="true"
@@ -446,7 +446,7 @@ export default function Sidebar({
 
       {/* Conversation list */}
       <div className="relative flex-1 overflow-y-auto px-2 pb-2">
-        {/* EVE Suggestions — agent conversations with pending actions */}
+        {/* Decision Queue — EVE threads with pending actions */}
         {agentSuggestions.length > 0 && (
           <div className="mb-3">
             <Link
@@ -476,7 +476,7 @@ export default function Sidebar({
                   }`}
                 >
                   <span className="truncate flex-1 text-[13px]">
-                    {conv.title || "EVE suggestion"}
+                    {conv.title || "Decision card"}
                   </span>
                   {(conv.pendingActionCount || 0) > 0 && (
                     <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-200">
@@ -492,7 +492,9 @@ export default function Sidebar({
         {/* Deep search results (message content search) */}
         {searchResults.length > 0 && (
           <div className="mb-3">
-            <p className="text-[11px] font-medium text-stone-500 px-2 py-1.5">Found in messages</p>
+            <p className="text-[11px] font-medium text-stone-500 px-2 py-1.5">
+              Found in decision threads
+            </p>
             {searchResults.slice(0, 5).map((r) => (
               <Link
                 key={r.messageId}
@@ -553,7 +555,7 @@ export default function Sidebar({
                         {conv.source === "agent" && (
                           <span
                             className="w-2 h-2 rounded-full bg-amber-300/70 shrink-0"
-                            title="EVE suggestion"
+                            title="Decision card"
                           />
                         )}
                         {conv.title || "New decision thread"}
@@ -680,7 +682,7 @@ export default function Sidebar({
                         {conv.source === "agent" && (
                           <span
                             className="w-2 h-2 rounded-full bg-amber-300/70 shrink-0"
-                            title="EVE suggestion"
+                            title="Decision card"
                           />
                         )}
                         {conv.title || "New decision thread"}
@@ -894,7 +896,7 @@ export default function Sidebar({
                   }}
                   className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
-                  Settings
+                  Control Plane
                 </Link>
                 <Link
                   href="/billing"
@@ -904,7 +906,7 @@ export default function Sidebar({
                   }}
                   className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
-                  Billing
+                  Plan & Billing
                 </Link>
                 <Link
                   href="/settings/memory"
@@ -924,7 +926,7 @@ export default function Sidebar({
                   }}
                   className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
-                  Token Usage
+                  Usage Ledger
                 </Link>
                 <Link
                   href="/settings/email-feedback"
