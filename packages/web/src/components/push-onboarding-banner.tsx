@@ -111,7 +111,7 @@ export default function PushOnboardingBanner() {
       aria-label="Enable push notifications"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] w-[min(94vw,420px)] bg-stone-950 border border-stone-700 rounded-2xl shadow-2xl shadow-black/60 px-4 py-3.5 flex items-start gap-3 animate-slide-up pb-safe"
     >
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-base shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-300 to-stone-700 flex items-center justify-center text-base shrink-0">
         <span aria-hidden="true">🔔</span>
       </div>
       <div className="min-w-0 flex-1">

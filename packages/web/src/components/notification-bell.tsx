@@ -300,31 +300,31 @@ export default function NotificationBell({ userId }: { userId: string }) {
       tabIndex={0}
       onClick={() => handleNotificationClick(n)}
       onKeyDown={(e) => e.key === "Enter" && handleNotificationClick(n)}
-      className={`w-full text-left px-4 py-3.5 md:py-3 border-b border-gray-800/50 hover:bg-gray-800/50 transition cursor-pointer ${
-        !n.isRead ? "bg-blue-600/5" : ""
-      } ${isAgentNotification(n.title) ? "border-l-2 border-l-cyan-500/60" : ""}`}
+      className={`w-full text-left px-4 py-3.5 md:py-3 border-b border-stone-800/50 hover:bg-stone-800/50 transition cursor-pointer ${
+        !n.isRead ? "bg-amber-400/5" : ""
+      } ${isAgentNotification(n.title) ? "border-l-2 border-l-amber-300/60" : ""}`}
     >
       <div className="flex items-center gap-2">
         <span className="text-sm">
           {isAgentNotification(n.title) ? "🤖" : typeIcon[n.type] || "📌"}
         </span>
         <span
-          className={`text-sm truncate ${!n.isRead ? "font-semibold" : "text-gray-300"} ${isAgentNotification(n.title) ? "text-cyan-300" : ""}`}
+          className={`text-sm truncate ${!n.isRead ? "font-semibold" : "text-stone-300"} ${isAgentNotification(n.title) ? "text-amber-200" : ""}`}
         >
           {n.title}
         </span>
         {isAgentNotification(n.title) && (
-          <span className="text-[9px] text-cyan-400 bg-cyan-400/10 px-1 py-0.5 rounded shrink-0">
-            AI
+          <span className="text-[9px] text-amber-300 bg-amber-300/10 px-1 py-0.5 rounded shrink-0">
+            EVE
           </span>
         )}
-        {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 ml-auto" />}
+        {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shrink-0 ml-auto" />}
       </div>
-      <p className="text-[13px] md:text-xs text-gray-400 mt-1 line-clamp-2 ml-6">{n.message}</p>
+      <p className="text-[13px] md:text-xs text-stone-400 mt-1 line-clamp-2 ml-6">{n.message}</p>
       <div className="flex items-center gap-2 mt-1 ml-6">
-        <p className="text-[10px] text-gray-600">{formatRelative(n.createdAt)}</p>
+        <p className="text-[10px] text-stone-600">{formatRelative(n.createdAt)}</p>
         {getNotificationTarget(n) && (
-          <span className="text-[10px] text-cyan-400">
+          <span className="text-[10px] text-amber-300">
             {isAgentNotification(n.title) ? "View →" : "Open →"}
           </span>
         )}
@@ -335,7 +335,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
             type="button"
             onClick={(e) => handleApprovePendingAction(n, e)}
             disabled={!!pendingActionLoading[n.id]}
-            className="text-sm md:text-[11px] px-4 py-2 md:px-2.5 md:py-1 rounded-md md:rounded bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-medium transition min-w-[72px] md:min-w-0"
+            className="text-sm md:text-[11px] px-4 py-2 md:px-2.5 md:py-1 rounded-md md:rounded bg-amber-400 hover:bg-amber-300 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed text-stone-950 font-medium transition min-w-[72px] md:min-w-0"
           >
             {pendingActionLoading[n.id] === "approve" ? "..." : "승인"}
           </button>
@@ -343,7 +343,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
             type="button"
             onClick={(e) => handleRejectPendingAction(n, e)}
             disabled={!!pendingActionLoading[n.id]}
-            className="text-sm md:text-[11px] px-4 py-2 md:px-2.5 md:py-1 rounded-md md:rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 font-medium transition min-w-[72px] md:min-w-0"
+            className="text-sm md:text-[11px] px-4 py-2 md:px-2.5 md:py-1 rounded-md md:rounded bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-stone-300 font-medium transition min-w-[72px] md:min-w-0"
           >
             {pendingActionLoading[n.id] === "reject" ? "..." : "거절"}
           </button>
@@ -351,7 +351,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       )}
       {n.pendingActionId && n.pendingActionStatus && n.pendingActionStatus !== "PENDING" && (
         <div className="mt-2 ml-6">
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-stone-500">
             {n.pendingActionStatus === "EXECUTED"
               ? "✓ 실행됨"
               : n.pendingActionStatus === "REJECTED"
@@ -370,31 +370,31 @@ export default function NotificationBell({ userId }: { userId: string }) {
         key={`${group.key}_header`}
         type="button"
         onClick={() => toggleGroup(group.key)}
-        className={`w-full text-left px-4 py-3 border-b border-gray-800/50 hover:bg-gray-800/50 transition ${
-          group.unreadCount > 0 ? "bg-blue-600/5" : ""
-        } ${group.isEve ? "border-l-2 border-l-cyan-500/60" : ""}`}
+        className={`w-full text-left px-4 py-3 border-b border-stone-800/50 hover:bg-stone-800/50 transition ${
+          group.unreadCount > 0 ? "bg-amber-400/5" : ""
+        } ${group.isEve ? "border-l-2 border-l-amber-300/60" : ""}`}
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2">
           <span className="text-sm">{group.isEve ? "🤖" : typeIcon[group.type] || "📌"}</span>
           <span
-            className={`text-sm ${group.unreadCount > 0 ? "font-semibold" : "text-gray-300"} ${group.isEve ? "text-cyan-300" : ""}`}
+            className={`text-sm ${group.unreadCount > 0 ? "font-semibold" : "text-stone-300"} ${group.isEve ? "text-amber-200" : ""}`}
           >
             {label} {group.items.length}건
           </span>
           {group.unreadCount > 0 && (
-            <span className="text-[10px] text-blue-300 bg-blue-400/10 px-1.5 py-0.5 rounded shrink-0">
+            <span className="text-[10px] text-amber-200 bg-amber-300/10 px-1.5 py-0.5 rounded shrink-0">
               {group.unreadCount} new
             </span>
           )}
-          <span className="text-[10px] text-gray-500 ml-auto shrink-0">
+          <span className="text-[10px] text-stone-500 ml-auto shrink-0">
             {expanded ? "접기 ▴" : "펼치기 ▾"}
           </span>
         </div>
-        <p className="text-[13px] md:text-xs text-gray-400 mt-1 line-clamp-1 ml-6">
+        <p className="text-[13px] md:text-xs text-stone-400 mt-1 line-clamp-1 ml-6">
           {group.latestItem.title}
         </p>
-        <p className="text-[10px] text-gray-600 mt-1 ml-6">
+        <p className="text-[10px] text-stone-600 mt-1 ml-6">
           최신 {formatRelative(group.latestItem.createdAt)}
         </p>
       </button>
@@ -405,7 +405,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     <div className="relative flex items-center gap-2" ref={containerRef}>
       {/* Connection indicator */}
       <span
-        className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-green-400" : "bg-gray-600"}`}
+        className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-green-400" : "bg-stone-600"}`}
         title={connected ? `Connected${tabCount > 1 ? ` (${tabCount} tabs)` : ""}` : "Disconnected"}
       />
 
@@ -413,7 +413,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
         ref={bellRef}
         type="button"
         onClick={() => setOpen(!open)}
-        className={`relative text-gray-400 hover:text-white transition p-1 ${flash ? "animate-bounce" : ""}`}
+        className={`relative text-stone-400 hover:text-white transition p-1 ${flash ? "animate-bounce" : ""}`}
         aria-label="Notifications"
       >
         <svg
@@ -457,9 +457,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     zIndex: 9999,
                   }
             }
-            className="md:w-[min(20rem,calc(100vw-2rem))] bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[min(70vh,calc(100vh-6rem))] md:max-h-[28rem]"
+            className="md:w-[min(20rem,calc(100vw-2rem))] bg-stone-900 border border-stone-700 rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[min(70vh,calc(100vh-6rem))] md:max-h-[28rem]"
           >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-800">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Notifications</span>
                 {connected && (
@@ -468,7 +468,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                   </span>
                 )}
                 {unreadCount > 0 && (
-                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] text-amber-300 bg-amber-300/10 px-1.5 py-0.5 rounded">
                     {unreadCount}
                   </span>
                 )}
@@ -479,7 +479,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     type="button"
                     onClick={markAllRead}
                     disabled={actionLoading}
-                    className="text-xs text-gray-500 hover:text-blue-400 transition disabled:opacity-40"
+                    className="text-xs text-stone-500 hover:text-amber-300 transition disabled:opacity-40"
                   >
                     {actionLoading ? "..." : "Read all"}
                   </button>
@@ -489,7 +489,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     type="button"
                     onClick={clearAll}
                     disabled={actionLoading}
-                    className="text-xs text-gray-500 hover:text-red-400 transition disabled:opacity-40"
+                    className="text-xs text-stone-500 hover:text-red-400 transition disabled:opacity-40"
                   >
                     {actionLoading ? "..." : "Clear"}
                   </button>
@@ -498,7 +498,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain">
               {notifications.length === 0 ? (
-                <p className="text-center text-gray-500 text-sm py-6">No notifications</p>
+                <p className="text-center text-stone-500 text-sm py-6">No notifications</p>
               ) : (
                 groups.map((group) => {
                   if (group.items.length === 1) return renderItem(group.items[0]);
@@ -513,7 +513,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
               )}
             </div>
             {tabCount > 1 && (
-              <div className="px-4 py-2 border-t border-gray-800 text-[10px] text-gray-500">
+              <div className="px-4 py-2 border-t border-stone-800 text-[10px] text-stone-500">
                 {tabCount} tabs connected
               </div>
             )}

@@ -414,7 +414,7 @@ export default function Sidebar({
         <div className="relative">
           <svg
             aria-hidden="true"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 w-3.5 h-3.5"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-500 w-3.5 h-3.5"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -436,7 +436,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 text-xs"
             >
               ✕
             </button>
@@ -492,18 +492,18 @@ export default function Sidebar({
         {/* Deep search results (message content search) */}
         {searchResults.length > 0 && (
           <div className="mb-3">
-            <p className="text-[11px] font-medium text-gray-500 px-2 py-1.5">Found in messages</p>
+            <p className="text-[11px] font-medium text-stone-500 px-2 py-1.5">Found in messages</p>
             {searchResults.slice(0, 5).map((r) => (
               <Link
                 key={r.messageId}
                 href={`/chat/${r.conversationId}`}
                 onClick={onMobileClose}
-                className="block rounded-lg px-2 py-2 text-sm text-gray-400 hover:bg-gray-800/50 hover:text-gray-200 transition"
+                className="block rounded-lg px-2 py-2 text-sm text-stone-400 hover:bg-stone-800/50 hover:text-stone-200 transition"
               >
-                <p className="text-[12px] text-gray-300 truncate font-medium">
+                <p className="text-[12px] text-stone-300 truncate font-medium">
                   {r.conversationTitle}
                 </p>
-                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                <p className="text-[11px] text-stone-500 truncate mt-0.5">
                   {renderHighlighted(r.content, r.highlights)}
                 </p>
               </Link>
@@ -513,7 +513,7 @@ export default function Sidebar({
 
         {pinned.length > 0 && (
           <div className="mb-3">
-            <p className="text-[11px] font-medium text-gray-500 px-2 py-1.5 flex items-center gap-1">
+            <p className="text-[11px] font-medium text-stone-500 px-2 py-1.5 flex items-center gap-1">
               <svg
                 aria-hidden="true"
                 width="10"
@@ -536,7 +536,7 @@ export default function Sidebar({
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         onBlur={() => setEditingId(null)}
-                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+                        className="w-full bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-stone-500"
                       />
                     </form>
                   ) : (
@@ -545,18 +545,18 @@ export default function Sidebar({
                       onClick={onMobileClose}
                       className={`group flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition ${
                         isActive
-                          ? "bg-gray-800/80 text-white"
-                          : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
+                          ? "bg-stone-800/80 text-white"
+                          : "text-stone-400 hover:bg-stone-800/50 hover:text-stone-200"
                       }`}
                     >
                       <span className="truncate flex-1 text-[13px] flex items-center gap-1.5">
                         {conv.source === "agent" && (
                           <span
-                            className="w-2 h-2 rounded-full bg-cyan-400/70 shrink-0"
+                            className="w-2 h-2 rounded-full bg-amber-300/70 shrink-0"
                             title="EVE suggestion"
                           />
                         )}
-                        {conv.title || "New conversation"}
+                        {conv.title || "New decision thread"}
                       </span>
                       <span
                         className={`hidden md:flex items-center gap-0.5 shrink-0 ${isActive ? "md:visible" : "md:invisible md:group-hover/conv:visible"}`}
@@ -581,7 +581,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={(e) => startRename(e, conv)}
-                          className="p-0.5 text-gray-500 hover:text-gray-300 transition"
+                          className="p-0.5 text-stone-500 hover:text-stone-300 transition"
                           title="Rename"
                         >
                           <svg
@@ -602,7 +602,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={(e) => confirmDelete(e, conv.id)}
-                          className="p-0.5 text-gray-500 hover:text-red-400 transition"
+                          className="p-0.5 text-stone-500 hover:text-red-400 transition"
                           title="Delete"
                         >
                           <svg
@@ -624,8 +624,8 @@ export default function Sidebar({
                       <button
                         type="button"
                         onClick={(e) => confirmDelete(e, conv.id)}
-                        className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] -my-2 -mr-2 text-gray-500 active:text-red-400 transition shrink-0"
-                        aria-label="Delete conversation"
+                        className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] -my-2 -mr-2 text-stone-500 active:text-red-400 transition shrink-0"
+                        aria-label="Delete thread"
                       >
                         <svg
                           aria-hidden="true"
@@ -652,7 +652,7 @@ export default function Sidebar({
 
         {groups.map((group) => (
           <div key={group.label} className="mb-3">
-            <p className="text-[11px] font-medium text-gray-500 px-2 py-1.5">{group.label}</p>
+            <p className="text-[11px] font-medium text-stone-500 px-2 py-1.5">{group.label}</p>
             {group.items.map((conv) => {
               const isActive = activeConvId === conv.id;
               return (
@@ -663,7 +663,7 @@ export default function Sidebar({
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         onBlur={() => setEditingId(null)}
-                        className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+                        className="w-full bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-stone-500"
                       />
                     </form>
                   ) : (
@@ -672,18 +672,18 @@ export default function Sidebar({
                       onClick={onMobileClose}
                       className={`group flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition ${
                         isActive
-                          ? "bg-gray-800/80 text-white"
-                          : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200"
+                          ? "bg-stone-800/80 text-white"
+                          : "text-stone-400 hover:bg-stone-800/50 hover:text-stone-200"
                       }`}
                     >
                       <span className="truncate flex-1 text-[13px] flex items-center gap-1.5">
                         {conv.source === "agent" && (
                           <span
-                            className="w-2 h-2 rounded-full bg-cyan-400/70 shrink-0"
+                            className="w-2 h-2 rounded-full bg-amber-300/70 shrink-0"
                             title="EVE suggestion"
                           />
                         )}
-                        {conv.title || "New conversation"}
+                        {conv.title || "New decision thread"}
                       </span>
                       <span
                         className={`hidden md:flex items-center gap-0.5 shrink-0 ${isActive ? "md:visible" : "md:invisible md:group-hover/conv:visible"}`}
@@ -691,7 +691,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={(e) => togglePin(e, conv)}
-                          className="p-0.5 text-gray-500 hover:text-yellow-500 transition"
+                          className="p-0.5 text-stone-500 hover:text-yellow-500 transition"
                           title="Pin"
                         >
                           <svg
@@ -711,7 +711,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={(e) => startRename(e, conv)}
-                          className="p-0.5 text-gray-500 hover:text-gray-300 transition"
+                          className="p-0.5 text-stone-500 hover:text-stone-300 transition"
                           title="Rename"
                         >
                           <svg
@@ -732,7 +732,7 @@ export default function Sidebar({
                         <button
                           type="button"
                           onClick={(e) => confirmDelete(e, conv.id)}
-                          className="p-0.5 text-gray-500 hover:text-red-400 transition"
+                          className="p-0.5 text-stone-500 hover:text-red-400 transition"
                           title="Delete"
                         >
                           <svg
@@ -754,8 +754,8 @@ export default function Sidebar({
                       <button
                         type="button"
                         onClick={(e) => confirmDelete(e, conv.id)}
-                        className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] -my-2 -mr-2 text-gray-500 active:text-red-400 transition shrink-0"
-                        aria-label="Delete conversation"
+                        className="md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] -my-2 -mr-2 text-stone-500 active:text-red-400 transition shrink-0"
+                        aria-label="Delete thread"
                       >
                         <svg
                           aria-hidden="true"
@@ -781,8 +781,8 @@ export default function Sidebar({
         ))}
 
         {filtered.length === 0 && (
-          <p className="text-xs text-gray-600 px-3 py-4">
-            {search ? "No matching conversations" : "No conversations yet"}
+          <p className="text-xs text-stone-600 px-3 py-4">
+            {search ? "No matching decision threads" : "No decision threads yet"}
           </p>
         )}
       </div>
@@ -819,8 +819,8 @@ export default function Sidebar({
               onClick={onMobileClose}
               className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] transition ${
                 pathname.startsWith("/admin")
-                  ? "bg-gray-800/80 text-white"
-                  : "text-gray-500 hover:bg-gray-800/50 hover:text-gray-300"
+                  ? "bg-stone-800/80 text-white"
+                  : "text-stone-500 hover:bg-stone-800/50 hover:text-stone-300"
               }`}
             >
               <NavIcon type="settings" size={14} />
@@ -833,13 +833,13 @@ export default function Sidebar({
       {/* Delete confirmation */}
       {deleteConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-lg">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 mx-4 shadow-2xl max-w-[220px]">
-            <p className="text-sm text-gray-200 mb-3">Delete this conversation?</p>
+          <div className="bg-stone-900 border border-stone-700 rounded-xl p-4 mx-4 shadow-2xl max-w-[220px]">
+            <p className="text-sm text-stone-200 mb-3">Delete this thread?</p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-3 py-1.5 text-xs text-gray-400 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+                className="flex-1 px-3 py-1.5 text-xs text-stone-400 bg-stone-800 hover:bg-stone-700 rounded-lg transition"
               >
                 Cancel
               </button>
@@ -856,19 +856,19 @@ export default function Sidebar({
       )}
 
       {/* User */}
-      <div className="border-t border-gray-800/40 p-2" ref={userMenuRef}>
+      <div className="border-t border-stone-800/40 p-2" ref={userMenuRef}>
         {user ? (
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowUserMenu((p) => !p)}
-              className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-gray-800/50 transition text-left"
+              className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-stone-800/50 transition text-left"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-300 to-stone-700 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-gray-300 truncate">{user.name || user.email}</p>
+                <p className="text-[13px] text-stone-300 truncate">{user.name || user.email}</p>
               </div>
               <svg
                 aria-hidden="true"
@@ -878,21 +878,21 @@ export default function Sidebar({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="text-gray-500 shrink-0"
+                className="text-stone-500 shrink-0"
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
 
             {showUserMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl shadow-black/60 z-50 py-1 animate-slide-up">
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-stone-900 border border-stone-700 rounded-xl shadow-2xl shadow-black/60 z-50 py-1 animate-slide-up">
                 <Link
                   href="/settings"
                   onClick={() => {
                     setShowUserMenu(false);
                     onMobileClose();
                   }}
-                  className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-md mx-1 transition"
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
                   Settings
                 </Link>
@@ -902,7 +902,7 @@ export default function Sidebar({
                     setShowUserMenu(false);
                     onMobileClose();
                   }}
-                  className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-md mx-1 transition"
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
                   Billing
                 </Link>
@@ -912,7 +912,7 @@ export default function Sidebar({
                     setShowUserMenu(false);
                     onMobileClose();
                   }}
-                  className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-md mx-1 transition"
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
                   Memory
                 </Link>
@@ -922,7 +922,7 @@ export default function Sidebar({
                     setShowUserMenu(false);
                     onMobileClose();
                   }}
-                  className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-md mx-1 transition"
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
                   Token Usage
                 </Link>
@@ -932,11 +932,11 @@ export default function Sidebar({
                     setShowUserMenu(false);
                     onMobileClose();
                   }}
-                  className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-md mx-1 transition"
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
                 >
                   Email Feedback
                 </Link>
-                <div className="border-t border-gray-800 my-1" />
+                <div className="border-t border-stone-800 my-1" />
                 <button
                   type="button"
                   onClick={() => {
@@ -953,7 +953,7 @@ export default function Sidebar({
         ) : (
           <Link
             href="/login"
-            className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 hover:bg-gray-800/50 hover:text-white transition"
+            className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-stone-400 hover:bg-stone-800/50 hover:text-white transition"
           >
             Sign in
           </Link>
