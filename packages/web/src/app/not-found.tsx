@@ -4,22 +4,22 @@ export default function NotFound() {
   return (
     <main className="flex flex-col items-center justify-center min-h-[60vh] px-6">
       <p className="text-6xl font-bold text-stone-700 mb-4">404</p>
-      <h1 className="text-xl font-semibold mb-2">Page Not Found</h1>
+      <h1 className="text-xl font-semibold mb-2">Surface Not Found</h1>
       <p className="text-stone-400 text-sm mb-8 text-center max-w-md">
-        The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        That decision surface does not exist or moved out of this workspace.
       </p>
       <div className="flex gap-3">
         <Link
           href="/inbox"
           className="bg-amber-300 hover:bg-amber-200 text-stone-950 px-5 py-2.5 rounded-lg text-sm font-medium transition"
         >
-          Go to Inbox
+          Open Decision Queue
         </Link>
         <Link
           href="/briefing"
           className="bg-stone-900 hover:bg-stone-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition border border-stone-700"
         >
-          Briefing
+          Daily Briefing
         </Link>
       </div>
     </main>
