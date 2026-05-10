@@ -615,7 +615,7 @@ export async function summarizeUnsummarizedEmails(userId: string, limit = 10): P
 //   1. Promotional Korean subjects ("긴급 할인!") tagged URGENT
 //   2. Investor / VC / customer-facing replies tagged LOW
 //   3. Calendar invites and re: threads silently dropped to LOW
-const EMAIL_ANALYSIS_PROMPT = `You are EVE's email triage analyst for a Korean startup founder.
+const EMAIL_ANALYSIS_PROMPT = `You are EVE's email triage analyst for a Korean work inbox.
 
 You decide WHO each email is from, WHAT it asks, and HOW urgent it is. Do not be polite — be useful. Misclassifying a VC reply as LOW is far worse than misclassifying a newsletter as NORMAL.
 

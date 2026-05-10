@@ -1454,43 +1454,39 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold text-stone-300 mb-3">Execution Surface</h2>
           <div className="bg-stone-950/35 border border-stone-700/45 rounded-xl p-4 space-y-4">
             <div>
-              <p className="text-xs text-amber-300 font-medium mb-2">Productivity</p>
+              <p className="text-xs text-amber-300 font-medium mb-2">Signal intake</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-stone-400">
-                <p>Tasks — priorities, due dates, status tracking</p>
-                <p>Notes — markdown, categories, search</p>
-                <p>Reminders — timed alerts, snooze, presets</p>
-                <p>Contacts — CRM, tags, avatar, search</p>
-                <p>Document Writer — reports, proposals, drafts</p>
-                <p>Daily Briefing — auto-generated summary</p>
+                <p>Email — classify urgency, sender, and reply need</p>
+                <p>Calendar — surface conflicts, prep windows, and attendance</p>
+                <p>Tasks — expose blocked, overdue, and decision-ready work</p>
+                <p>Slack & Notion — fold threads and pages into the work graph</p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-green-400 font-medium mb-2">Communication</p>
+              <p className="text-xs text-green-400 font-medium mb-2">Decision output</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-stone-400">
-                <p>Email — read, send, classify by priority</p>
-                <p>Calendar — events, conflicts, scheduling</p>
-                <p>Slack — messages, channels, threads</p>
-                <p>Notion — pages, databases, search</p>
-                <p>iMessage — send/read texts via macOS</p>
+                <p>Approval queue — review prepared replies and schedule changes</p>
+                <p>Decision cards — recommendation, risk, source context, next step</p>
+                <p>Daily briefing — ranked actions instead of a data dump</p>
+                <p>Writer — briefs, proposals, and follow-up drafts from context</p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-rose-300 font-medium mb-2">Meeting & Scheduling</p>
+              <p className="text-xs text-rose-300 font-medium mb-2">Trust controls</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-stone-400">
-                <p>Auto-join — Google Meet, Zoom links</p>
-                <p>Meeting Summary — key points, action items</p>
-                <p>Calendar Conflicts — auto-detection</p>
+                <p>Pre-approval rules — allow low-risk work within clear limits</p>
+                <p>Action history — inspect what ran, skipped, or needs review</p>
+                <p>Memory controls — tune the preferences EVE should remember</p>
+                <p>Notifications — choose which signals are worth interruption</p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-teal-300 font-medium mb-2">macOS Native</p>
+              <p className="text-xs text-teal-300 font-medium mb-2">Local work surface</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-stone-400">
-                <p>Clipboard — read/write copy-paste</p>
-                <p>File Search — Spotlight search</p>
-                <p>File Organizer — auto-sort Downloads</p>
-                <p>Screenshot — capture screen</p>
-                <p>System Info — battery, Wi-Fi, apps</p>
-                <p>Web Search — research, news</p>
+                <p>Files — search, organize, and attach context when available</p>
+                <p>Screen & clipboard — capture local state for explicit requests</p>
+                <p>iMessage — prepare personal follow-through from the same queue</p>
+                <p>Web research — enrich decisions with fresh outside context</p>
               </div>
             </div>
             <p className="text-xs text-stone-600 mt-1">
