@@ -231,7 +231,7 @@ function StatusBadge({ status }: { status: WaitlistEntry["status"] }) {
   const map: Record<WaitlistEntry["status"], { label: string; cls: string }> = {
     PENDING: { label: "대기", cls: "border-amber-500/40 bg-amber-500/10 text-amber-200" },
     APPROVED: { label: "승인됨", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" },
-    REJECTED: { label: "거절됨", cls: "border-gray-600 bg-gray-700/30 text-gray-400" },
+    REJECTED: { label: "거절됨", cls: "border-stone-600 bg-stone-700/30 text-stone-400" },
   };
   const s = map[status];
   return (
