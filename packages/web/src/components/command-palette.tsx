@@ -45,20 +45,20 @@ export default function CommandPalette() {
     },
     {
       id: "briefing",
-      label: "Go to Briefing",
+      label: "Open Daily Briefing",
       sublabel: "Review today's signal summary",
       action: () => router.push("/briefing"),
     },
     {
       id: "settings",
-      label: "Go to Settings",
-      sublabel: "Settings",
+      label: "Open Control Plane",
+      sublabel: "Integrations, trust, memory",
       action: () => router.push("/settings"),
     },
     {
       id: "billing",
-      label: "Go to Billing",
-      sublabel: "Billing",
+      label: "Open Plan & Usage",
+      sublabel: "Limits and billing",
       action: () => router.push("/billing"),
     },
     {
@@ -134,13 +134,13 @@ export default function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command..."
+            placeholder="Search decisions, surfaces, or controls..."
             className="w-full bg-transparent text-sm focus:outline-none placeholder-stone-500"
           />
         </div>
         <div className="max-h-64 overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <p className="text-sm text-stone-500 px-4 py-3">No results</p>
+            <p className="text-sm text-stone-500 px-4 py-3">No matching surface</p>
           ) : (
             filtered.map((cmd, i) => (
               <button
@@ -164,7 +164,7 @@ export default function CommandPalette() {
           )}
         </div>
         <div className="border-t border-stone-800 px-4 py-2 flex items-center justify-between text-[10px] text-stone-600">
-          <span>Navigate with arrows, Enter to select</span>
+          <span>Navigate with arrows, Enter to open</span>
           <span>Esc to close</span>
         </div>
       </div>
