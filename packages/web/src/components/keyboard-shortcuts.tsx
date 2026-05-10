@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api";
 
 const SHORTCUTS = [
   { keys: ["Cmd", "K"], label: "Command palette" },
-  { keys: ["Cmd", "N"], label: "New conversation" },
+  { keys: ["Cmd", "N"], label: "New decision thread" },
   { keys: ["Cmd", "B"], label: "Go to Briefing" },
   { keys: ["Cmd", "/"], label: "Show shortcuts" },
   { keys: ["Esc"], label: "Close modal" },
