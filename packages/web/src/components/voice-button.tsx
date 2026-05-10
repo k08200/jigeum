@@ -83,7 +83,7 @@ export default function VoiceButton({ onTranscript, className }: VoiceButtonProp
       type="button"
       onClick={toggle}
       className={`transition ${className || ""} ${
-        listening ? "text-red-400 animate-pulse" : "text-gray-500 hover:text-white"
+        listening ? "text-red-400 animate-pulse" : "text-stone-500 hover:text-white"
       }`}
       title={listening ? "Stop listening" : "Voice command"}
     >

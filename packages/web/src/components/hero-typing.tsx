@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 
 const PHRASES = [
-  "email, calendar, tasks",
-  "reports, memos, contacts",
-  "Slack, Notion, web search",
-  "scheduling, reminders",
-  "daily briefings",
+  "signals, decisions, follow-ups",
+  "mail, calendar, work context",
+  "briefings, approvals, memory",
+  "urgent replies, quiet tasks",
+  "daily decision loops",
 ];
 
 export default function HeroTyping() {
@@ -42,9 +42,9 @@ export default function HeroTyping() {
   const text = PHRASES[phraseIdx].slice(0, charIdx);
 
   return (
-    <span className="text-blue-400">
+    <span className="text-amber-300">
       {text}
-      <span className="inline-block w-[2px] h-[1em] bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />
+      <span className="inline-block w-[2px] h-[1em] bg-amber-300 animate-pulse ml-0.5 align-text-bottom" />
     </span>
   );
 }
