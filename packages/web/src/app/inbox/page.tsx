@@ -6,6 +6,7 @@ import AuthGuard from "../../components/auth-guard";
 import BetaLearningCard from "../../components/beta-learning-card";
 import BriefingCard from "../../components/briefing-card";
 import CommandCenterSummary from "../../components/command-center-summary";
+import OperatingLoopCard from "../../components/operating-loop-card";
 import PlaybookRecommendations from "../../components/playbook-recommendations";
 import WorkGraphSummaryCard from "../../components/work-graph-summary";
 import { apiFetch } from "../../lib/api";
@@ -187,6 +188,7 @@ function InboxView() {
         </div>
       </header>
 
+      <OperatingLoopCard />
       <BetaLearningCard />
 
       {loading && actions.length === 0 && (
