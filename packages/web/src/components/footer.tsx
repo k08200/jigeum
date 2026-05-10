@@ -13,13 +13,13 @@ export default function Footer() {
         </div>
         <div className="flex items-center gap-3 text-[11px] text-stone-600">
           <Link href="/billing" className="hover:text-stone-400 transition-colors">
-            Pricing
+            Plans
           </Link>
           <Link href="/settings" className="hover:text-stone-400 transition-colors">
-            Settings
+            Control Plane
           </Link>
           <span className="hidden sm:inline text-stone-800">|</span>
-          <span className="hidden sm:inline">Cmd+K palette</span>
+          <span className="hidden sm:inline">Cmd+K surfaces</span>
         </div>
       </div>
     </footer>

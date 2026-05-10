@@ -10,11 +10,11 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { href: "/chat", label: "Command", icon: "chat" },
-  { href: "/calendar", label: "Calendar", icon: "calendar" },
-  { href: "/email", label: "Signals", icon: "email" },
+  { href: "/chat", label: "Thread", icon: "chat" },
+  { href: "/calendar", label: "Time", icon: "calendar" },
+  { href: "/email", label: "Mail", icon: "email" },
   { href: "/briefing", label: "Brief", icon: "briefing" },
-  { href: "/inbox", label: "Decide", icon: "inbox" },
+  { href: "/inbox", label: "Queue", icon: "inbox" },
 ];
 
 export default function BottomTabs() {
