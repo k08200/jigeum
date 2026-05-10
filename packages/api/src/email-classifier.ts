@@ -97,13 +97,13 @@ function buildPrompt(emails: ClassifiableEmail[]): string {
     return `[${i}] from: ${e.from}\n    subject: ${e.subject}\n    snippet: ${snippet}`;
   });
 
-  return `You classify a founder's inbox. For each email below, output priority, category, and whether a reply is needed.
+  return `You classify a work inbox. For each email below, output priority, category, and whether a reply is needed.
 
 Categories (pick the single best fit):
 - investor: VC, angel, accelerator, LP
 - customer: paying user, prospect, lead
 - meeting: calendar invite, scheduling thread
-- internal: cofounder, employee, or contractor on the founder's team
+- internal: teammate, operator, employee, or contractor on the user's team
 - system: security alerts, billing receipts, account notifications (no reply expected)
 - automated: newsletters, marketing, digests
 - conversation: ongoing thread that doesn't fit above
