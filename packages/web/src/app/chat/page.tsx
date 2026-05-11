@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import { EveSignalField } from "../../components/brand-visuals";
 import { useToast } from "../../components/toast";
-import { API_BASE, apiFetch } from "../../lib/api";
+import { API_BASE, apiFetch, getStoredAuthToken } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 export default function ChatListPage() {

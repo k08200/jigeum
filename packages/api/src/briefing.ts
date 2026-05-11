@@ -15,7 +15,8 @@ import { recordFeedback } from "./feedback.js";
 import { listEmails } from "./gmail.js";
 import { getUserLlmCredentials } from "./llm-credentials.js";
 import { listNotes } from "./notes.js";
-import { createCompletion, EVE_SYSTEM_PROMPT, MODEL } from "./openai.js";
+import { AGENT_SYSTEM_PROMPT } from "./agent/prompt.js";
+import { createCompletion, MODEL } from "./openai.js";
 import { sendPushNotification } from "./push.js";
 import { listTasks } from "./tasks.js";
 import { localDayUtcRange, normalizeTimeZone } from "./time-zone.js";
@@ -158,7 +159,7 @@ Recent Notes: ${JSON.stringify(data.notes)}`;
     {
       model: MODEL,
       messages: [
-        { role: "system", content: EVE_SYSTEM_PROMPT },
+        { role: "system", content: AGENT_SYSTEM_PROMPT },
         { role: "user", content: briefingPrompt },
       ],
     },

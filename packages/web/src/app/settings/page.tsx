@@ -817,8 +817,8 @@ export default function SettingsPage() {
     if (!ok) return;
     try {
       await fetch(`${API_BASE}/api/user/me/data`, { method: "DELETE", headers: authHeaders() });
-      localStorage.removeItem("eve-profile");
-      localStorage.removeItem("eve-pinned-chats");
+      localStorage.removeItem(PROFILE_KEY);
+      localStorage.removeItem(PINNED_CHATS_KEY);
       toast("워크스페이스 데이터를 삭제했습니다", "info");
     } catch {
       toast("데이터를 삭제하지 못했습니다", "error");

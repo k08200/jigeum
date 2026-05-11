@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type OpenAI from "openai";
 import { resolveActionTarget } from "../action-target.js";
-import { PROPOSE_ACTION_TOOL } from "../agent/prompt.js";
+import { AGENT_SYSTEM_PROMPT, PROPOSE_ACTION_TOOL } from "../agent/prompt.js";
 import { isHousekeepingProposalToolName } from "../agent-logic.js";
 import {
   deleteAttentionForPendingActions,
@@ -16,7 +16,7 @@ import { recipientFromToolArgs, recordFeedback } from "../feedback.js";
 import { getUserLlmCredentials } from "../llm-credentials.js";
 import { loadMemoriesForPrompt } from "../memory.js";
 import { estimateModelCostUsd } from "../model-fallback.js";
-import { createCompletion, EVE_SYSTEM_PROMPT, MODEL, resolveUserChatModel } from "../openai.js";
+import { createCompletion, MODEL, resolveUserChatModel } from "../openai.js";
 import { getFeedbackPolicyContextForPrompt } from "../policy-extraction.js";
 import { scheduleReminderDeliveryCheck } from "../reminder-scheduler.js";
 import { createReminder } from "../reminders.js";
@@ -594,7 +594,7 @@ export function chatRoutes(app: FastifyInstance) {
         {
           role: "system" as const,
           content:
-            EVE_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext + retryPolicyContext,
+            AGENT_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext + retryPolicyContext,
         },
         ...historyMessages.map((m: { role: string; content: string }) => ({
           role: m.role.toLowerCase() as "user" | "assistant",
@@ -1063,7 +1063,7 @@ export function chatRoutes(app: FastifyInstance) {
         return [
           {
             role: "system" as const,
-            content: EVE_SYSTEM_PROMPT + dynamicContext + memoryContext + policyContext,
+            content: AGENT_SYSTEM_PROMPT + dynamicContext + memoryContext + policyContext,
           },
           ...compacted,
           { role: "user" as const, content },

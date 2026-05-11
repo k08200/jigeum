@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
 import { EveSignalField } from "../../components/brand-visuals";
-import { API_BASE, apiFetch } from "../../lib/api";
+import { API_BASE, apiFetch, getStoredAuthToken } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
 interface CalendarEvent {
@@ -192,7 +192,7 @@ function CalendarView() {
           </p>
           {googleConnected === false ? (
             <a
-              href={`${API_BASE}/api/auth/google?token=${typeof window !== "undefined" ? localStorage.getItem("eve-token") || "" : ""}`}
+              href={`${API_BASE}/api/auth/google?token=${getStoredAuthToken() || ""}`}
               className="inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm text-stone-950 transition hover:bg-amber-200"
             >
               Google 연결

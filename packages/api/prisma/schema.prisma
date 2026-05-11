@@ -47,6 +47,8 @@ model User {
   tokenUsages               TokenUsage[]
   devices                   Device[]
   emailMessages             EmailMessage[]
+  emailAttachments          EmailAttachment[]
+  candidateIntakes          CandidateIntake[]
   emailRules                EmailRule[]
   attentionItems            AttentionItem[]
   commitments               Commitment[]

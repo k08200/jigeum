@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
-import { apiFetch } from "../../../lib/api";
+import { API_BASE, apiFetch, authHeaders } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
 
 type EmailPriority = "URGENT" | "NORMAL" | "LOW";
