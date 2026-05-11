@@ -1,3 +1,4 @@
+import { db } from "./db.js";
 import type { AttentionItem, InboxSummary } from "./inbox-summary.js";
 import { buildInboxSummary } from "./inbox-summary.js";
 import {
@@ -52,6 +53,26 @@ export interface OperatingPlanPlaybookNudge {
   nextStep: string | null;
 }
 
+export type OperatingPlanOutcomeStatus = "executed" | "rejected" | "failed";
+
+export interface OperatingPlanOutcome {
+  id: string;
+  title: string;
+  status: OperatingPlanOutcomeStatus;
+  toolName: string;
+  href: string;
+  decidedAt: string;
+  result: string | null;
+}
+
+export interface OperatingPlanDecisionPulse {
+  windowHours: number;
+  executed: number;
+  rejected: number;
+  failed: number;
+  latest: OperatingPlanOutcome[];
+}
+
 export interface OperatingPlan {
   generatedAt: string;
   mode: OperatingPlanMode;
@@ -61,19 +82,22 @@ export interface OperatingPlan {
   nextMoves: OperatingPlanMove[];
   watchlist: OperatingPlanWatchContext[];
   playbookNudge: OperatingPlanPlaybookNudge | null;
+  decisionPulse: OperatingPlanDecisionPulse;
 }
 
 export async function buildOperatingPlan(userId: string, now = Date.now()): Promise<OperatingPlan> {
-  const [inbox, graph, activeIds] = await Promise.all([
+  const [inbox, graph, activeIds, decisionPulse] = await Promise.all([
     buildInboxSummary(userId, now),
     buildWorkGraphSummary(userId, { limit: 8, now }),
     listActivePlaybookIds(userId).catch(() => new Set<string>()),
+    buildDecisionPulse(userId, now).catch(() => emptyDecisionPulse()),
   ]);
   const playbooks = recommendPlaybooksFromGraph(graph, { limit: 2 }, activeIds);
   return buildOperatingPlanFromSignals({
     inbox,
     graph,
     recommendations: playbooks.recommendations,
+    decisionPulse,
     now,
   });
 }
@@ -82,6 +106,7 @@ export function buildOperatingPlanFromSignals(input: {
   inbox: InboxSummary;
   graph: WorkGraphSummary;
   recommendations?: PlaybookRecommendation[];
+  decisionPulse?: OperatingPlanDecisionPulse;
   now?: number;
 }): OperatingPlan {
   const now = input.now ?? Date.now();
@@ -139,7 +164,89 @@ export function buildOperatingPlanFromSignals(input: {
     nextMoves,
     watchlist: [...highRiskContexts, ...mediumRiskContexts].slice(0, 3).map(watchFromContext),
     playbookNudge: nudgeFromPlaybook(input.recommendations?.[0] ?? null),
+    decisionPulse: input.decisionPulse ?? emptyDecisionPulse(),
   };
+}
+
+const DECISION_PULSE_WINDOW_HOURS = 24;
+
+type PendingActionOutcomeRow = {
+  id: string;
+  conversationId: string;
+  status: "EXECUTED" | "REJECTED" | "FAILED";
+  toolName: string;
+  reasoning: string | null;
+  result: string | null;
+  updatedAt: Date;
+  conversation?: { title: string | null } | null;
+};
+
+async function buildDecisionPulse(
+  userId: string,
+  now: number,
+): Promise<OperatingPlanDecisionPulse> {
+  const since = new Date(now - DECISION_PULSE_WINDOW_HOURS * 60 * 60 * 1000);
+  const rows = (await db.pendingAction.findMany({
+    where: {
+      userId,
+      status: { in: ["EXECUTED", "REJECTED", "FAILED"] },
+      updatedAt: { gte: since },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 12,
+    include: {
+      conversation: { select: { title: true } },
+    },
+  })) as PendingActionOutcomeRow[];
+
+  return {
+    windowHours: DECISION_PULSE_WINDOW_HOURS,
+    executed: rows.filter((row) => row.status === "EXECUTED").length,
+    rejected: rows.filter((row) => row.status === "REJECTED").length,
+    failed: rows.filter((row) => row.status === "FAILED").length,
+    latest: rows.slice(0, 5).map(outcomeFromPendingAction),
+  };
+}
+
+function emptyDecisionPulse(): OperatingPlanDecisionPulse {
+  return {
+    windowHours: DECISION_PULSE_WINDOW_HOURS,
+    executed: 0,
+    rejected: 0,
+    failed: 0,
+    latest: [],
+  };
+}
+
+function outcomeFromPendingAction(row: PendingActionOutcomeRow): OperatingPlanOutcome {
+  return {
+    id: row.id,
+    title: outcomeTitle(row),
+    status: outcomeStatus(row.status),
+    toolName: row.toolName,
+    href: `/chat/${row.conversationId}`,
+    decidedAt: row.updatedAt.toISOString(),
+    result: previewText(row.result),
+  };
+}
+
+function outcomeStatus(status: PendingActionOutcomeRow["status"]): OperatingPlanOutcomeStatus {
+  if (status === "EXECUTED") return "executed";
+  if (status === "REJECTED") return "rejected";
+  return "failed";
+}
+
+function outcomeTitle(row: PendingActionOutcomeRow): string {
+  const reasoning = previewText(row.reasoning);
+  if (reasoning) return reasoning.replace(/^[📋💡✅]\s*/u, "");
+  return row.conversation?.title || row.toolName.replace(/_/g, " ");
+}
+
+function previewText(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
 }
 
 function modeFor(input: {

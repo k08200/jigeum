@@ -5,8 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import type {
   OperatingPlan,
+  OperatingPlanDecisionPulse,
   OperatingPlanMetric,
   OperatingPlanMove,
+  OperatingPlanOutcome,
   OperatingPlanTone,
   OperatingPlanWatchContext,
 } from "../lib/operating-plan";
@@ -20,6 +22,7 @@ const EMPTY_PLAN: OperatingPlan = {
   nextMoves: [],
   watchlist: [],
   playbookNudge: null,
+  decisionPulse: { windowHours: 24, executed: 0, rejected: 0, failed: 0, latest: [] },
 };
 
 export default function OperatingLoopCard() {
@@ -96,6 +99,7 @@ export default function OperatingLoopCard() {
         </section>
 
         <section className="space-y-3">
+          {plan.decisionPulse.latest.length > 0 && <DecisionPulseCard pulse={plan.decisionPulse} />}
           {plan.playbookNudge && (
             <div className="rounded-xl border border-stone-800 bg-stone-900/35 p-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-200">
@@ -124,6 +128,57 @@ export default function OperatingLoopCard() {
         </section>
       </div>
     </section>
+  );
+}
+
+function DecisionPulseCard({ pulse }: { pulse: OperatingPlanDecisionPulse }) {
+  return (
+    <div className="rounded-xl border border-stone-800 bg-stone-900/35 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-200">
+            최근 결정
+          </p>
+          <p className="mt-1 text-xs text-stone-500">{pulse.windowHours}시간 결과</p>
+        </div>
+        <div className="shrink-0 text-right text-[11px] leading-5 text-stone-500">
+          <p>
+            실행 <span className="font-semibold text-emerald-200">{pulse.executed}</span>
+          </p>
+          <p>
+            거절 <span className="font-semibold text-stone-300">{pulse.rejected}</span> · 실패{" "}
+            <span className="font-semibold text-red-200">{pulse.failed}</span>
+          </p>
+        </div>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {pulse.latest.map((outcome) => (
+          <DecisionOutcomeRow key={outcome.id} outcome={outcome} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DecisionOutcomeRow({ outcome }: { outcome: OperatingPlanOutcome }) {
+  return (
+    <li>
+      <Link
+        href={outcome.href}
+        className="block rounded-lg border border-stone-800/80 bg-black/20 px-2.5 py-2 transition hover:border-emerald-300/25 hover:bg-stone-900/60"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-xs font-medium text-stone-300">{outcome.title}</p>
+          <span className={`shrink-0 text-[10px] ${outcomeStatusClass(outcome.status)}`}>
+            {outcomeStatusLabel(outcome.status)}
+          </span>
+        </div>
+        <p className="mt-1 truncate text-[11px] text-stone-600">
+          {outcome.toolName.replace(/_/g, " ")}
+          {outcome.result ? ` · ${outcome.result}` : ""}
+        </p>
+      </Link>
+    </li>
   );
 }
 
@@ -233,6 +288,18 @@ function riskLabel(risk: OperatingPlanWatchContext["risk"]): string {
   if (risk === "high") return "높음";
   if (risk === "medium") return "보통";
   return "낮음";
+}
+
+function outcomeStatusLabel(status: OperatingPlanOutcome["status"]): string {
+  if (status === "executed") return "실행";
+  if (status === "rejected") return "거절";
+  return "실패";
+}
+
+function outcomeStatusClass(status: OperatingPlanOutcome["status"]): string {
+  if (status === "executed") return "text-emerald-300";
+  if (status === "rejected") return "text-stone-500";
+  return "text-red-300";
 }
 
 function toneClass(tone: OperatingPlanTone): string {

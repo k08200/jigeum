@@ -145,4 +145,41 @@ describe("buildOperatingPlanFromSignals", () => {
       label: "활성 Playbook",
     });
   });
+
+  it("carries recent decision outcomes as a loop pulse", () => {
+    const plan = buildOperatingPlanFromSignals({
+      now: NOW,
+      inbox: emptyInbox,
+      graph: emptyGraph,
+      decisionPulse: {
+        windowHours: 24,
+        executed: 2,
+        rejected: 1,
+        failed: 0,
+        latest: [
+          {
+            id: "pa-2",
+            title: "투자자 답장 발송",
+            status: "executed",
+            toolName: "send_email",
+            href: "/chat/chat-2",
+            decidedAt: new Date(NOW - 60_000).toISOString(),
+            result: "sent",
+          },
+        ],
+      },
+    });
+
+    expect(plan.decisionPulse).toMatchObject({
+      windowHours: 24,
+      executed: 2,
+      rejected: 1,
+      failed: 0,
+    });
+    expect(plan.decisionPulse.latest[0]).toMatchObject({
+      title: "투자자 답장 발송",
+      status: "executed",
+      href: "/chat/chat-2",
+    });
+  });
 });

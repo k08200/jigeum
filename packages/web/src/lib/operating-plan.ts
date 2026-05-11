@@ -39,6 +39,26 @@ export interface OperatingPlanPlaybookNudge {
   nextStep: string | null;
 }
 
+export type OperatingPlanOutcomeStatus = "executed" | "rejected" | "failed";
+
+export interface OperatingPlanOutcome {
+  id: string;
+  title: string;
+  status: OperatingPlanOutcomeStatus;
+  toolName: string;
+  href: string;
+  decidedAt: string;
+  result: string | null;
+}
+
+export interface OperatingPlanDecisionPulse {
+  windowHours: number;
+  executed: number;
+  rejected: number;
+  failed: number;
+  latest: OperatingPlanOutcome[];
+}
+
 export interface OperatingPlan {
   generatedAt: string;
   mode: OperatingPlanMode;
@@ -48,4 +68,5 @@ export interface OperatingPlan {
   nextMoves: OperatingPlanMove[];
   watchlist: OperatingPlanWatchContext[];
   playbookNudge: OperatingPlanPlaybookNudge | null;
+  decisionPulse: OperatingPlanDecisionPulse;
 }
