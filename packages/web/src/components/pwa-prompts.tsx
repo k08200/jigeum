@@ -92,48 +92,48 @@ export default function PwaPrompts() {
     <>
       {/* Offline indicator */}
       {offline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-600 text-white text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]">
-          You are offline. Some features may be unavailable.
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-stone-950 text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]">
+          오프라인 모드입니다. 저장된 화면은 유지되지만 실시간 신호는 잠시 멈출 수 있어요.
         </div>
       )}
 
       {/* Update available banner */}
       {updateAvailable && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] bg-stone-950 border border-stone-700 rounded-xl shadow-2xl shadow-black/60 px-4 py-3 flex items-center gap-3 animate-slide-up">
-          <div className="text-sm text-stone-200">A new version of Jigeum is available</div>
+        <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up">
+          <div className="text-sm text-stone-200">새 Decision OS 빌드가 준비되었습니다</div>
           <button
             type="button"
             onClick={handleUpdate}
             className="px-3 py-1 text-xs font-medium bg-amber-300 hover:bg-amber-200 text-stone-950 rounded-lg transition whitespace-nowrap"
           >
-            Update now
+            새로고침
           </button>
           <button
             type="button"
             onClick={() => setUpdateAvailable(false)}
             className="text-stone-500 hover:text-stone-300 transition text-sm"
           >
-            Later
+            나중에
           </button>
         </div>
       )}
 
       {/* Install prompt */}
       {showInstall && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] bg-stone-950 border border-stone-700 rounded-xl shadow-2xl shadow-black/60 px-4 py-3 flex items-center gap-3 animate-slide-up max-w-sm">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
-            J
+        <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/20 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up sm:max-w-md">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-200 to-stone-600 flex items-center justify-center text-sm font-bold text-stone-950 shrink-0">
+            E
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-stone-200">Install Jigeum</p>
-            <p className="text-xs text-stone-500">Add to home screen for quick access</p>
+            <p className="text-sm font-medium text-stone-200">EVE 워크스페이스 설치</p>
+            <p className="text-xs text-stone-500">홈 화면에서 결정 큐를 바로 열 수 있어요</p>
           </div>
           <button
             type="button"
             onClick={handleInstall}
             className="px-3 py-1.5 text-xs font-medium bg-white text-stone-950 hover:bg-stone-200 rounded-lg transition whitespace-nowrap"
           >
-            Install
+            설치
           </button>
           <button
             type="button"

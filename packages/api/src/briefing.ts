@@ -15,7 +15,7 @@ import { recordFeedback } from "./feedback.js";
 import { listEmails } from "./gmail.js";
 import { getUserLlmCredentials } from "./llm-credentials.js";
 import { listNotes } from "./notes.js";
-import { createCompletion, CHAT_SYSTEM_PROMPT, MODEL } from "./openai.js";
+import { createCompletion, EVE_SYSTEM_PROMPT, MODEL } from "./openai.js";
 import { sendPushNotification } from "./push.js";
 import { listTasks } from "./tasks.js";
 import { localDayUtcRange, normalizeTimeZone } from "./time-zone.js";
@@ -158,7 +158,7 @@ Recent Notes: ${JSON.stringify(data.notes)}`;
     {
       model: MODEL,
       messages: [
-        { role: "system", content: CHAT_SYSTEM_PROMPT },
+        { role: "system", content: EVE_SYSTEM_PROMPT },
         { role: "user", content: briefingPrompt },
       ],
     },
@@ -224,7 +224,7 @@ async function ensureDailyBriefingNotification(
     orderBy: { createdAt: "desc" },
     select: { id: true, createdAt: true },
   });
-  if (existing) return existing;
+  if (existing) return null;
 
   const briefingMsg = briefing.slice(0, 200) + (briefing.length > 200 ? "..." : "");
   const notification = await prisma.notification.create({

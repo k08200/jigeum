@@ -9,12 +9,18 @@
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireAuth } from "../auth.js";
 import { buildInboxSummary } from "../inbox-summary.js";
+import { buildOperatingPlan } from "../operating-plan.js";
 
-export async function inboxRoutes(app: FastifyInstance) {
+export function inboxRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
-  app.get("/summary", async (request) => {
+  app.get("/summary", (request) => {
     const userId = getUserId(request);
     return buildInboxSummary(userId);
+  });
+
+  app.get("/operating-plan", (request) => {
+    const userId = getUserId(request);
+    return buildOperatingPlan(userId);
   });
 }

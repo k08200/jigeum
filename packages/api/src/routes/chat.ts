@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type OpenAI from "openai";
 import { resolveActionTarget } from "../action-target.js";
+import { PROPOSE_ACTION_TOOL } from "../agent/prompt.js";
+import { isHousekeepingProposalToolName } from "../agent-logic.js";
 import {
   deleteAttentionForPendingActions,
   upsertAttentionForPendingAction,
@@ -14,7 +16,8 @@ import { recipientFromToolArgs, recordFeedback } from "../feedback.js";
 import { getUserLlmCredentials } from "../llm-credentials.js";
 import { loadMemoriesForPrompt } from "../memory.js";
 import { estimateModelCostUsd } from "../model-fallback.js";
-import { createCompletion, CHAT_SYSTEM_PROMPT, MODEL, resolveUserChatModel } from "../openai.js";
+import { createCompletion, EVE_SYSTEM_PROMPT, MODEL, resolveUserChatModel } from "../openai.js";
+import { getFeedbackPolicyContextForPrompt } from "../policy-extraction.js";
 import { scheduleReminderDeliveryCheck } from "../reminder-scheduler.js";
 import { createReminder } from "../reminders.js";
 import { Semaphore } from "../semaphore.js";
@@ -140,6 +143,78 @@ const rejectActionBodySchema = {
 
 function hasMeaningfulText(value: string | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function coerceRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+async function createPendingActionFromProposal(input: {
+  userId: string;
+  conversationId: string;
+  allowedToolNames: Set<string>;
+  args: Record<string, unknown>;
+}): Promise<{ message: string; messageId: string; actionId: string }> {
+  const message = typeof input.args.message === "string" ? input.args.message.trim() : "";
+  const toolName = typeof input.args.toolName === "string" ? input.args.toolName.trim() : "";
+  if (!message) throw new Error("propose_action.message is required");
+  if (!toolName) throw new Error("propose_action.toolName is required");
+  if (isHousekeepingProposalToolName(toolName)) {
+    throw new Error("Housekeeping proposal tools are not approval actions");
+  }
+  if (!input.allowedToolNames.has(toolName)) {
+    throw new Error(`Tool is not available for approval in this chat: ${toolName}`);
+  }
+
+  const toolArgs = coerceRecord(input.args.toolArgs);
+  const assistantMsg = await db.message.create({
+    data: {
+      conversationId: input.conversationId,
+      role: "ASSISTANT",
+      content: message,
+      metadata: JSON.stringify({ source: "chat", hasAction: true }),
+    },
+  });
+
+  const pendingAction = await db.pendingAction.create({
+    data: {
+      conversationId: input.conversationId,
+      messageId: assistantMsg.id,
+      userId: input.userId,
+      toolName,
+      toolArgs: JSON.stringify(toolArgs),
+      reasoning: message,
+    },
+  });
+  await upsertAttentionForPendingAction(pendingAction);
+  await prisma.conversation.update({
+    where: { id: input.conversationId },
+    data: { updatedAt: new Date() },
+  });
+
+  pushNotification(input.userId, {
+    id: "pending-action-created",
+    type: "system",
+    title: "conversations-updated",
+    message: "",
+    createdAt: new Date().toISOString(),
+  });
+
+  return {
+    message,
+    messageId: assistantMsg.id,
+    actionId: (pendingAction as { id: string }).id,
+  };
+}
+
+function writeChunkedToken(write: (payload: string) => void, content: string) {
+  const chunkSize = 20;
+  for (let i = 0; i < content.length; i += chunkSize) {
+    write(
+      `data: ${JSON.stringify({ type: "token", content: content.slice(i, i + chunkSize) })}\n\n`,
+    );
+  }
 }
 
 function extractCommitmentsFromUserMessage(
@@ -466,7 +541,9 @@ export function chatRoutes(app: FastifyInstance) {
         prisma.user.findUnique({ where: { id: conversation.userId } }),
       ]);
       const retryPlan = retryUser?.plan || "FREE";
-      const tools = getToolsForPlan(!!token, retryPlan);
+      const retryBaseTools = getToolsForPlan(!!token, retryPlan);
+      const retryAllowedToolNames = new Set(retryBaseTools.map((tool) => tool.function.name));
+      const tools = [...retryBaseTools, PROPOSE_ACTION_TOOL];
       const retryChatModel = resolveUserChatModel(
         (retryUser as unknown as { chatModel?: string })?.chatModel || null,
         retryPlan,
@@ -501,8 +578,14 @@ export function chatRoutes(app: FastifyInstance) {
 
       // Load user memories for retry too
       let retryMemoryContext = "";
+      let retryPolicyContext = "";
       try {
         retryMemoryContext = await loadMemoriesForPrompt(conversation.userId);
+      } catch {
+        // optional
+      }
+      try {
+        retryPolicyContext = await getFeedbackPolicyContextForPrompt(conversation.userId);
       } catch {
         // optional
       }
@@ -510,7 +593,8 @@ export function chatRoutes(app: FastifyInstance) {
       const history = [
         {
           role: "system" as const,
-          content: CHAT_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext,
+          content:
+            EVE_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext + retryPolicyContext,
         },
         ...historyMessages.map((m: { role: string; content: string }) => ({
           role: m.role.toLowerCase() as "user" | "assistant",
@@ -543,6 +627,7 @@ export function chatRoutes(app: FastifyInstance) {
         }
       };
 
+      let assistantMessagePersisted = false;
       try {
         if (tools.length > 0) {
           const messages: unknown[] = [...history];
@@ -563,6 +648,38 @@ export function chatRoutes(app: FastifyInstance) {
 
             if (choice.finish_reason === "tool_calls" || (toolCalls && toolCalls.length > 0)) {
               messages.push(choice.message);
+              const proposalCall = (toolCalls || []).find((toolCall) => {
+                const fn = (
+                  toolCall as unknown as {
+                    function: { name: string };
+                  }
+                ).function;
+                return fn.name === "propose_action";
+              });
+              if (proposalCall) {
+                const fn = (
+                  proposalCall as unknown as {
+                    function: { name: string; arguments: string };
+                  }
+                ).function;
+                const args = JSON.parse(fn.arguments || "{}") as Record<string, unknown>;
+                retrySafeWrite(
+                  `data: ${JSON.stringify({ type: "tool_call", name: fn.name, args })}\n\n`,
+                );
+                const proposal = await createPendingActionFromProposal({
+                  userId: conversation.userId,
+                  conversationId: id,
+                  allowedToolNames: retryAllowedToolNames,
+                  args,
+                });
+                fullResponse = proposal.message;
+                assistantMessagePersisted = true;
+                retrySafeWrite(
+                  `data: ${JSON.stringify({ type: "tool_result", name: fn.name })}\n\n`,
+                );
+                writeChunkedToken(retrySafeWrite, fullResponse);
+                break;
+              }
               const results = await Promise.all(
                 (toolCalls || []).map(async (toolCall) =>
                   chatToolSemaphore.run(async () => {
@@ -616,7 +733,7 @@ export function chatRoutes(app: FastifyInstance) {
           }
         }
 
-        if (fullResponse) {
+        if (fullResponse && !assistantMessagePersisted) {
           await prisma.message.create({
             data: {
               conversationId: id,
@@ -634,7 +751,7 @@ export function chatRoutes(app: FastifyInstance) {
         retrySafeWrite(`data: ${JSON.stringify({ type: "done" })}\n\n`);
       } catch (err) {
         // Save partial response even if client disconnected
-        if (fullResponse) {
+        if (fullResponse && !assistantMessagePersisted) {
           try {
             await prisma.message.create({
               data: {
@@ -864,7 +981,9 @@ export function chatRoutes(app: FastifyInstance) {
       const token = await prisma.userToken.findFirst({
         where: { userId: conversation.userId, provider: "google" },
       });
-      const tools = getToolsForPlan(!!token, user?.plan || "FREE");
+      const baseTools = getToolsForPlan(!!token, user?.plan || "FREE");
+      const allowedToolNames = new Set(baseTools.map((tool) => tool.function.name));
+      const tools = [...baseTools, PROPOSE_ACTION_TOOL];
 
       // Build dynamic context so Eve knows the current situation
       const contextParts: string[] = [];
@@ -916,10 +1035,16 @@ export function chatRoutes(app: FastifyInstance) {
 
       // Load user memories for personalization (Claude Code memdir/ pattern)
       let memoryContext = "";
+      let policyContext = "";
       try {
         memoryContext = await loadMemoriesForPrompt(conversation.userId);
       } catch {
         // Memory loading is optional
+      }
+      try {
+        policyContext = await getFeedbackPolicyContextForPrompt(conversation.userId);
+      } catch {
+        // Feedback policy loading is optional
       }
 
       // Build message history with auto-compaction (Claude Code compact/ pattern).
@@ -938,7 +1063,7 @@ export function chatRoutes(app: FastifyInstance) {
         return [
           {
             role: "system" as const,
-            content: CHAT_SYSTEM_PROMPT + dynamicContext + memoryContext,
+            content: EVE_SYSTEM_PROMPT + dynamicContext + memoryContext + policyContext,
           },
           ...compacted,
           { role: "user" as const, content },
@@ -974,6 +1099,7 @@ export function chatRoutes(app: FastifyInstance) {
         }
       };
 
+      let assistantMessagePersisted = false;
       try {
         let apiUsage:
           | {
@@ -1041,6 +1167,38 @@ export function chatRoutes(app: FastifyInstance) {
 
             if (choice.finish_reason === "tool_calls" || (toolCalls && toolCalls.length > 0)) {
               messages.push(choice.message);
+              const proposalCall = (toolCalls || []).find((toolCall) => {
+                const fn = (
+                  toolCall as unknown as {
+                    function: { name: string };
+                  }
+                ).function;
+                return fn.name === "propose_action";
+              });
+              if (proposalCall) {
+                const fn = (
+                  proposalCall as unknown as {
+                    function: { name: string; arguments: string };
+                  }
+                ).function;
+                const args = JSON.parse(fn.arguments || "{}") as Record<string, unknown>;
+
+                safeWrite(
+                  `data: ${JSON.stringify({ type: "tool_call", name: fn.name, args })}\n\n`,
+                );
+
+                const proposal = await createPendingActionFromProposal({
+                  userId: conversation.userId,
+                  conversationId: id,
+                  allowedToolNames,
+                  args,
+                });
+                fullResponse = proposal.message;
+                assistantMessagePersisted = true;
+                safeWrite(`data: ${JSON.stringify({ type: "tool_result", name: fn.name })}\n\n`);
+                writeChunkedToken(safeWrite, fullResponse);
+                break;
+              }
 
               const results = await Promise.all(
                 (toolCalls || []).map(async (toolCall) =>
@@ -1142,7 +1300,7 @@ export function chatRoutes(app: FastifyInstance) {
         }
 
         // Save assistant message
-        if (fullResponse) {
+        if (fullResponse && !assistantMessagePersisted) {
           await prisma.message.create({
             data: {
               conversationId: id,
@@ -1188,7 +1346,7 @@ export function chatRoutes(app: FastifyInstance) {
         safeWrite(`data: ${JSON.stringify({ type: "done" })}\n\n`);
       } catch (err) {
         // Save partial response even if client disconnected mid-stream
-        if (fullResponse) {
+        if (fullResponse && !assistantMessagePersisted) {
           try {
             await prisma.message.create({
               data: {
@@ -1429,6 +1587,17 @@ export function chatRoutes(app: FastifyInstance) {
             content: `실행 실패: ${message}`,
             metadata: JSON.stringify({ source: "agent", actionFailed: true }),
           },
+        });
+
+        await recordFeedback({
+          userId,
+          source: "PENDING_ACTION",
+          sourceId: actionId,
+          signal: "FAILED",
+          toolName: action.toolName,
+          recipient: recipientFromToolArgs(action.toolArgs),
+          threadId: action.conversationId,
+          evidence: message,
         });
 
         return reply.code(500).send({ error: message });

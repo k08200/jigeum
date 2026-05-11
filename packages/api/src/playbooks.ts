@@ -276,7 +276,7 @@ const PLAYBOOKS: PlaybookDefinition[] = [
   },
 ];
 
-export function listJigeumPlaybooks(activeIds: Set<string> = new Set()): JigeumPlaybook[] {
+export function listEvePlaybooks(activeIds: Set<string> = new Set()): EvePlaybook[] {
   return PLAYBOOKS.map((playbook) => publicPlaybook(playbook, activeIds));
 }
 
@@ -294,7 +294,7 @@ export async function listActivePlaybookIds(userId: string): Promise<Set<string>
   return new Set(rows.map((row) => row.playbookId));
 }
 
-export async function activatePlaybook(userId: string, playbookId: string): Promise<JigeumPlaybook> {
+export async function activatePlaybook(userId: string, playbookId: string): Promise<EvePlaybook> {
   const definition = PLAYBOOKS.find((playbook) => playbook.id === playbookId);
   if (!definition) throw new Error(`Unknown playbook: ${playbookId}`);
   const model = (
@@ -351,7 +351,7 @@ export function recommendPlaybooksFromGraph(
 
   return {
     generatedAt: graph.generatedAt,
-    playbooks: listJigeumPlaybooks(activeIds),
+    playbooks: listEvePlaybooks(activeIds),
     recommendations,
   };
 }
@@ -423,7 +423,7 @@ function contextText(context: WorkGraphContext): string {
     .toLowerCase();
 }
 
-function publicPlaybook(definition: PlaybookDefinition, activeIds: Set<string>): JigeumPlaybook {
+function publicPlaybook(definition: PlaybookDefinition, activeIds: Set<string>): EvePlaybook {
   return {
     id: definition.id,
     domain: definition.domain,

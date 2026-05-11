@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import AuthScreen from "@/components/auth-screen";
 import { API_BASE } from "@/lib/api";
 
 type Status = "idle" | "submitting" | "success" | "already" | "error";
@@ -61,42 +62,35 @@ export default function EarlyAccessPage() {
   const isDone = status === "success" || status === "already";
 
   return (
-    <main className="min-h-screen bg-[#10100d] text-stone-50">
-      <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-300 text-sm font-bold text-stone-950">
-            J
-          </div>
-          <span className="text-lg font-bold tracking-tight">Jigeum</span>
-        </Link>
-        <div className="flex items-center gap-5 text-sm text-stone-400">
-          <Link href="/privacy" className="transition hover:text-white">
-            Privacy
+    <AuthScreen
+      eyebrow="Early access"
+      title="매일 흩어진 일을 결정 가능한 신호로 정리하세요"
+      description="EVE는 비공개 베타입니다. 메일과 캘린더 사용량이 많은 팀부터 초대하고 있습니다."
+      navCtaHref="/login"
+      navCtaLabel="로그인"
+      asideTitle="베타는 적은 팀으로 깊게 봅니다"
+      asideBody="신청 내용을 바탕으로 메일, 일정, 후속 조치가 실제로 자주 엉키는 팀부터 온보딩합니다."
+      asideItems={[
+        { label: "신청", value: "메일과 업무 패턴을 간단히 남깁니다." },
+        { label: "검토", value: "24시간 안에 베타 적합도를 확인합니다." },
+        { label: "초대", value: "승인 후 로그인 가능한 계정 안내를 보냅니다." },
+      ]}
+      footer={
+        <span>
+          <Link href="/privacy" className="transition hover:text-stone-300">
+            개인정보
           </Link>
-          <Link href="/terms" className="transition hover:text-white">
-            Terms
+          <span className="mx-2 text-stone-700">/</span>
+          <Link href="/terms" className="transition hover:text-stone-300">
+            약관
           </Link>
-          <Link href="/login" className="transition hover:text-white">
-            Sign in
-          </Link>
-        </div>
-      </nav>
-
-      <section className="mx-auto max-w-2xl px-6 py-14">
-        <p className="text-sm font-medium uppercase tracking-[0.18em] text-amber-200">
-          Early Access
-        </p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
-          매일 흩어진 일을 결정 가능한 신호로 정리하는 Decision OS
-        </h1>
-        <p className="mt-5 text-base leading-7 text-stone-400">
-          Jigeum은 비공개 베타입니다. 메일/캘린더 사용량이 많은 분들에게 우선 초대합니다. 신청하시면
-          24시간 안에 확인하고 메일로 답변드릴게요.
-        </p>
-
-        {isDone ? (
-          <div className="mt-10 rounded-xl border border-amber-300/30 bg-amber-300/10 p-6">
-            <h2 className="text-lg font-semibold text-white">
+        </span>
+      }
+    >
+      {isDone ? (
+        <div>
+          <div className="rounded-md border border-amber-300/25 bg-amber-300/10 p-4">
+            <h2 className="text-base font-semibold text-white">
               {status === "already" ? "이미 신청해주셨어요" : "신청 완료"}
             </h2>
             <p className="mt-2 text-sm leading-6 text-stone-300">
@@ -104,101 +98,101 @@ export default function EarlyAccessPage() {
                 ? "기존 신청을 기준으로 검토 후 메일로 답변드릴게요."
                 : "검토 후 24시간 안에 메일로 답변드릴게요. 메일이 도착하면 Jigeum에 로그인하실 수 있어요."}
             </p>
-            <div className="mt-6 flex flex-wrap gap-3 text-sm">
-              <Link
-                href="/"
-                className="rounded-lg border border-stone-700 px-4 py-2 text-stone-300 transition hover:bg-stone-900"
-              >
-                홈으로
-              </Link>
-              <Link
-                href="/privacy"
-                className="rounded-lg border border-stone-700 px-4 py-2 text-stone-300 transition hover:bg-stone-900"
-              >
-                Privacy 보기
-              </Link>
-            </div>
           </div>
-        ) : (
-          <form onSubmit={submit} className="mt-10 space-y-5" noValidate>
-            <div>
-              <label className="block text-sm font-medium text-stone-200" htmlFor="email">
-                이메일 (필수)
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-stone-700 bg-stone-950/35 px-3 py-2 text-sm text-white outline-none focus:border-amber-300"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-200" htmlFor="name">
-                이름 (선택)
-              </label>
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={120}
-                className="mt-2 w-full rounded-lg border border-stone-700 bg-stone-950/35 px-3 py-2 text-sm text-white outline-none focus:border-amber-300"
-                placeholder="홍길동"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-200" htmlFor="useCase">
-                평소 메일을 어떻게 쓰세요? (선택, 한 줄)
-              </label>
-              <input
-                id="useCase"
-                type="text"
-                value={useCase}
-                onChange={(e) => setUseCase(e.target.value)}
-                maxLength={500}
-                className="mt-2 w-full rounded-lg border border-stone-700 bg-stone-950/35 px-3 py-2 text-sm text-white outline-none focus:border-amber-300"
-                placeholder="예: 하루 메일 50통+, 일정과 후속 조치가 흩어져 우선순위 결정이 어려움"
-              />
-              <p className="mt-2 text-xs text-stone-500">
-                메일/캘린더 사용 패턴이 베타에 잘 맞을지 보는 용도예요.
-              </p>
-            </div>
-
-            {errorMsg && (
-              <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-                {errorMsg}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={status === "submitting"}
-              className="rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-200 disabled:opacity-60"
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Link
+              href="/"
+              className="flex h-10 items-center justify-center rounded-md border border-stone-700 text-sm text-stone-300 transition hover:border-stone-500"
             >
-              {status === "submitting" ? "신청 중…" : "Early Access 신청하기"}
-            </button>
+              홈으로
+            </Link>
+            <Link
+              href="/login"
+              className="flex h-10 items-center justify-center rounded-md bg-amber-300 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
+            >
+              로그인
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="space-y-4" noValidate>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-stone-400" htmlFor="email">
+              이메일
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-stone-700 bg-stone-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-600 focus:border-amber-300 focus:ring-1 focus:ring-amber-300/25"
+              placeholder="you@example.com"
+            />
+          </div>
 
-            <p className="text-xs leading-5 text-stone-500">
-              신청 시{" "}
-              <Link href="/privacy" className="underline hover:text-stone-300">
-                Privacy Policy
-              </Link>
-              와{" "}
-              <Link href="/terms" className="underline hover:text-stone-300">
-                Terms
-              </Link>
-              에 동의한 것으로 간주됩니다. 베타는 메일/캘린더 데이터를 처리합니다.
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-stone-400" htmlFor="name">
+              이름
+            </label>
+            <input
+              id="name"
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+              className="w-full rounded-md border border-stone-700 bg-stone-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-600 focus:border-amber-300 focus:ring-1 focus:ring-amber-300/25"
+              placeholder="선택 입력"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-stone-400" htmlFor="useCase">
+              평소 메일을 어떻게 쓰세요?
+            </label>
+            <input
+              id="useCase"
+              type="text"
+              value={useCase}
+              onChange={(e) => setUseCase(e.target.value)}
+              maxLength={500}
+              className="w-full rounded-md border border-stone-700 bg-stone-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-600 focus:border-amber-300 focus:ring-1 focus:ring-amber-300/25"
+              placeholder="예: 하루 메일 50통+, 일정과 후속 조치가 자주 엉킴"
+            />
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              메일/캘린더 사용 패턴이 베타에 잘 맞을지 보는 용도예요.
             </p>
-          </form>
-        )}
-      </section>
-    </main>
+          </div>
+
+          {errorMsg && (
+            <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {errorMsg}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="flex h-11 w-full items-center justify-center rounded-md bg-amber-300 text-sm font-semibold text-stone-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-stone-800 disabled:text-stone-500"
+          >
+            {status === "submitting" ? "신청 중..." : "얼리 액세스 신청하기"}
+          </button>
+
+          <p className="text-xs leading-5 text-stone-500">
+            신청 시{" "}
+            <Link href="/privacy" className="underline hover:text-stone-300">
+              개인정보 처리방침
+            </Link>
+            과{" "}
+            <Link href="/terms" className="underline hover:text-stone-300">
+              약관
+            </Link>
+            에 동의한 것으로 간주됩니다.
+          </p>
+        </form>
+      )}
+    </AuthScreen>
   );
 }

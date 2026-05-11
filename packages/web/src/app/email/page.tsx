@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
+import { EveSignalField } from "../../components/brand-visuals";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
@@ -55,13 +56,11 @@ interface ListResponse {
 }
 
 const FILTERS: { key: Filter; label: string; query: string }[] = [
-  { key: "all", label: "All signals", query: "" },
-  { key: "reply-needed", label: "Needs reply", query: "filter=reply-needed" },
-  { key: "urgent", label: "Urgent", query: "filter=urgent" },
-  { key: "unread", label: "Unread", query: "filter=unread" },
-  { key: "candidates", label: "Candidates", query: "filter=candidates" },
-  { key: "attachments", label: "Attachments", query: "filter=attachments" },
-  { key: "automated", label: "Automated", query: "category=automated" },
+  { key: "all", label: "전체 신호", query: "" },
+  { key: "reply-needed", label: "답장 필요", query: "filter=reply-needed" },
+  { key: "urgent", label: "긴급", query: "filter=urgent" },
+  { key: "unread", label: "읽지 않음", query: "filter=unread" },
+  { key: "automated", label: "자동화", query: "category=automated" },
 ];
 
 export default function EmailPage() {
@@ -139,51 +138,40 @@ function EmailView() {
   const candidateCount = emails.filter((email) => (email.attachmentCandidateCount ?? 0) > 0).length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-6 md:py-10">
-      <header className="mb-5 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-2xl shadow-black/10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-              Signal Mail
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
-              메일 신호를 결정 단위로 정리
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
-              Eve가 긴급도, 답장 필요 여부, 자동화 신호를 먼저 드러내고 실행 전 맥락으로 묶습니다.
-              {source === "demo" && <span className="ml-2 text-amber-300">데모 데이터</span>}
-            </p>
+    <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 md:py-10">
+      <header className="mb-5 overflow-hidden rounded-lg border border-stone-700/45 bg-stone-950/55 shadow-2xl shadow-black/10">
+        <div className="h-1 bg-gradient-to-r from-sky-300 via-amber-300 to-stone-600" />
+        <div className="p-5 md:p-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_300px] lg:items-stretch">
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
+                시그널 메일
+              </p>
+              <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
+                메일 신호를 결정 단위로 정리
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
+                EVE가 긴급도, 답장 필요 여부, 자동화 신호를 먼저 드러내고 실행 전 맥락으로 묶습니다.
+                {source === "demo" && <span className="ml-2 text-amber-300">데모 데이터</span>}
+              </p>
+            </div>
+            <div className="relative min-h-40 overflow-hidden rounded-lg border border-stone-800 bg-black/20">
+              <EveSignalField className="absolute inset-0 border-0" />
+              <button
+                type="button"
+                onClick={syncNow}
+                disabled={syncing}
+                className="absolute right-3 top-3 rounded-md border border-stone-700 bg-stone-950/75 px-3 py-1.5 text-xs text-stone-300 backdrop-blur transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
+              >
+                {syncing ? "동기화 중..." : "지금 동기화"}
+              </button>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col gap-2">
-            <Link
-              href="/email/candidates"
-              className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-center text-xs text-emerald-300 transition hover:bg-emerald-500/10 hover:text-emerald-100"
-            >
-              후보자 큐
-            </Link>
-            <button
-              type="button"
-              onClick={syncNow}
-              disabled={syncing}
-              className="rounded-lg border border-stone-700/60 px-3 py-1.5 text-xs text-stone-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
-            >
-              {syncing ? "동기화 중..." : "지금 동기화"}
-            </button>
-            <button
-              type="button"
-              onClick={reanalyzeAttachments}
-              disabled={reanalyzing}
-              className="rounded-lg border border-sky-500/30 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/10 hover:text-sky-100 disabled:opacity-50"
-            >
-              {reanalyzing ? "분석 중..." : "첨부 재분석"}
-            </button>
+          <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-lg border border-stone-800 bg-black/20">
+            <SignalStat label="읽지 않음" value={unreadCount} />
+            <SignalStat label="긴급" value={urgentCount} />
+            <SignalStat label="답장" value={replyCount} />
           </div>
-        </div>
-        <div className="mt-5 grid grid-cols-4 gap-2">
-          <SignalStat label="Unread" value={unreadCount} />
-          <SignalStat label="Urgent" value={urgentCount} />
-          <SignalStat label="Reply" value={replyCount} />
-          <SignalStat label="Talent" value={candidateCount} />
         </div>
       </header>
 
@@ -198,7 +186,7 @@ function EmailView() {
       )}
 
       {!loading && !error && emails.length === 0 && (
-        <div className="mt-4 rounded-xl border border-stone-700/45 bg-stone-950/35 p-6 text-center">
+        <div className="mt-4 rounded-lg border border-stone-700/45 bg-stone-950/35 p-6 text-center">
           <p className="text-sm text-stone-300">
             {filter === "all" ? "아직 들어온 메일 신호가 없어요." : "조건에 맞는 신호가 없어요."}
           </p>
@@ -209,7 +197,7 @@ function EmailView() {
       )}
 
       {!loading && emails.length > 0 && (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-2.5">
           {emails.map((e) => (
             <EmailRowItem key={e.id} email={e} />
           ))}
@@ -221,11 +209,11 @@ function EmailView() {
 
 function SignalStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-stone-700/45 bg-black/15 px-3 py-2">
+    <div className="border-r border-stone-800 px-4 py-3 last:border-r-0">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-600">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold text-stone-100">{value}</p>
+      <p className="mt-1 text-2xl font-semibold text-stone-100">{value}</p>
     </div>
   );
 }
@@ -260,9 +248,10 @@ function EmailRowItem({ email }: { email: EmailRow }) {
     <li>
       <Link
         href={`/email/${email.id}`}
-        className="block rounded-xl border border-stone-700/45 bg-stone-950/35 p-3 transition hover:border-amber-500/30 hover:bg-amber-500/5 active:bg-stone-900/70"
+        className="relative block overflow-hidden rounded-lg border border-stone-700/45 bg-stone-950/45 transition hover:border-amber-500/30 hover:bg-amber-500/5 active:bg-stone-900/70"
       >
-        <div className="flex items-start gap-2">
+        <div className="absolute bottom-0 left-0 top-0 w-1 bg-gradient-to-b from-sky-300 via-amber-300 to-stone-700" />
+        <div className="grid gap-3 p-4 pl-5 md:grid-cols-[1fr_auto] md:items-start">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <PriorityBadge priority={email.priority} />
@@ -287,24 +276,26 @@ function EmailRowItem({ email }: { email: EmailRow }) {
               {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
             </div>
             <p
-              className={`mt-1.5 truncate text-sm ${unread ? "font-medium text-stone-100" : "text-stone-300"}`}
+              className={`mt-2 truncate text-sm ${unread ? "font-semibold text-stone-100" : "text-stone-300"}`}
             >
               {senderName(email.from)}
             </p>
-            <p className="mt-0.5 truncate text-xs text-stone-400">{email.subject || "제목 없음"}</p>
+            <p className="mt-1 truncate text-[13px] text-stone-400">
+              {email.subject || "제목 없음"}
+            </p>
             {email.summary ? (
-              <p className="mt-1 line-clamp-2 text-[11px] text-amber-200/85">
-                <span className="mr-1 text-amber-300">Eve:</span>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-amber-200/85">
+                <span className="mr-1 text-amber-300">EVE:</span>
                 {email.summary}
               </p>
             ) : email.snippet ? (
-              <p className="mt-1 line-clamp-2 text-[11px] text-stone-600">{email.snippet}</p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">{email.snippet}</p>
             ) : null}
             {email.candidateProfilePreview && (
               <CandidatePreview profile={email.candidateProfilePreview} />
             )}
           </div>
-          <time className="shrink-0 pt-0.5 text-[11px] tabular-nums text-stone-500">
+          <time className="shrink-0 text-[11px] tabular-nums text-stone-500 md:pt-1">
             {formatRelative(email.date)}
           </time>
         </div>

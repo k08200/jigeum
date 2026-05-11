@@ -47,8 +47,6 @@ model User {
   tokenUsages               TokenUsage[]
   devices                   Device[]
   emailMessages             EmailMessage[]
-  emailAttachments          EmailAttachment[]
-  candidateIntakes          CandidateIntake[]
   emailRules                EmailRule[]
   attentionItems            AttentionItem[]
   commitments               Commitment[]
@@ -890,6 +888,7 @@ enum FeedbackSource {
 enum FeedbackSignal {
   APPROVED
   REJECTED
+  FAILED
   EDITED
   IGNORED
   SNOOZED
@@ -897,7 +896,7 @@ enum FeedbackSignal {
 }
 
 // Durable Work Graph snapshots. WorkGraph v0 is still inferred from source
-// tables, but every summary write-throughs the active contexts here so Eve can
+// tables, but every summary write-throughs the active contexts here so EVE can
 // build longitudinal project memory without waiting for a full graph schema.
 model WorkContextSnapshot {
   id     String @id @default(uuid())
@@ -924,7 +923,7 @@ model WorkContextSnapshot {
 }
 
 // User-enabled operating patterns. Recommendations can stay read-only, but an
-// activation tells Eve to bias ranking, briefings, and future playbook work
+// activation tells EVE to bias ranking, briefings, and future playbook work
 // around that domain.
 model ActivatedPlaybook {
   id         String   @id @default(uuid())
@@ -941,7 +940,7 @@ model ActivatedPlaybook {
 
 // User controls over extracted feedback policies. The extractor remains
 // conservative; this table records which candidates the user explicitly wants
-// Eve to apply or ignore.
+// EVE to apply or ignore.
 model FeedbackPolicyPreference {
   id          String   @id @default(uuid())
   userId      String

@@ -12,7 +12,7 @@ import {
   buildPlaybookRecommendations,
   deactivatePlaybook,
   listActivePlaybookIds,
-  listJigeumPlaybooks,
+  listEvePlaybooks,
 } from "../playbooks.js";
 
 const playbookIdParamSchema = {
@@ -30,7 +30,7 @@ export function playbookRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
     const userId = getUserId(request);
     const activeIds = await listActivePlaybookIds(userId);
-    return { playbooks: listJigeumPlaybooks(activeIds) };
+    return { playbooks: listEvePlaybooks(activeIds) };
   });
 
   app.get("/activations", async (request) => {

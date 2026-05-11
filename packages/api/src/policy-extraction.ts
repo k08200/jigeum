@@ -2,9 +2,8 @@
  * Feedback policy extraction.
  *
  * Step 8.2 turns the append-only FeedbackEvent ledger into conservative,
- * read-only policy candidates. These candidates are not applied to agent
- * behavior yet; #170 will decide how to feed approved policy context into the
- * prompt, and #171 will give the user controls.
+ * read-only policy candidates. Prompt builders can include these as soft
+ * guidance; they never bypass approval gates or tool risk policy.
  */
 
 import type { FeedbackEvent, FeedbackSignal } from "@prisma/client";
@@ -27,6 +26,7 @@ export interface FeedbackPolicyScope {
 export interface FeedbackPolicySupport {
   approved: number;
   rejected: number;
+  failed: number;
   edited: number;
   ignored: number;
   snoozed: number;
@@ -63,6 +63,11 @@ export interface FeedbackPolicyExtractionOptions {
 export interface FeedbackPolicyPromptOptions {
   limit?: number;
   minConfidence?: number;
+}
+
+export interface FeedbackPolicyPreferenceSelection {
+  candidateId: string;
+  action: string;
 }
 
 type FeedbackPolicyEvent = Pick<
@@ -108,24 +113,8 @@ export async function getFeedbackPolicyContextForPrompt(userId: string): Promise
     getFeedbackPolicyPreferences(userId),
   ]);
 
-  const activeIds = new Set(
-    preferences.filter((pref) => pref.action === "ACTIVE").map((pref) => pref.candidateId),
-  );
-  const ignoredIds = new Set(
-    preferences.filter((pref) => pref.action === "IGNORED").map((pref) => pref.candidateId),
-  );
-
-  const selected =
-    activeIds.size > 0
-      ? candidates.filter((candidate) => activeIds.has(candidate.id))
-      : candidates.filter((candidate) => !ignoredIds.has(candidate.id));
-
   return formatFeedbackPolicyCandidatesForPrompt(
-    selected.map((candidate) => ({
-      ...candidate,
-      active: activeIds.has(candidate.id),
-      ignored: ignoredIds.has(candidate.id),
-    })),
+    selectFeedbackPolicyCandidatesForPrompt(candidates, preferences),
   );
 }
 
@@ -156,7 +145,7 @@ export function formatFeedbackPolicyCandidatesForPrompt(
   const limit = clampInteger(opts.limit ?? 5, 1, 20);
   const minConfidence = Math.min(Math.max(opts.minConfidence ?? 0.6, 0), 1);
   const selected = candidates
-    .filter((candidate) => candidate.confidence >= minConfidence)
+    .filter((candidate) => candidate.active || candidate.confidence >= minConfidence)
     .slice(0, limit);
   if (selected.length === 0) return "";
 
@@ -167,9 +156,31 @@ export function formatFeedbackPolicyCandidatesForPrompt(
   });
 
   return `\n\n## Learned Feedback Policy Signals
-These are soft signals derived from repeated approve/reject/edit/ignore feedback. Use them to shape whether you propose, draft, stay quiet, or ask for review.
+These are soft signals derived from repeated approve/reject/failure/edit/ignore feedback. Use them to shape whether you propose, draft, stay quiet, or ask for review.
 They are NOT authorization to bypass the current autonomy/risk policy, approval gates, or tool safety rules.
 ${lines.join("\n")}`;
+}
+
+export function selectFeedbackPolicyCandidatesForPrompt(
+  candidates: FeedbackPolicyCandidate[],
+  preferences: FeedbackPolicyPreferenceSelection[],
+): FeedbackPolicyCandidate[] {
+  const activeIds = new Set(
+    preferences.filter((pref) => pref.action === "ACTIVE").map((pref) => pref.candidateId),
+  );
+  const ignoredIds = new Set(
+    preferences.filter((pref) => pref.action === "IGNORED").map((pref) => pref.candidateId),
+  );
+  const annotated = candidates.map((candidate) => ({
+    ...candidate,
+    active: activeIds.has(candidate.id),
+    ignored: ignoredIds.has(candidate.id),
+  }));
+
+  return [
+    ...annotated.filter((candidate) => candidate.active),
+    ...annotated.filter((candidate) => !candidate.active && !candidate.ignored),
+  ];
 }
 
 function buildBuckets(events: FeedbackPolicyEvent[]): Map<string, Bucket> {
@@ -230,7 +241,7 @@ function candidateFromSupport(
   events: FeedbackPolicyEvent[],
   minEvents: number,
 ): FeedbackPolicyCandidate | null {
-  const explicitNegative = support.rejected + support.dismissed;
+  const explicitNegative = support.rejected + support.failed + support.dismissed;
   const quietNegative = support.ignored + support.snoozed;
   const total = support.total;
 
@@ -268,7 +279,7 @@ function candidateFromSupport(
       support,
       explicitNegative,
       events,
-      "The user repeatedly rejects or dismisses this proposal pattern.",
+      "The user repeatedly rejects, fails, or dismisses this proposal pattern.",
     );
   }
 
@@ -318,6 +329,7 @@ function countSignals(
   const support: FeedbackPolicySupport = {
     approved: 0,
     rejected: 0,
+    failed: 0,
     edited: 0,
     ignored: 0,
     snoozed: 0,
@@ -329,6 +341,7 @@ function countSignals(
   for (const event of events) {
     if (event.signal === "APPROVED") support.approved += 1;
     else if (event.signal === "REJECTED") support.rejected += 1;
+    else if (event.signal === "FAILED") support.failed += 1;
     else if (event.signal === "EDITED") support.edited += 1;
     else if (event.signal === "IGNORED") support.ignored += 1;
     else if (event.signal === "SNOOZED") support.snoozed += 1;
@@ -386,6 +399,7 @@ function describeSupport(support: FeedbackPolicySupport): string {
   const parts = [
     `approved ${support.approved}`,
     `rejected ${support.rejected}`,
+    `failed ${support.failed}`,
     `edited ${support.edited}`,
     `ignored ${support.ignored}`,
     `snoozed ${support.snoozed}`,
