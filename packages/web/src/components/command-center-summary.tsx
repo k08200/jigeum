@@ -45,7 +45,7 @@ export default function CommandCenterSummary() {
   }
 
   return (
-    <section className="mb-6 space-y-4" aria-label="Command center summary">
+    <section className="mb-6 space-y-4" aria-label="커맨드 센터 요약">
       {data.top3.length > 0 && <Top3Section items={data.top3} />}
       {todayHasContent && <TodaySectionView section={data.today} />}
     </section>

@@ -123,7 +123,7 @@ function EmailDetailView() {
         <article>
           <header className="mb-5 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-2xl shadow-black/10">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-              Signal Detail
+              신호 상세
             </p>
             <h1 className="break-words text-xl font-semibold leading-snug tracking-tight text-stone-50 md:text-2xl">
               {email.subject || "제목 없음"}
@@ -134,10 +134,10 @@ function EmailDetailView() {
               <time className="shrink-0 tabular-nums">{formatFull(email.date)}</time>
             </div>
             <div className="mt-5 grid grid-cols-3 gap-2">
-              <DetailStat label="Priority" value={PRIORITY_LABELS[email.priority]} />
-              <DetailStat label="Reply" value={email.needsReply ? "Needed" : "No signal"} />
+              <DetailStat label="우선순위" value={PRIORITY_LABELS[email.priority]} />
+              <DetailStat label="답장" value={email.needsReply ? "필요" : "신호 없음"} />
               <DetailStat
-                label="Category"
+                label="분류"
                 value={email.category ? categoryLabel(email.category) : "-"}
               />
             </div>

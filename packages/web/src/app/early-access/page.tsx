@@ -71,20 +71,20 @@ export default function EarlyAccessPage() {
         </Link>
         <div className="flex items-center gap-5 text-sm text-stone-400">
           <Link href="/privacy" className="transition hover:text-white">
-            Privacy
+            개인정보
           </Link>
           <Link href="/terms" className="transition hover:text-white">
-            Terms
+            약관
           </Link>
           <Link href="/login" className="transition hover:text-white">
-            Sign in
+            로그인
           </Link>
         </div>
       </nav>
 
       <section className="mx-auto max-w-2xl px-6 py-14">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-amber-200">
-          Early Access
+          얼리 액세스
         </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
           매일 흩어진 일을 결정 가능한 신호로 정리하는 Decision OS
@@ -115,7 +115,7 @@ export default function EarlyAccessPage() {
                 href="/privacy"
                 className="rounded-lg border border-stone-700 px-4 py-2 text-stone-300 transition hover:bg-stone-900"
               >
-                Privacy 보기
+                개인정보 보기
               </Link>
             </div>
           </div>
@@ -182,17 +182,17 @@ export default function EarlyAccessPage() {
               disabled={status === "submitting"}
               className="rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-200 disabled:opacity-60"
             >
-              {status === "submitting" ? "신청 중…" : "Early Access 신청하기"}
+              {status === "submitting" ? "신청 중…" : "얼리 액세스 신청하기"}
             </button>
 
             <p className="text-xs leading-5 text-stone-500">
               신청 시{" "}
               <Link href="/privacy" className="underline hover:text-stone-300">
-                Privacy Policy
+                개인정보 처리방침
               </Link>
               와{" "}
               <Link href="/terms" className="underline hover:text-stone-300">
-                Terms
+                약관
               </Link>
               에 동의한 것으로 간주됩니다. 베타는 메일/캘린더 데이터를 처리합니다.
             </p>

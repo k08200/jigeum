@@ -30,11 +30,11 @@ interface ListResponse {
 }
 
 const FILTERS: { key: Filter; label: string; query: string }[] = [
-  { key: "all", label: "All signals", query: "" },
-  { key: "reply-needed", label: "Needs reply", query: "filter=reply-needed" },
-  { key: "urgent", label: "Urgent", query: "filter=urgent" },
-  { key: "unread", label: "Unread", query: "filter=unread" },
-  { key: "automated", label: "Automated", query: "category=automated" },
+  { key: "all", label: "전체 신호", query: "" },
+  { key: "reply-needed", label: "답장 필요", query: "filter=reply-needed" },
+  { key: "urgent", label: "긴급", query: "filter=urgent" },
+  { key: "unread", label: "읽지 않음", query: "filter=unread" },
+  { key: "automated", label: "자동화", query: "category=automated" },
 ];
 
 export default function EmailPage() {
@@ -98,7 +98,7 @@ function EmailView() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-              Signal Mail
+              시그널 메일
             </p>
             <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
               메일 신호를 결정 단위로 정리
@@ -118,9 +118,9 @@ function EmailView() {
           </button>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-2">
-          <SignalStat label="Unread" value={unreadCount} />
-          <SignalStat label="Urgent" value={urgentCount} />
-          <SignalStat label="Reply" value={replyCount} />
+          <SignalStat label="읽지 않음" value={unreadCount} />
+          <SignalStat label="긴급" value={urgentCount} />
+          <SignalStat label="답장" value={replyCount} />
         </div>
       </header>
 

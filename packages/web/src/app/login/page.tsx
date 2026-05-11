@@ -66,7 +66,7 @@ function LoginForm() {
         return;
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
+      const msg = err instanceof Error ? err.message : "문제가 발생했습니다.";
       const match = msg.match(/API \d+: (.+)/);
       const parsed = match
         ? (() => {

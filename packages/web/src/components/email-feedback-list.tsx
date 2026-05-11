@@ -64,7 +64,7 @@ export function EmailFeedbackList() {
       })
       .catch((err) => {
         captureClientError(err, { scope: "email-feedback.load" });
-        setError("Failed to load email corrections");
+        setError("메일 교정 기록을 불러오지 못했습니다.");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -126,7 +126,7 @@ export function EmailFeedbackList() {
         <div className="rounded-xl border border-stone-700/45 bg-stone-950/35 px-5 py-10 text-center">
           <p className="text-sm font-medium text-stone-300">아직 수정한 분류가 없어요.</p>
           <p className="mt-2 text-sm text-stone-500">
-            Mail 화면에서 분류 결과가 틀렸을 때 &quot;분류 틀림&quot;을 누르면 여기에 기록됩니다.
+            메일 화면에서 분류 결과가 틀렸을 때 &quot;분류 틀림&quot;을 누르면 여기에 기록됩니다.
           </p>
         </div>
       )}

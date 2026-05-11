@@ -40,13 +40,13 @@ export default function WorkGraphSummaryCard() {
   return (
     <section
       className="mb-6 overflow-hidden rounded-2xl border border-stone-800 bg-stone-950/70"
-      aria-label="Work graph summary"
+      aria-label="업무 그래프 요약"
     >
       <div className="border-b border-stone-800 bg-gradient-to-br from-stone-950 via-stone-950 to-amber-950/20 p-4 md:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200">
-              Work Graph
+              업무 그래프
             </p>
             <h2 className="mt-2 text-lg font-semibold tracking-tight text-stone-100">
               지금 움직이는 업무 맥락
@@ -102,7 +102,7 @@ function ContextCard({ context }: { context: WorkGraphContext }) {
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <ContextPanel label="Signals">
+        <ContextPanel label="신호">
           {chips.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {chips.map((chip) => (
@@ -119,7 +119,7 @@ function ContextCard({ context }: { context: WorkGraphContext }) {
           )}
         </ContextPanel>
 
-        <ContextPanel label="Why it surfaced">
+        <ContextPanel label="표시 이유">
           {reasons.length > 0 ? (
             <ul className="space-y-1.5">
               {reasons.map((reason) => (

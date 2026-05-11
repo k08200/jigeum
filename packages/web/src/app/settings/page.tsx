@@ -793,7 +793,7 @@ export default function SettingsPage() {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-    toast(data.briefing || "브리핑을 만들었습니다. Briefing 화면에서 확인하세요.", "success");
+    toast(data.briefing || "브리핑을 만들었습니다. 브리핑 화면에서 확인하세요.", "success");
   };
 
   const clearAllData = async () => {

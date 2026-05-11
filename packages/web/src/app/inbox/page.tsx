@@ -151,7 +151,7 @@ function InboxView() {
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div className="max-w-2xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-              Decision Queue
+              결정 큐
             </p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
               흩어진 신호를 승인 가능한 결정으로 정리합니다.
@@ -166,7 +166,7 @@ function InboxView() {
             onClick={() => load(filter)}
             disabled={loading}
             className="h-9 shrink-0 rounded-lg border border-stone-700 px-3 text-xs text-stone-300 transition hover:bg-stone-800 disabled:opacity-50"
-            aria-label="Refresh inbox"
+            aria-label="결정 큐 새로고침"
           >
             {loading ? "..." : "새로고침"}
           </button>
@@ -211,7 +211,7 @@ function InboxView() {
       )}
 
       {actions.length > 0 && (
-        <section className="mb-6" aria-label="Decision queue">
+        <section className="mb-6" aria-label="결정 큐">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-stone-100">결정 카드</h2>
             <span className="text-[11px] text-stone-500">{actions.length}</span>
@@ -260,7 +260,7 @@ function CommitmentSection({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <section className="mb-6" aria-label="Commitment ledger">
+    <section className="mb-6" aria-label="약속 장부">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold text-stone-100">챙길 약속</h2>
         <span className="text-[11px] text-stone-500">{commitments.length}</span>
@@ -397,7 +397,7 @@ function ActionCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">
-              Decision Card
+              결정 카드
             </span>
             <StatusBadge status={action.status} />
           </div>
@@ -421,7 +421,7 @@ function ActionCard({
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <DecisionSection
-              label="Signal"
+              label="신호"
               title="EVE가 본 신호"
               body={
                 reasoning.situation ||
@@ -430,7 +430,7 @@ function ActionCard({
               }
             />
             <DecisionSection
-              label="Judgment"
+              label="판단"
               title="지금 중요한 이유"
               body={
                 reasoning.judgment ||
@@ -439,7 +439,7 @@ function ActionCard({
               }
             />
             <DecisionSection
-              label="Move"
+              label="행동"
               title="준비된 행동"
               body={reasoning.proposal || preview || action.toolName.replace(/_/g, " ")}
             />

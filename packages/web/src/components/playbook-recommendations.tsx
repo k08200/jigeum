@@ -59,7 +59,7 @@ export default function PlaybookRecommendations() {
   };
 
   return (
-    <section className="mb-6" aria-label="EVE playbook recommendations">
+    <section className="mb-6" aria-label="EVE 추천 플레이북">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-stone-100">추천 플레이북</h2>
         <span className="text-[11px] text-stone-500">{data.recommendations.length}</span>

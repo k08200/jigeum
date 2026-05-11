@@ -90,7 +90,7 @@ function ChatPageContent() {
       })
       .catch((err) => {
         if (loadController.signal.aborted) return;
-        const msg = err instanceof Error ? err.message : "Failed to load conversation";
+        const msg = err instanceof Error ? err.message : "스레드를 불러오지 못했습니다.";
         if (msg.includes("403") || msg.includes("Forbidden")) {
           setLoadError("이 스레드에 접근할 수 없습니다. 다른 계정으로 로그인했을 수 있어요.");
         } else if (msg.includes("404") || msg.includes("not found")) {
@@ -555,7 +555,7 @@ function ChatPageContent() {
         <div className="flex items-center justify-between border-b border-stone-700/35 bg-[#11100d]/72 px-4 py-2 backdrop-blur-xl">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-300/75">
-              Decision Thread
+              결정 스레드
             </p>
             <p className="text-xs text-stone-500">맥락 먼저, 실행은 승인 뒤에.</p>
           </div>
@@ -616,7 +616,7 @@ function ChatPageContent() {
             <div className="flex min-h-[60vh] flex-col items-center justify-center">
               <img src="/brand/mark.svg" alt="" className="mb-4 h-12 w-12" />
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300/75">
-                New Decision Thread
+                새 결정 스레드
               </p>
               <h2 className="mb-2 text-center text-2xl font-semibold tracking-tight text-stone-100">
                 필요한 결과부터 말해 주세요.
@@ -910,8 +910,8 @@ function ChatPageContent() {
                         type="button"
                         onClick={() => copyMessage(msg.content)}
                         className="p-1.5 rounded-md text-stone-500 hover:text-stone-300 hover:bg-stone-800 transition"
-                        title="Copy"
-                        aria-label="Copy message"
+                        title="복사"
+                        aria-label="메시지 복사"
                       >
                         <svg
                           aria-hidden="true"
@@ -933,8 +933,8 @@ function ChatPageContent() {
                           type="button"
                           onClick={() => startEditMessage(msg)}
                           className="p-1.5 rounded-md text-stone-500 hover:text-stone-300 hover:bg-stone-800 transition"
-                          title="Edit"
-                          aria-label="Edit message"
+                          title="수정"
+                          aria-label="메시지 수정"
                         >
                           <svg
                             aria-hidden="true"
@@ -957,8 +957,8 @@ function ChatPageContent() {
                           type="button"
                           onClick={() => retryMessage(idx)}
                           className="p-1.5 rounded-md text-stone-500 hover:text-stone-300 hover:bg-stone-800 transition"
-                          title="Retry"
-                          aria-label="Retry response"
+                          title="다시 시도"
+                          aria-label="응답 다시 시도"
                         >
                           <svg
                             aria-hidden="true"
@@ -1050,7 +1050,7 @@ function ChatPageContent() {
             type="button"
             onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
             className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 rounded-full w-9 h-9 flex items-center justify-center shadow-lg transition"
-            aria-label="Scroll to bottom"
+            aria-label="맨 아래로 이동"
           >
             <svg
               aria-hidden="true"
@@ -1183,7 +1183,7 @@ function ChatPageContent() {
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition"
-                  title="Attach file"
+                  title="파일 첨부"
                 >
                   <svg
                     aria-hidden="true"
@@ -1213,7 +1213,7 @@ function ChatPageContent() {
                   type="button"
                   onClick={() => abortRef.current?.abort()}
                   className="p-2 rounded-lg bg-stone-700 hover:bg-stone-600 text-white transition"
-                  title="Stop"
+                  title="중지"
                 >
                   <svg
                     aria-hidden="true"
@@ -1231,7 +1231,7 @@ function ChatPageContent() {
                   onClick={sendMessage}
                   disabled={!input.trim() && !attachment}
                   className="rounded-lg bg-amber-300 p-2 text-stone-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-500"
-                  title="Send"
+                  title="보내기"
                 >
                   <svg
                     aria-hidden="true"

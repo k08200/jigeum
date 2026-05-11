@@ -108,7 +108,7 @@ export default function PushOnboardingBanner() {
   return (
     <div
       role="dialog"
-      aria-label="Enable push notifications"
+      aria-label="푸시 알림 켜기"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] w-[min(94vw,420px)] bg-stone-950 border border-stone-700 rounded-2xl shadow-2xl shadow-black/60 px-4 py-3.5 flex items-start gap-3 animate-slide-up pb-safe"
     >
       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-300 to-stone-700 flex items-center justify-center text-base shrink-0">
@@ -125,7 +125,7 @@ export default function PushOnboardingBanner() {
             disabled={submitting}
             className="px-3 py-1.5 text-xs font-medium bg-amber-300 hover:bg-amber-200 disabled:bg-stone-700 disabled:text-stone-500 text-stone-950 rounded-lg transition"
           >
-            {submitting ? "Enabling..." : "알림 켜기"}
+            {submitting ? "켜는 중..." : "알림 켜기"}
           </button>
           <button
             type="button"
@@ -141,7 +141,7 @@ export default function PushOnboardingBanner() {
         type="button"
         onClick={dismiss}
         disabled={submitting}
-        aria-label="Close"
+        aria-label="닫기"
         className="text-stone-500 hover:text-stone-200 transition text-lg leading-none -mr-1 -mt-0.5"
       >
         ×

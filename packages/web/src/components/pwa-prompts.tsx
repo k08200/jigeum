@@ -82,27 +82,27 @@ export default function PwaPrompts() {
       {/* Offline indicator */}
       {offline && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-stone-950 text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]">
-          Offline mode: saved surfaces stay visible, live signals may pause.
+          오프라인 모드입니다. 저장된 화면은 유지되지만 실시간 신호는 잠시 멈출 수 있어요.
         </div>
       )}
 
       {/* Update available banner */}
       {updateAvailable && (
         <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up">
-          <div className="text-sm text-stone-200">A refreshed Decision OS build is ready</div>
+          <div className="text-sm text-stone-200">새 Decision OS 빌드가 준비되었습니다</div>
           <button
             type="button"
             onClick={handleUpdate}
             className="px-3 py-1 text-xs font-medium bg-amber-300 hover:bg-amber-200 text-stone-950 rounded-lg transition whitespace-nowrap"
           >
-            Refresh
+            새로고침
           </button>
           <button
             type="button"
             onClick={() => setUpdateAvailable(false)}
             className="text-stone-500 hover:text-stone-300 transition text-sm"
           >
-            Not now
+            나중에
           </button>
         </div>
       )}
@@ -114,15 +114,15 @@ export default function PwaPrompts() {
             E
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-stone-200">Install EVE workspace</p>
-            <p className="text-xs text-stone-500">Open your decision queue from the home screen</p>
+            <p className="text-sm font-medium text-stone-200">EVE 워크스페이스 설치</p>
+            <p className="text-xs text-stone-500">홈 화면에서 결정 큐를 바로 열 수 있어요</p>
           </div>
           <button
             type="button"
             onClick={handleInstall}
             className="px-3 py-1.5 text-xs font-medium bg-white text-stone-950 hover:bg-stone-200 rounded-lg transition whitespace-nowrap"
           >
-            Install
+            설치
           </button>
           <button
             type="button"
