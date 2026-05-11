@@ -1,5 +1,5 @@
 /**
- * Sentry Error Tracking — Centralized error capture for EVE API.
+ * Sentry Error Tracking — Centralized error capture for Eve API.
  *
  * Initializes Sentry only when SENTRY_DSN is set. In development
  * without a DSN, all capture calls are no-ops.

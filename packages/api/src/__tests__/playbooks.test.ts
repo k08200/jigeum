@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listEvePlaybooks, recommendPlaybooksFromGraph } from "../playbooks.js";
+import { listJigeumPlaybooks, recommendPlaybooksFromGraph } from "../playbooks.js";
 import type { WorkGraphContext, WorkGraphSummary } from "../work-graph.js";
 
 function context(over: Partial<WorkGraphContext> = {}): WorkGraphContext {
@@ -28,9 +28,9 @@ function graph(contexts: WorkGraphContext[]): WorkGraphSummary {
   return { generatedAt: "2026-04-28T00:00:00.000Z", contexts };
 }
 
-describe("EVE playbooks", () => {
+describe("Eve playbooks", () => {
   it("exposes the canonical built-in playbooks", () => {
-    expect(listEvePlaybooks().map((playbook) => playbook.domain)).toEqual([
+    expect(listJigeumPlaybooks().map((playbook) => playbook.domain)).toEqual([
       "investment",
       "customer_success",
       "launch",

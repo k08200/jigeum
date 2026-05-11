@@ -1,6 +1,6 @@
-id: eve-status-check
-name: "EVE Status Check"
-description: "Verify EVE CLI can show status without crashing"
+id: jigeum-status-check
+name: "Jigeum Status Check"
+description: "Verify Jigeum CLI can show status without crashing"
 
 agent:
   type: command

@@ -1,10 +1,10 @@
 /**
- * Document Writer for EVE — generate reports, proposals, emails drafts, etc.
+ * Document Writer for Eve — generate reports, proposals, emails drafts, etc.
  * Results are saved as Notes.
  */
 
 import { prisma } from "./db.js";
-import { createCompletion, EVE_SYSTEM_PROMPT, MODEL, openai } from "./openai.js";
+import { createCompletion, CHAT_SYSTEM_PROMPT, MODEL, openai } from "./openai.js";
 
 export async function writeDocument(
   userId: string,
@@ -38,7 +38,7 @@ Be professional, clear, and well-structured. Use markdown formatting.`;
   const response = await createCompletion({
     model: MODEL,
     messages: [
-      { role: "system", content: EVE_SYSTEM_PROMPT },
+      { role: "system", content: CHAT_SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ],
   });

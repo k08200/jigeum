@@ -8,9 +8,15 @@
  * 4. Incremental sync (only fetch new emails)
  */
 
-import { google } from "googleapis";
+import { google, type gmail_v1 } from "googleapis";
+import { extractAttachmentContent, isReadableEmailAttachment } from "./email-attachment-text.js";
 import { extractAndUpsertCommitmentsFromText } from "./commitment-ingestion.js";
 import { prisma } from "./db.js";
+import {
+  analyzePendingEmailAttachments,
+  type RawEmailAttachment,
+  upsertEmailAttachments,
+} from "./email-attachments.js";
 import { getAuthedClient } from "./gmail.js";
 import { createCompletion, MODEL, openai } from "./openai.js";
 import { captureError } from "./sentry.js";
@@ -32,6 +38,69 @@ interface GmailRawEmail {
   isRead: boolean;
   isStarred: boolean;
   receivedAt: Date;
+  attachments: RawEmailAttachment[];
+}
+
+function decodeBase64Url(data: string): Buffer {
+  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+}
+
+function collectParts(part: gmail_v1.Schema$MessagePart): gmail_v1.Schema$MessagePart[] {
+  const parts = [part];
+  for (const child of part.parts ?? []) {
+    parts.push(...collectParts(child));
+  }
+  return parts;
+}
+
+async function extractAttachmentsFromPayload(
+  gmail: gmail_v1.Gmail,
+  messageId: string,
+  payload: gmail_v1.Schema$MessagePart,
+): Promise<RawEmailAttachment[]> {
+  const attachments: RawEmailAttachment[] = [];
+  const parts = collectParts(payload).filter((part) => part.filename || part.body?.attachmentId);
+
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+    const filename = part.filename?.trim();
+    if (!filename) continue;
+
+    const gmailAttachmentId = part.body?.attachmentId || `${messageId}:${index}:${filename}`;
+    const mimeType = part.mimeType || "application/octet-stream";
+    const size = typeof part.body?.size === "number" ? part.body.size : null;
+
+    let contentText: string | null = null;
+    const shouldFetch = isReadableEmailAttachment(filename, mimeType, size);
+    if (shouldFetch) {
+      try {
+        let data = part.body?.data || "";
+        if (!data && part.body?.attachmentId) {
+          const attachment = await gmail.users.messages.attachments.get({
+            userId: "me",
+            messageId,
+            id: part.body.attachmentId,
+          });
+          data = attachment.data.data || "";
+        }
+        if (data) {
+          contentText = extractAttachmentContent(decodeBase64Url(data), filename, mimeType).text;
+        }
+      } catch {
+        contentText = null;
+      }
+    }
+
+    attachments.push({
+      gmailAttachmentId,
+      filename,
+      mimeType,
+      size,
+      contentText,
+    });
+  }
+
+  return attachments;
 }
 
 /**
@@ -87,7 +156,8 @@ async function fetchGmailEmails(
     let htmlBody = "";
     const payload = detail.data.payload;
 
-    const decodePartBody = (data: string): string => Buffer.from(data, "base64").toString("utf-8");
+    const decodePartBody = (data: string): string => decodeBase64Url(data).toString("utf-8");
+    const attachments: RawEmailAttachment[] = [];
 
     if (payload?.parts) {
       for (const part of payload.parts) {
@@ -118,6 +188,10 @@ async function fetchGmailEmails(
       }
     }
 
+    if (payload) {
+      attachments.push(...(await extractAttachmentsFromPayload(gmail, msg.id, payload)));
+    }
+
     const labelIds = detail.data.labelIds || [];
     const dateStr = getHeader("Date");
 
@@ -135,6 +209,7 @@ async function fetchGmailEmails(
       isRead: !labelIds.includes("UNREAD"),
       isStarred: labelIds.includes("STARRED"),
       receivedAt: dateStr ? new Date(dateStr) : new Date(),
+      attachments,
     });
   }
 
@@ -170,6 +245,13 @@ export async function syncEmails(
           labels: email.labels,
         },
       });
+      if (email.attachments.length > 0) {
+        await upsertEmailAttachments({
+          userId,
+          emailId: existing.id,
+          attachments: email.attachments,
+        });
+      }
     } else {
       // Classify priority using keyword heuristics first (fast)
       const priority = classifyPriority(email.from, email.subject, email.labels);
@@ -202,6 +284,19 @@ export async function syncEmails(
           receivedAt: email.receivedAt,
         },
       });
+      if (email.attachments.length > 0) {
+        await upsertEmailAttachments({
+          userId,
+          emailId: createdEmail.id,
+          attachments: email.attachments,
+        });
+        analyzePendingEmailAttachments(userId, email.attachments.length).catch((err) => {
+          captureError(err, {
+            tags: { scope: "email_attachment.analysis" },
+            extra: { userId, emailId: createdEmail.id, gmailId: email.gmailId },
+          });
+        });
+      }
       const commitmentText = [email.subject, email.body || email.snippet]
         .filter(Boolean)
         .join("\n\n");
@@ -615,7 +710,7 @@ export async function summarizeUnsummarizedEmails(userId: string, limit = 10): P
 //   1. Promotional Korean subjects ("긴급 할인!") tagged URGENT
 //   2. Investor / VC / customer-facing replies tagged LOW
 //   3. Calendar invites and re: threads silently dropped to LOW
-const EMAIL_ANALYSIS_PROMPT = `You are EVE's email triage analyst for a Korean work inbox.
+const EMAIL_ANALYSIS_PROMPT = `You are Eve's email triage analyst for a Korean work inbox.
 
 You decide WHO each email is from, WHAT it asks, and HOW urgent it is. Do not be polite — be useful. Misclassifying a VC reply as LOW is far worse than misclassifying a newsletter as NORMAL.
 
@@ -650,7 +745,7 @@ You decide WHO each email is from, WHAT it asks, and HOW urgent it is. Do not be
 ## Rules
 - summary ALWAYS leads with the sender's display name in Korean if available
 - keyPoints: 1–3 Korean bullets, each ≤40 chars, NO meta ("이메일에 따르면" 금지)
-- actionItems: only if EVE/the user must do something. Empty array if read-and-ack
+- actionItems: only if Eve/the user must do something. Empty array if read-and-ack
 - sentiment: tone of the SENDER, not the request urgency
 
 ## Examples
@@ -928,7 +1023,7 @@ export async function generateSmartReply(
     messages: [
       {
         role: "system",
-        content: `You are EVE's approval-ready email reply drafter. Generate a polite, natural reply based on the template and context.
+        content: `You are Eve's approval-ready email reply drafter. Generate a polite, natural reply based on the template and context.
 Write in the same language as the incoming email (Korean or English).
 Keep it concise (2-4 sentences). Do not add subject line — just the body.
 

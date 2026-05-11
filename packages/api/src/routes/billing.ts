@@ -1,7 +1,9 @@
+import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireAuth } from "../auth.js";
 import { encryptOptional } from "../crypto-tokens.js";
 import { db, prisma } from "../db.js";
+import { clearFallbackState } from "../model-fallback.js";
 import {
   getEffectivePlan,
   isModelAllowedForPlan,
@@ -10,6 +12,11 @@ import {
   PLANS,
   stripe,
 } from "../stripe.js";
+
+function keyHash(apiKey: string | null | undefined): string | null {
+  if (!apiKey) return null;
+  return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
+}
 
 export async function billingRoutes(app: FastifyInstance) {
   // All billing routes require authentication

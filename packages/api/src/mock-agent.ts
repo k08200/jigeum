@@ -1,5 +1,5 @@
 /**
- * Mock EVE Agent — simple decision-thread server for testing the engine.
+ * Mock Eve Agent — simple decision-thread server for testing the engine.
  * Run: npx tsx src/mock-agent.ts
  */
 import Fastify from "fastify";

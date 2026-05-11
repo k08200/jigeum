@@ -1,5 +1,5 @@
 /**
- * Feedback ledger — append-only record of user signals on EVE proposals.
+ * Feedback ledger — append-only record of user signals on Eve proposals.
  *
  * Step 8.1 of the Attention OS roadmap. Every approve/reject/edit/ignore is
  * captured here so later PRs can derive policy from real behavior. Writes

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { apiFetch } from "./api";
+import { apiFetch, clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from "./api";
 
 interface User {
   id: string;
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load token from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem("eve-token");
+    const stored = getStoredAuthToken();
     if (stored) {
       setToken(stored);
       // Verify token
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         })
         .catch(() => {
-          localStorage.removeItem("eve-token");
+          clearStoredAuthToken();
           setToken(null);
         })
         .finally(() => setLoading(false));
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      localStorage.setItem("eve-token", data.token);
+      setStoredAuthToken(data.token);
       setToken(data.token);
       setUser(data.user);
       router.push("/inbox");
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         body: JSON.stringify({ email, password, name }),
       });
-      localStorage.setItem("eve-token", data.token);
+      setStoredAuthToken(data.token);
       setToken(data.token);
       setUser(data.user);
       setGoogleConnected(false);
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithToken = useCallback(
     async (newToken: string) => {
       console.log("[auth] loginWithToken: start");
-      localStorage.setItem("eve-token", newToken);
+      setStoredAuthToken(newToken);
       setToken(newToken);
       console.log("[auth] loginWithToken: token stored, calling /api/auth/me");
       try {
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem("eve-token");
+    clearStoredAuthToken();
     setToken(null);
     setUser(null);
     setGoogleConnected(null);

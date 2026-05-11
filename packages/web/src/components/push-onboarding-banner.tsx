@@ -18,7 +18,9 @@ import { useEffect, useState } from "react";
 import { API_BASE, authHeaders } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
-const DISMISS_KEY = "eve-push-banner-dismissed-at";
+const DISMISS_KEY = "jigeum-push-banner-dismissed-at";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_DISMISS_KEY = `${LEGACY_KEY_PREFIX}-push-banner-dismissed-at`;
 const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
 
 export default function PushOnboardingBanner() {
@@ -44,6 +46,7 @@ export default function PushOnboardingBanner() {
   const dismiss = () => {
     try {
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      localStorage.removeItem(LEGACY_DISMISS_KEY);
     } catch {
       // localStorage unavailable (private mode); banner just won't suppress
     }
@@ -58,7 +61,7 @@ export default function PushOnboardingBanner() {
       if (permission !== "granted") {
         setError(
           permission === "denied"
-            ? "iPhone 설정 → EVE → 알림에서 허용해주세요"
+            ? "iPhone 설정 → Jigeum → 알림에서 허용해주세요"
             : "알림 권한이 필요합니다",
         );
         setSubmitting(false);
@@ -115,7 +118,7 @@ export default function PushOnboardingBanner() {
         <span aria-hidden="true">🔔</span>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-stone-100">EVE 알림 켜기</p>
+        <p className="text-sm font-medium text-stone-100">Jigeum 알림 켜기</p>
         <p className="text-xs text-stone-400 mt-0.5">브리핑과 긴급 메일을 폰으로 바로 받아보세요</p>
         {error && <p className="text-xs text-red-400 mt-1.5">{error}</p>}
         <div className="flex gap-2 mt-2.5">
@@ -164,6 +167,11 @@ async function isEligible(): Promise<boolean> {
   if (Notification.permission !== "default") return false;
 
   try {
+    const legacyDismissed = localStorage.getItem(LEGACY_DISMISS_KEY);
+    if (legacyDismissed) {
+      localStorage.setItem(DISMISS_KEY, legacyDismissed);
+      localStorage.removeItem(LEGACY_DISMISS_KEY);
+    }
     const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0);
     if (dismissedAt && Date.now() - dismissedAt < DISMISS_TTL_MS) return false;
   } catch {

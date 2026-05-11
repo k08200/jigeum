@@ -5,11 +5,11 @@ WORKDIR /app
 # Install dependencies
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/web/package.json packages/web/
-RUN pnpm install --frozen-lockfile --filter @hireeve/web...
+RUN pnpm install --frozen-lockfile --filter @jigeum/web...
 
 # Copy source and build
 COPY packages/web/ packages/web/
-RUN pnpm --filter @hireeve/web build
+RUN pnpm --filter @jigeum/web build
 
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@hireeve/web", "start"]
+CMD ["pnpm", "--filter", "@jigeum/web", "start"]

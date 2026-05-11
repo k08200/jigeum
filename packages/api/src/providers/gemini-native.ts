@@ -8,7 +8,7 @@
  * translate the response into the subset of the OpenAI chat.completions
  * shape that createCompletion + chat.ts consume.
  *
- * Scope is intentionally narrow — only what EVE's chat/briefing paths call:
+ * Scope is intentionally narrow — only what Eve's chat/briefing paths call:
  *   - non-streaming responses with a string content
  *   - streaming responses as AsyncIterable of chunks with `delta.content`
  *   - no tool / function calls (the caller falls back to tool-less mode for

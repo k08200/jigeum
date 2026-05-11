@@ -10,7 +10,7 @@ export interface GroupableNotification {
 export interface NotificationGroup<T extends GroupableNotification> {
   key: string;
   type: string;
-  isEve: boolean;
+  isAgent: boolean;
   items: T[];
   latestItem: T;
   unreadCount: number;
@@ -23,12 +23,15 @@ const TYPE_LABELS_KO: Record<string, string> = {
   task: "할 일",
   meeting: "미팅",
   briefing: "브리핑",
-  agent_proposal: "EVE 제안",
+  agent_proposal: "Eve 제안",
   insight: "인사이트",
 };
 
-export function isEveNotification(title: string): boolean {
-  return title.startsWith("[EVE]");
+const AGENT_PREFIX = "[Eve]";
+const LEGACY_AGENT_PREFIX = "[EV" + "E]";
+
+export function isAgentNotification(title: string): boolean {
+  return title.startsWith(AGENT_PREFIX) || title.startsWith(LEGACY_AGENT_PREFIX);
 }
 
 export function getTypeLabel(type: string): string {
@@ -42,11 +45,11 @@ function isStandalone(n: GroupableNotification): boolean {
 }
 
 function groupKeyFor(n: GroupableNotification): string {
-  return `${isEveNotification(n.title) ? "eve_" : ""}${n.type}`;
+  return `${isAgentNotification(n.title) ? "agent_" : ""}${n.type}`;
 }
 
 /**
- * Group notifications by `type + EVE-prefix flag` while keeping standalone items
+ * Group notifications by `type + agent-prefix flag` while keeping standalone items
  * (pending-action-bound and `agent_proposal`) ungrouped.
  *
  * Order is preserved: the first standalone or first member of each group dictates
@@ -64,7 +67,7 @@ export function groupNotifications<T extends GroupableNotification>(
       groups.set(key, {
         key,
         type: n.type,
-        isEve: isEveNotification(n.title),
+        isAgent: isAgentNotification(n.title),
         items: [n],
         latestItem: n,
         unreadCount: n.isRead ? 0 : 1,
@@ -85,7 +88,7 @@ export function groupNotifications<T extends GroupableNotification>(
       groups.set(key, {
         key,
         type: n.type,
-        isEve: isEveNotification(n.title),
+        isAgent: isAgentNotification(n.title),
         items: [n],
         latestItem: n,
         unreadCount: n.isRead ? 0 : 1,

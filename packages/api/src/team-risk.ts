@@ -3,7 +3,7 @@
  *
  * Step 9 starts team mode without adding a durable team graph yet. We reuse
  * each member's Work Graph and aggregate high/medium contexts into a
- * workspace-level view so EVE can spot cross-member risk.
+ * workspace-level view so Eve can spot cross-member risk.
  */
 
 import { prisma } from "./db.js";

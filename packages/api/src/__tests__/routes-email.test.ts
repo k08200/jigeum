@@ -9,6 +9,8 @@ vi.mock("../gmail.js", () => ({
   getAuthedClient: vi.fn(),
   getGoogleUserInfo: vi.fn(),
   getOAuth2Client: vi.fn(),
+  getAuthedClient: vi.fn(async () => null),
+  createEmailDraft: vi.fn(async () => ({ success: true, draftId: "draft-1" })),
   sendEmail: vi.fn(async () => ({ success: true })),
   toggleReadGmail: vi.fn(async () => {}),
   toggleStarGmail: vi.fn(async () => {}),

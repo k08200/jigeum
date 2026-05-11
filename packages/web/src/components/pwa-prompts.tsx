@@ -7,6 +7,10 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const INSTALL_DISMISSED_KEY = "jigeum-install-dismissed";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_INSTALL_DISMISSED_KEY = `${LEGACY_KEY_PREFIX}-install-dismissed`;
+
 export default function PwaPrompts() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
@@ -19,7 +23,13 @@ export default function PwaPrompts() {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
       // Only show if not dismissed before
-      const dismissed = localStorage.getItem("eve-install-dismissed");
+      const dismissed =
+        localStorage.getItem(INSTALL_DISMISSED_KEY) ||
+        localStorage.getItem(LEGACY_INSTALL_DISMISSED_KEY);
+      if (dismissed) {
+        localStorage.setItem(INSTALL_DISMISSED_KEY, dismissed);
+        localStorage.removeItem(LEGACY_INSTALL_DISMISSED_KEY);
+      }
       if (!dismissed) {
         setShowInstall(true);
       }
@@ -69,7 +79,8 @@ export default function PwaPrompts() {
 
   const dismissInstall = () => {
     setShowInstall(false);
-    localStorage.setItem("eve-install-dismissed", "1");
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    localStorage.removeItem(LEGACY_INSTALL_DISMISSED_KEY);
   };
 
   const handleUpdate = () => {

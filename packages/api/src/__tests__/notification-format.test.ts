@@ -23,7 +23,7 @@ describe("senderName", () => {
 describe("humanizeAutoExec", () => {
   it("translates classify_emails into human Korean", () => {
     const out = humanizeAutoExec("classify_emails", {});
-    expect(out.autoTitle).toBe("[EVE] 메일 분류 완료");
+    expect(out.autoTitle).toBe("[Eve] 메일 분류 완료");
     expect(out.autoMessage).not.toContain("classify_emails");
     expect(out.autoMessage).not.toContain("{");
   });
@@ -33,7 +33,7 @@ describe("humanizeAutoExec", () => {
       to: "Sequoia Capital <ops@sequoia.com>",
       subject: "Re: term sheet review",
     });
-    expect(out.autoTitle).toBe("[EVE] 메일 발송 완료");
+    expect(out.autoTitle).toBe("[Eve] 메일 발송 완료");
     expect(out.autoMessage).toContain("Sequoia Capital");
     expect(out.autoMessage).toContain("term sheet review");
     expect(out.autoMessage).not.toContain("send_email");
@@ -41,7 +41,7 @@ describe("humanizeAutoExec", () => {
 
   it("falls back gracefully on unknown tool", () => {
     const out = humanizeAutoExec("frobnicate_widgets", { foo: "bar" });
-    expect(out.autoTitle).toBe("[EVE] 작업 완료");
+    expect(out.autoTitle).toBe("[Eve] 작업 완료");
     expect(out.autoMessage).toContain("frobnicate widgets");
     expect(out.autoMessage).not.toContain("{");
   });

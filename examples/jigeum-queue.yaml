@@ -1,6 +1,6 @@
-id: eve-queue-list
-name: "EVE Queue List"
-description: "Verify EVE can list the task queue"
+id: jigeum-queue-list
+name: "Jigeum Queue List"
+description: "Verify Jigeum can list the task queue"
 
 agent:
   type: command

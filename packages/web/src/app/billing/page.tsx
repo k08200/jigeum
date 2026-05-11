@@ -137,7 +137,7 @@ function BillingContent() {
           플랜 기록
         </p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
-          EVE 운영 한도와 실행 권한
+          Jigeum 운영 한도와 실행 권한
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-400">
           결정 턴, 모델 사용량, 실행 모드를 한곳에서 확인하고 팀의 결정 흐름에 맞는 플랜으로
@@ -292,7 +292,7 @@ function BillingContent() {
                 <div />
               ) : plan.key === "ENTERPRISE" ? (
                 <a
-                  href="mailto:sales@hireeve.com"
+                  href="mailto:sales@jigeum.ai"
                   className="block rounded-lg border border-stone-700 bg-stone-900/70 py-2.5 text-center text-sm font-medium text-stone-100 transition hover:border-stone-500"
                 >
                   세일즈 문의

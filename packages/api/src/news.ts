@@ -115,7 +115,7 @@ export async function getNews(
     feedNames.map(async (name) => {
       const url = RSS_FEEDS[name];
       const res = await fetch(url, {
-        headers: { "User-Agent": "EVE-News-Bot/1.0" },
+        headers: { "User-Agent": "Eve-News-Bot/1.0" },
         signal: AbortSignal.timeout(5000),
       });
       const xml = await res.text();

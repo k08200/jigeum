@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getStoredAuthToken } from "../lib/api";
 
 const WS_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
   .replace("http://", "ws://")
@@ -39,7 +40,7 @@ export function useWebSocket(userId: string) {
     if (wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
     // Pass JWT token for authenticated WebSocket connection
-    const token = typeof window !== "undefined" ? localStorage.getItem("eve-token") : null;
+    const token = getStoredAuthToken();
     const authParam = token ? `token=${encodeURIComponent(token)}` : `userId=${userId}`;
     const ws = new WebSocket(`${WS_URL}/ws?${authParam}&type=web`);
 

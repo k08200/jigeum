@@ -2,7 +2,7 @@
  * Commitment ledger service — CRUD around the canonical promise record.
  *
  * The ledger is the source of truth for every "내일까지 보내드릴게요" type of
- * statement EVE detects. AttentionItem only projects "currently relevant"
+ * statement Eve detects. AttentionItem only projects "currently relevant"
  * commitments via the producer in attention-mirror.ts.
  */
 

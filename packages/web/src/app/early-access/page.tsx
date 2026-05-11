@@ -96,7 +96,7 @@ export default function EarlyAccessPage() {
             <p className="mt-2 text-sm leading-6 text-stone-300">
               {status === "already"
                 ? "기존 신청을 기준으로 검토 후 메일로 답변드릴게요."
-                : "검토 후 24시간 안에 메일로 답변드릴게요. 메일이 도착하면 EVE에 로그인하실 수 있어요."}
+                : "검토 후 24시간 안에 메일로 답변드릴게요. 메일이 도착하면 Jigeum에 로그인하실 수 있어요."}
             </p>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3">

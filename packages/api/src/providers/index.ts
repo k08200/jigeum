@@ -15,6 +15,7 @@
  * rejected by the OpenAI-compat endpoint's Bearer auth path.
  */
 
+import crypto from "node:crypto";
 import type OpenAI from "openai";
 import OpenAISDK from "openai";
 import type {
@@ -106,8 +107,8 @@ function buildGemini(apiKey = process.env.GEMINI_API_KEY, scope = "env"): Provid
 }
 
 const providers: Record<ProviderName, Provider | null> = {
-  openrouter: buildOpenRouter(),
-  gemini: buildGemini(),
+  openrouter: buildOpenRouter(process.env.OPENROUTER_API_KEY),
+  gemini: buildGemini(process.env.GEMINI_API_KEY),
 };
 
 if (!providers.openrouter) {

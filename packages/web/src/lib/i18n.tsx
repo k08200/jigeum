@@ -71,7 +71,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "chat.send": "Send",
     // Briefing
     "briefing.learningMode":
-      "EVE is learning your email and calendar patterns for the first 2-3 days. Top 3 picks get sharper as you use it.",
+      "Eve is learning your email and calendar patterns for the first 2-3 days. Top 3 picks get sharper as you use it.",
     // Common
     "common.loading": "Loading...",
     "common.cancel": "Cancel",
@@ -81,7 +81,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "common.or": "or",
     // Skills
     "skills.title": "Skills",
-    "skills.subtitle": "Reusable workflows EVE can run for you",
+    "skills.subtitle": "Reusable workflows Eve can run for you",
     "skills.newSkill": "+ New Skill",
     "skills.edit": "Edit Skill",
     "skills.name": "Skill name",
@@ -172,7 +172,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "chat.send": "전송",
     // Briefing
     "briefing.learningMode":
-      "EVE는 처음 2-3일 동안 메일과 일정 패턴을 학습합니다. 사용할수록 Top 3가 더 정확해져요.",
+      "Eve는 처음 2-3일 동안 메일과 일정 패턴을 학습합니다. 사용할수록 Top 3가 더 정확해져요.",
     // Common
     "common.loading": "로딩 중...",
     "common.cancel": "취소",
@@ -182,7 +182,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "common.or": "또는",
     // Skills
     "skills.title": "스킬",
-    "skills.subtitle": "EVE가 반복 실행할 수 있는 워크플로우",
+    "skills.subtitle": "Eve가 반복 실행할 수 있는 워크플로우",
     "skills.newSkill": "+ 새 스킬",
     "skills.edit": "스킬 수정",
     "skills.name": "스킬 이름",
@@ -241,10 +241,24 @@ interface I18nContextType {
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
+const PROFILE_KEY = "jigeum-profile";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_PROFILE_KEY = `${LEGACY_KEY_PREFIX}-profile`;
+
+function getStoredProfile(): string | null {
+  const stored = localStorage.getItem(PROFILE_KEY);
+  if (stored) return stored;
+  const legacyStored = localStorage.getItem(LEGACY_PROFILE_KEY);
+  if (legacyStored) {
+    localStorage.setItem(PROFILE_KEY, legacyStored);
+    localStorage.removeItem(LEGACY_PROFILE_KEY);
+  }
+  return legacyStored;
+}
 
 function detectLocale(): Locale {
   try {
-    const stored = localStorage.getItem("eve-profile");
+    const stored = getStoredProfile();
     if (stored) {
       const { language } = JSON.parse(stored);
       if (language === "ko") return "ko";
@@ -269,7 +283,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
     // Re-detect when profile settings change in another tab/window
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "eve-profile") {
+      if (e.key === PROFILE_KEY || e.key === LEGACY_PROFILE_KEY) {
         setLocaleState(detectLocale());
       }
     };

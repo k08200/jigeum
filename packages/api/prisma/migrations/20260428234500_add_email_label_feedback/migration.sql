@@ -1,5 +1,5 @@
 -- CreateTable: EmailLabelFeedback
--- User-supplied corrections of EVE's automatic email priority classification.
+-- User-supplied corrections of Eve's automatic email priority classification.
 -- Captures both the wrong auto-label AND the heuristic signals/reason snapshot
 -- so the case can later be replayed as a regression test or few-shot example.
 CREATE TABLE "EmailLabelFeedback" (

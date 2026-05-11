@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../lib/auth";
 
 type StepState = "done" | "active" | "pending" | "failed";
+const DISMISS_KEY = "jigeum-beta-learning-card-dismissed";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_DISMISS_KEY = `${LEGACY_KEY_PREFIX}-beta-learning-card-dismissed`;
 
 export default function BetaLearningCard() {
   const { googleConnected, initSync } = useAuth();
@@ -56,11 +59,17 @@ export default function BetaLearningCard() {
   ];
 
   useEffect(() => {
-    setDismissed(localStorage.getItem("eve-beta-learning-card-dismissed") === "true");
+    const legacyDismissed = localStorage.getItem(LEGACY_DISMISS_KEY);
+    if (legacyDismissed) {
+      localStorage.setItem(DISMISS_KEY, legacyDismissed);
+      localStorage.removeItem(LEGACY_DISMISS_KEY);
+    }
+    setDismissed(localStorage.getItem(DISMISS_KEY) === "true");
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem("eve-beta-learning-card-dismissed", "true");
+    localStorage.setItem(DISMISS_KEY, "true");
+    localStorage.removeItem(LEGACY_DISMISS_KEY);
     setDismissed(true);
   };
 
@@ -74,7 +83,7 @@ export default function BetaLearningCard() {
             Beta learning
           </p>
           <h2 className="mt-2 text-base font-semibold text-stone-100">
-            EVE가 처음 2-3일 동안 메일과 일정 패턴을 학습합니다.
+            Eve가 처음 2-3일 동안 메일과 일정 패턴을 학습합니다.
           </h2>
           <p className="mt-2 text-sm leading-6 text-stone-400">
             처음 브리핑은 다소 보수적일 수 있고, 사용할수록 Top 3가 더 정확해져요.

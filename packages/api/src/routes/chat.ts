@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type OpenAI from "openai";
 import { resolveActionTarget } from "../action-target.js";
-import { PROPOSE_ACTION_TOOL } from "../agent/prompt.js";
+import { AGENT_SYSTEM_PROMPT, PROPOSE_ACTION_TOOL } from "../agent/prompt.js";
 import { isHousekeepingProposalToolName } from "../agent-logic.js";
 import {
   deleteAttentionForPendingActions,
@@ -16,7 +16,7 @@ import { recipientFromToolArgs, recordFeedback } from "../feedback.js";
 import { getUserLlmCredentials } from "../llm-credentials.js";
 import { loadMemoriesForPrompt } from "../memory.js";
 import { estimateModelCostUsd } from "../model-fallback.js";
-import { createCompletion, EVE_SYSTEM_PROMPT, MODEL, resolveUserChatModel } from "../openai.js";
+import { createCompletion, MODEL, resolveUserChatModel } from "../openai.js";
 import { getFeedbackPolicyContextForPrompt } from "../policy-extraction.js";
 import { scheduleReminderDeliveryCheck } from "../reminder-scheduler.js";
 import { createReminder } from "../reminders.js";
@@ -468,13 +468,13 @@ export function chatRoutes(app: FastifyInstance) {
       let md = `# ${title}\n\n_Exported: ${date}_\n\n---\n\n`;
 
       for (const msg of convo.messages) {
-        const role = msg.role === "USER" ? "You" : "EVE";
+        const role = msg.role === "USER" ? "You" : "Eve";
         md += `**${role}** _(${new Date(msg.createdAt).toLocaleString("ko-KR")})_\n\n${msg.content}\n\n---\n\n`;
       }
 
       return reply
         .header("Content-Type", "text/markdown; charset=utf-8")
-        .header("Content-Disposition", `attachment; filename="eve-chat-${date}.md"`)
+        .header("Content-Disposition", `attachment; filename="jigeum-chat-${date}.md"`)
         .send(md);
     },
   );
@@ -594,7 +594,7 @@ export function chatRoutes(app: FastifyInstance) {
         {
           role: "system" as const,
           content:
-            EVE_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext + retryPolicyContext,
+            AGENT_SYSTEM_PROMPT + retryDynamicContext + retryMemoryContext + retryPolicyContext,
         },
         ...historyMessages.map((m: { role: string; content: string }) => ({
           role: m.role.toLowerCase() as "user" | "assistant",
@@ -985,7 +985,7 @@ export function chatRoutes(app: FastifyInstance) {
       const allowedToolNames = new Set(baseTools.map((tool) => tool.function.name));
       const tools = [...baseTools, PROPOSE_ACTION_TOOL];
 
-      // Build dynamic context so EVE knows the current situation
+      // Build dynamic context so Eve knows the current situation
       const contextParts: string[] = [];
       try {
         const now = new Date();
@@ -1063,7 +1063,7 @@ export function chatRoutes(app: FastifyInstance) {
         return [
           {
             role: "system" as const,
-            content: EVE_SYSTEM_PROMPT + dynamicContext + memoryContext + policyContext,
+            content: AGENT_SYSTEM_PROMPT + dynamicContext + memoryContext + policyContext,
           },
           ...compacted,
           { role: "user" as const, content },
@@ -1681,7 +1681,7 @@ export function chatRoutes(app: FastifyInstance) {
               userId,
               "FEEDBACK",
               `never_suggest_${action.toolName}`,
-              `User explicitly asked EVE to never propose ${action.toolName} actions.`,
+              `User explicitly asked Eve to never propose ${action.toolName} actions.`,
               "user",
             ),
           )

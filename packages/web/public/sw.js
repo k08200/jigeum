@@ -1,5 +1,5 @@
-// EVE Service Worker — offline caching + push notification support
-const CACHE_NAME = "eve-v4";
+// Jigeum Service Worker — offline caching + push notification support
+const CACHE_NAME = "jigeum-v1";
 const PRECACHE_URLS = ["/", "/chat", "/briefing", "/manifest.json"];
 
 // Install: precache shell
@@ -90,7 +90,7 @@ self.addEventListener("push", (event) => {
   });
 
   let data = {};
-  let title = "EVE";
+  let title = "Jigeum";
   let options = {
     body: "You have a new notification",
     icon: "/icon-192.svg",
@@ -100,7 +100,7 @@ self.addEventListener("push", (event) => {
   try {
     data = rawText ? JSON.parse(rawText) : {};
     console.log("[SW] Push data parsed:", JSON.stringify(data));
-    title = data.title || "EVE";
+    title = data.title || "Jigeum";
     options = {
       body: data.body || "You have a new notification",
       icon: "/icon-192.svg",
@@ -114,8 +114,8 @@ self.addEventListener("push", (event) => {
   } catch (err) {
     console.error("[SW] Push data parse error:", err);
     // Show fallback notification even if parsing fails
-    title = "EVE — New notification";
-    options.body = rawText || "Check EVE for details";
+    title = "Jigeum — New notification";
+    options.body = rawText || "Check Jigeum for details";
   }
   event.waitUntil(
     Promise.all([

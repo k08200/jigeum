@@ -12,7 +12,7 @@ if (!JWT_SECRET && process.env.NODE_ENV === "production") {
 if (!JWT_SECRET) {
   console.warn("[AUTH] WARNING: JWT_SECRET not set — using insecure default for development.");
 }
-const EFFECTIVE_SECRET = JWT_SECRET || "eve-dev-secret-do-not-use-in-production";
+const EFFECTIVE_SECRET = JWT_SECRET || "jigeum-dev-secret-do-not-use-in-production";
 const TOKEN_EXPIRY = "7d";
 
 function isAdminEmail(email: string | null | undefined): boolean {
@@ -192,12 +192,12 @@ export async function ensureDemoUser() {
     where: { id: "demo-user" },
     create: {
       id: "demo-user",
-      email: "demo@hireeve.com",
+      email: "demo@jigeum.ai",
       name: "Demo User",
       passwordHash: hash,
     },
     update: {
-      email: "demo@hireeve.com",
+      email: "demo@jigeum.ai",
       name: "Demo User",
       passwordHash: hash,
     },
@@ -266,7 +266,7 @@ async function seedDemoData() {
     data: [
       {
         userId: uid,
-        title: "EVE 로드맵 Q2",
+        title: "Eve 로드맵 Q2",
         content:
           "## 2분기 목표\n\n1. Slack 양방향 연동 완성\n2. 팀 워크스페이스 정식 출시\n3. 데스크톱 앱 v1.0 배포\n4. Product Hunt 런치\n\n### KPI\n- MAU 500명\n- 유료 전환 5%",
       },
@@ -280,7 +280,7 @@ async function seedDemoData() {
         userId: uid,
         title: "경쟁사 분석",
         content:
-          "### 직접 경쟁\n- Notion AI: 문서 중심, 채팅 아님\n- ChatGPT: 범용, 도구 연동 약함\n\n### EVE 차별점\n- 한국어 네이티브\n- 36+ 도구 통합\n- 자율 백그라운드 에이전트\n- 데스크톱 캐릭터",
+          "### 직접 경쟁\n- Notion AI: 문서 중심, 채팅 아님\n- ChatGPT: 범용, 도구 연동 약함\n\n### Eve 차별점\n- 한국어 네이티브\n- 36+ 도구 통합\n- 자율 백그라운드 에이전트\n- 데스크톱 캐릭터",
       },
     ],
   });

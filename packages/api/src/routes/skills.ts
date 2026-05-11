@@ -2,7 +2,7 @@
  * Skills API — Reusable workflows defined by the user.
  *
  * Each skill is a named prompt template (with optional {{variable}} slots)
- * that EVE can run on demand or via the execute_skill tool.
+ * that Eve can run on demand or via the execute_skill tool.
  */
 
 import type { FastifyInstance } from "fastify";

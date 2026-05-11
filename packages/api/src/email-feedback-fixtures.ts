@@ -7,7 +7,7 @@
  * user correction only labels heuristic priority (URGENT/NORMAL/LOW); we
  * don't ask the user to also predict the LLM batch label, so we don't
  * synthesize one. We keep `capturedHeuristic` so the divergence between
- * EVE's auto-label and the user's intent stays visible in any future
+ * Eve's auto-label and the user's intent stays visible in any future
  * inspection of the row.
  */
 

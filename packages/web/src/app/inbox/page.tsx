@@ -218,7 +218,7 @@ function InboxView() {
           <p className="text-sm text-stone-300 mb-1">
             {filter === "pending" ? "대기 중인 항목이 없어요" : "받은 일이 없어요"}
           </p>
-          <p className="text-xs text-stone-500">EVE가 새로운 제안을 만들면 여기에 표시돼요.</p>
+          <p className="text-xs text-stone-500">Eve가 새로운 제안을 만들면 여기에 표시돼요.</p>
         </div>
       )}
 

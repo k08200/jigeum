@@ -1,5 +1,5 @@
 /**
- * Contact / CRM management for EVE
+ * Contact / CRM management for Eve
  */
 
 import { prisma } from "./db.js";

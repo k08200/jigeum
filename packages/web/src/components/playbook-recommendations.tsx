@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import type {
-  EvePlaybookDomain,
+  JigeumPlaybookDomain,
   PlaybookContextHit,
   PlaybookRecommendation,
   PlaybookRecommendationSummary,
@@ -180,7 +180,7 @@ function RiskDot({ risk }: { risk: PlaybookContextHit["risk"] }) {
   return <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${className}`} />;
 }
 
-function domainMeta(domain: EvePlaybookDomain): { label: string; className: string } {
+function domainMeta(domain: JigeumPlaybookDomain): { label: string; className: string } {
   switch (domain) {
     case "investment":
       return {

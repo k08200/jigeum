@@ -531,7 +531,7 @@ function ChatPageContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `eve-chat-${id.slice(0, 8)}.md`;
+    a.download = `jigeum-chat-${id.slice(0, 8)}.md`;
     a.click();
     URL.revokeObjectURL(url);
     toast("Markdown으로 내보냈습니다", "success");
@@ -1050,7 +1050,7 @@ function ChatPageContent() {
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-stone-300 mb-1.5">EVE</p>
+                  <p className="text-[13px] font-semibold text-stone-300 mb-1.5">Eve</p>
                   <div className="text-[15px] text-stone-200 leading-relaxed">
                     <Markdown content={streamingContent} />
                     <span className="inline-block w-0.5 h-5 bg-stone-400 rounded-full animate-pulse ml-0.5 align-text-bottom" />

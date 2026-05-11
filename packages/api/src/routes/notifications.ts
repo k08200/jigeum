@@ -139,7 +139,7 @@ export async function notificationRoutes(app: FastifyInstance) {
   app.post("/push/test", async (request) => {
     const userId = getUserId(request);
     const result = await sendPushNotification(userId, {
-      title: "EVE 테스트",
+      title: "Eve 테스트",
       body: "Push 알림이 정상 작동합니다!",
       url: "/chat",
     });

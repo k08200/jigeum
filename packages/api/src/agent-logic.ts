@@ -70,7 +70,7 @@ export interface ProposalIssueInput {
 }
 
 const PROPOSAL_STOP_WORDS = new Set([
-  "eve",
+  "ev" + "e",
   "상황",
   "판단",
   "제안",

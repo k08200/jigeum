@@ -160,7 +160,7 @@ export default function LandingPage() {
         <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <Link href="/" className="flex items-center gap-3">
             <BrandMark className="h-9 w-9" />
-            <span className="text-sm font-semibold tracking-[0.18em] text-stone-100">EVE</span>
+            <span className="text-sm font-semibold tracking-[0.18em] text-stone-100">JIGEUM</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link

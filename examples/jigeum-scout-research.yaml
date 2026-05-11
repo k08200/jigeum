@@ -1,6 +1,6 @@
-id: eve-scout-research
-name: "EVE Scout Research (live)"
-description: "Run EVE scout in research mode with a simple task. Requires Ollama + Docker."
+id: jigeum-scout-research
+name: "Jigeum Scout Research (live)"
+description: "Run Jigeum scout in research mode with a simple task. Requires Ollama + Docker."
 timeout: 300
 
 agent:

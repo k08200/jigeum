@@ -8,7 +8,7 @@ import { prisma } from "../db.js";
 const email = process.argv[2] || "yongrean.kim@wrtn.io";
 
 async function main() {
-  console.log(`\n=== EVE Push/Briefing Diagnosis for ${email} ===\n`);
+  console.log(`\n=== Eve Push/Briefing Diagnosis for ${email} ===\n`);
 
   // 1. User account state
   const user = await prisma.user.findUnique({
