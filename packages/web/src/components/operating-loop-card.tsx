@@ -128,23 +128,43 @@ export default function OperatingLoopCard() {
 }
 
 function MoveRow({ move }: { move: OperatingPlanMove }) {
+  const chatHref = `/chat?prefill=${encodeURIComponent(move.prompt)}`;
   const body = (
     <article className="rounded-xl border border-stone-800 bg-stone-900/35 p-3 transition hover:border-amber-300/25 hover:bg-stone-900/55">
       <div className="flex flex-wrap items-center gap-2">
         <ToneBadge tone={move.tone} label={move.label} />
         <span className="text-[11px] text-stone-600">{sourceLabel(move.source)}</span>
       </div>
-      <p className="mt-2 break-words text-sm font-medium text-stone-100">{move.title}</p>
+      {move.href ? (
+        <Link
+          href={move.href}
+          className="mt-2 block break-words text-sm font-medium text-stone-100"
+        >
+          {move.title}
+        </Link>
+      ) : (
+        <p className="mt-2 break-words text-sm font-medium text-stone-100">{move.title}</p>
+      )}
       <p className="mt-1 line-clamp-2 text-xs leading-5 text-stone-500">{move.reason}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          href={chatHref}
+          className="rounded-md border border-amber-300/25 bg-amber-300/10 px-2.5 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-300/15"
+        >
+          스레드로 준비
+        </Link>
+        {move.href && (
+          <Link
+            href={move.href}
+            className="rounded-md border border-stone-700 px-2.5 py-1.5 text-xs text-stone-400 transition hover:bg-stone-800"
+          >
+            원본 보기
+          </Link>
+        )}
+      </div>
     </article>
   );
-  return move.href ? (
-    <Link href={move.href} className="block">
-      {body}
-    </Link>
-  ) : (
-    body
-  );
+  return body;
 }
 
 function WatchRow({ context }: { context: OperatingPlanWatchContext }) {

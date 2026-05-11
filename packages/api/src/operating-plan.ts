@@ -30,6 +30,7 @@ export interface OperatingPlanMove {
   title: string;
   reason: string;
   href: string | null;
+  prompt: string;
   label: string;
   tone: OperatingPlanTone;
   source: "attention" | "work_context" | "playbook";
@@ -184,6 +185,13 @@ function moveFromAttention(item: AttentionItem): OperatingPlanMove {
     title,
     reason,
     href: attentionHref(item),
+    prompt: promptForMove({
+      title,
+      reason,
+      label: attentionLabel(item),
+      href: attentionHref(item),
+      source: "Decision Card",
+    }),
     label: attentionLabel(item),
     tone: attentionTone(item),
     source: "attention",
@@ -196,6 +204,13 @@ function moveFromContext(context: WorkGraphContext): OperatingPlanMove {
     title: context.title,
     reason: context.reasons[0] || "여러 신호가 같은 업무 맥락으로 묶였습니다.",
     href: context.href,
+    prompt: promptForMove({
+      title: context.title,
+      reason: context.reasons[0] || "여러 신호가 같은 업무 맥락으로 묶였습니다.",
+      label: context.risk === "high" ? "위험 맥락" : "관찰 맥락",
+      href: context.href,
+      source: "Work Graph",
+    }),
     label: context.risk === "high" ? "위험 맥락" : "관찰 맥락",
     tone: context.risk === "high" ? "warn" : "steady",
     source: "work_context",
@@ -210,10 +225,34 @@ function moveFromPlaybook(recommendation: PlaybookRecommendation | null): Operat
     title: step?.title || `${recommendation.playbook.name} 실행 점검`,
     reason: recommendation.reasons[0] || recommendation.playbook.bestFor,
     href: null,
+    prompt: promptForMove({
+      title: step?.title || `${recommendation.playbook.name} 실행 점검`,
+      reason: recommendation.reasons[0] || recommendation.playbook.bestFor,
+      label: recommendation.playbook.active ? "활성 Playbook" : "추천 Playbook",
+      href: null,
+      source: recommendation.playbook.name,
+    }),
     label: recommendation.playbook.active ? "활성 Playbook" : "추천 Playbook",
     tone: recommendation.playbook.active ? "warn" : "steady",
     source: "playbook",
   };
+}
+
+function promptForMove(input: {
+  title: string;
+  reason: string;
+  label: string;
+  href: string | null;
+  source: string;
+}): string {
+  const location = input.href ? `\n관련 위치: ${input.href}` : "";
+  return [
+    `Operating Loop에서 "${input.title}"를 다음 움직임으로 골랐어.`,
+    `분류: ${input.label}`,
+    `출처: ${input.source}`,
+    `근거: ${input.reason}${location}`,
+    "이걸 실행 전 승인 가능한 결정 카드로 정리하고, 필요한 초안/체크리스트/리스크를 만들어줘.",
+  ].join("\n");
 }
 
 function watchFromContext(context: WorkGraphContext): OperatingPlanWatchContext {

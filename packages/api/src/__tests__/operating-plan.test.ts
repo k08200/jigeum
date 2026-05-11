@@ -54,6 +54,8 @@ describe("buildOperatingPlanFromSignals", () => {
       label: "승인 필요",
       reason: "답장 초안을 확인하고 승인",
     });
+    expect(plan.nextMoves[0].prompt).toContain("승인 가능한 결정 카드");
+    expect(plan.nextMoves[0].prompt).toContain("/chat/chat-1");
   });
 
   it("turns high-risk work graph contexts into recovery moves", () => {
@@ -92,6 +94,7 @@ describe("buildOperatingPlanFromSignals", () => {
       label: "위험 맥락",
       href: "/email/email-1",
     });
+    expect(plan.nextMoves[0].prompt).toContain("Work Graph");
     expect(plan.watchlist[0]).toMatchObject({
       id: "email:thread-1",
       risk: "high",
