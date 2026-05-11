@@ -257,7 +257,7 @@ function candidateFromSupport(
       support,
       support.edited,
       events,
-      "The user often edits this pattern, so EVE should keep it reviewable as a draft.",
+      "The user often edits this pattern, so Eve should keep it reviewable as a draft.",
     );
   }
 

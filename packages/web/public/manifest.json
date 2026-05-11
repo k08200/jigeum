@@ -1,7 +1,7 @@
 {
-  "name": "EVE — Decision OS for Work",
-  "short_name": "EVE",
-  "description": "Decision OS for work signals, approval queues, briefings, and memory.",
+  "name": "Jigeum — What matters now at work",
+  "short_name": "Jigeum",
+  "description": "Work signals, approval queues, briefings, and memory for what matters now.",
   "start_url": "/chat",
   "display": "standalone",
   "background_color": "#10100d",

@@ -2,7 +2,7 @@
  * Work Graph v0.
  *
  * This is the first connective layer above Attention Queue and Commitment
- * Ledger. It groups existing signals into active work contexts so EVE can talk
+ * Ledger. It groups existing signals into active work contexts so Eve can talk
  * about "the PartnerCo thread" or "the launch chat" instead of isolated rows.
  *
  * v0 is intentionally read-only and inferred from current tables. A durable

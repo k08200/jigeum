@@ -96,9 +96,9 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold">
-            <span className="text-amber-300">EVE</span>
+            <span className="text-amber-300">Jigeum</span>
           </h1>
-          <p className="text-stone-500 text-xs mt-1.5">Decision OS for Work</p>
+          <p className="text-stone-500 text-xs mt-1.5">What matters now at work</p>
         </div>
 
         {/* Form */}

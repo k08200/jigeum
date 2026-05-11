@@ -20,7 +20,7 @@ const decisionCards = [
   {
     label: "Move",
     title: "Block 3-4pm and draft the reply",
-    body: "EVE prepares the work, then waits for your approval before acting.",
+    body: "Eve prepares the work, then waits for your approval before acting.",
     tone: "text-emerald-200 border-emerald-300/25 bg-emerald-300/10",
   },
 ];
@@ -42,12 +42,12 @@ const pillars = [
     icon: "shield" as const,
     label: "Approval",
     title: "Acts with visible reasoning",
-    body: "Every meaningful move shows the why chain before EVE asks to execute.",
+    body: "Every meaningful move shows the why chain before Eve asks to execute.",
   },
 ];
 
 const trustRows = [
-  ["Observe", "EVE watches patterns without changing anything."],
+  ["Observe", "Eve watches patterns without changing anything."],
   ["Suggest", "Important connections become approval cards."],
   ["Draft", "Replies, reminders, and calendar moves are prepared first."],
   ["Approve", "External-facing work waits for your explicit yes."],
@@ -160,7 +160,7 @@ export default function LandingPage() {
         <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <Link href="/" className="flex items-center gap-3">
             <BrandMark className="h-9 w-9" />
-            <span className="text-sm font-semibold tracking-[0.18em] text-stone-100">EVE</span>
+            <span className="text-sm font-semibold tracking-[0.18em] text-stone-100">JIGEUM</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link
@@ -182,13 +182,13 @@ export default function LandingPage() {
           <div className="max-w-3xl">
             <p className="mb-5 inline-flex items-center gap-2 border-b border-[#d8a45d]/50 pb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#d8a45d]">
               <Icon type="compass" className="h-4 w-4" />
-              Decision OS for work
+              What matters now at work
             </p>
             <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-tight text-white md:text-7xl lg:text-8xl">
               Stop checking apps. Clear decisions.
             </h1>
             <p className="mt-7 max-w-2xl text-base leading-7 text-stone-300 md:text-xl md:leading-8">
-              EVE reads the signals across email, calendar, tasks, and memory, then turns them into
+              Jigeum reads the signals across email, calendar, tasks, and memory, then turns them into
               clear approval cards with the reasoning attached.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -350,7 +350,7 @@ export default function LandingPage() {
             Work graph
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
-            EVE should show the shape of the work.
+            Jigeum should show the shape of the work.
           </h2>
           <p className="mt-5 text-sm leading-7 text-stone-400 md:text-base">
             The strongest product surface is not chat. It is the map behind the queue: who is
@@ -405,7 +405,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm text-stone-500 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <BrandMark className="h-7 w-7" />
-            <span>EVE turns scattered signals into approved decisions.</span>
+            <span>Jigeum turns scattered signals into what matters now.</span>
           </div>
           <div className="flex gap-5">
             <Link href="/privacy" className="transition hover:text-stone-300">

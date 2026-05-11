@@ -1,36 +1,30 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Landing page", () => {
-  test("displays hero with concept message", async ({ page }) => {
+  test("displays Jigeum hero with concept message", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toContainText("Connect once");
-    await expect(page.locator("h1")).toContainText("EVE handles the rest");
+    await expect(page.getByRole("link", { name: "JIGEUM" })).toBeVisible();
+    await expect(page.locator("h1")).toContainText("Stop checking apps");
+    await expect(page.locator("h1")).toContainText("Clear decisions");
   });
 
-  test("shows Get Started Free button linking to login", async ({ page }) => {
+  test("shows early access CTA", async ({ page }) => {
     await page.goto("/");
-    const cta = page.locator('a:has-text("Get Started Free")').first();
+    const cta = page.locator('a:has-text("Request early access")').first();
     await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute("href", "/login");
+    await expect(cta).toHaveAttribute("href", "/early-access");
   });
 
-  test("shows How EVE works section with 3 pillars", async ({ page }) => {
+  test("shows decision queue example", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=1. Connect")).toBeVisible();
-    await expect(page.locator("text=2. EVE decides")).toBeVisible();
-    await expect(page.locator("text=3. EVE acts")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Prepare investor follow-up" })).toBeVisible();
+    await expect(page.getByText("Approval needed")).toBeVisible();
   });
 
-  test("shows 24/7 difference section", async ({ page }) => {
+  test("shows work graph and trust ladder sections", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=EVE works while your computer is off")).toBeVisible();
-  });
-
-  test("shows autonomous actions", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.locator("text=Morning briefing")).toBeVisible();
-    await expect(page.locator("text=Email triage")).toBeVisible();
-    await expect(page.locator("text=Urgent alerts")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Jigeum should show the shape/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Trust is a ladder/ })).toBeVisible();
   });
 
   test("no pricing section visible", async ({ page }) => {

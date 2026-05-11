@@ -10,6 +10,7 @@ import { localMinuteOfDay, normalizeTimeZone } from "./time-zone.js";
 
 export type NotifCategory =
   | "email_urgent"
+  | "email_candidate"
   | "meeting"
   | "task_due"
   | "agent_proposal"
@@ -18,6 +19,7 @@ export type NotifCategory =
 
 interface NotifPrefs {
   notifyEmailUrgent: boolean;
+  notifyEmailCandidate: boolean;
   notifyMeeting: boolean;
   notifyTaskDue: boolean;
   notifyAgentProposal: boolean;
@@ -31,6 +33,8 @@ function categoryEnabled(prefs: NotifPrefs, category: NotifCategory): boolean {
   switch (category) {
     case "email_urgent":
       return prefs.notifyEmailUrgent;
+    case "email_candidate":
+      return prefs.notifyEmailCandidate;
     case "meeting":
       return prefs.notifyMeeting;
     case "task_due":
@@ -83,6 +87,8 @@ export async function shouldNotify(userId: string, category: NotifCategory): Pro
   const prefs: NotifPrefs = {
     notifyEmailUrgent:
       (config as unknown as { notifyEmailUrgent?: boolean }).notifyEmailUrgent ?? true,
+    notifyEmailCandidate:
+      (config as unknown as { notifyEmailCandidate?: boolean }).notifyEmailCandidate ?? true,
     notifyMeeting: (config as unknown as { notifyMeeting?: boolean }).notifyMeeting ?? true,
     notifyTaskDue: (config as unknown as { notifyTaskDue?: boolean }).notifyTaskDue ?? true,
     notifyAgentProposal:

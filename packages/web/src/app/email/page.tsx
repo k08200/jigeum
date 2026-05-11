@@ -6,7 +6,25 @@ import AuthGuard from "../../components/auth-guard";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
-type Filter = "all" | "reply-needed" | "urgent" | "unread" | "automated";
+type Filter =
+  | "all"
+  | "reply-needed"
+  | "urgent"
+  | "unread"
+  | "candidates"
+  | "attachments"
+  | "automated";
+
+interface CandidateProfilePreview {
+  name: string | null;
+  role: string | null;
+  contact: string | null;
+  summary: string;
+  missingFields: string[];
+  confidence: number;
+  evidenceCount: number;
+  intakeStatus: string | null;
+}
 
 interface EmailRow {
   id: string;
@@ -20,6 +38,13 @@ interface EmailRow {
   category: string | null;
   summary: string | null;
   needsReply?: boolean;
+  attachmentCount?: number;
+  attachmentCandidateCount?: number;
+  attachmentPendingCount?: number;
+  attachmentFallbackCount?: number;
+  attachmentUnsupportedCount?: number;
+  attachmentCategories?: string[];
+  candidateProfilePreview?: CandidateProfilePreview | null;
 }
 
 interface ListResponse {
@@ -34,6 +59,8 @@ const FILTERS: { key: Filter; label: string; query: string }[] = [
   { key: "reply-needed", label: "Needs reply", query: "filter=reply-needed" },
   { key: "urgent", label: "Urgent", query: "filter=urgent" },
   { key: "unread", label: "Unread", query: "filter=unread" },
+  { key: "candidates", label: "Candidates", query: "filter=candidates" },
+  { key: "attachments", label: "Attachments", query: "filter=attachments" },
   { key: "automated", label: "Automated", query: "category=automated" },
 ];
 
@@ -50,6 +77,7 @@ function EmailView() {
   const [emails, setEmails] = useState<EmailRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const [source, setSource] = useState<"gmail" | "demo" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,14 +116,32 @@ function EmailView() {
     }
   };
 
+  const reanalyzeAttachments = async () => {
+    setReanalyzing(true);
+    setError(null);
+    try {
+      await apiFetch("/api/email/attachments/analyze", {
+        method: "POST",
+        body: JSON.stringify({ retryFallback: true, limit: 50 }),
+      });
+      await load(filter);
+    } catch (err) {
+      captureClientError(err, { scope: "email.attachments.analyzeAll" });
+      setError("첨부파일 분석을 다시 실행하지 못했어요.");
+    } finally {
+      setReanalyzing(false);
+    }
+  };
+
   const unreadCount = emails.filter((email) => !email.isRead).length;
   const urgentCount = emails.filter((email) => email.priority === "URGENT").length;
   const replyCount = emails.filter((email) => email.needsReply).length;
+  const candidateCount = emails.filter((email) => (email.attachmentCandidateCount ?? 0) > 0).length;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-6 md:py-10">
       <header className="mb-5 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-2xl shadow-black/10">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
               Signal Mail
@@ -104,23 +150,40 @@ function EmailView() {
               메일 신호를 결정 단위로 정리
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
-              EVE가 긴급도, 답장 필요 여부, 자동화 신호를 먼저 드러내고 실행 전 맥락으로 묶습니다.
+              Eve가 긴급도, 답장 필요 여부, 자동화 신호를 먼저 드러내고 실행 전 맥락으로 묶습니다.
               {source === "demo" && <span className="ml-2 text-amber-300">데모 데이터</span>}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={syncNow}
-            disabled={syncing}
-            className="shrink-0 rounded-lg border border-stone-700/60 px-3 py-1.5 text-xs text-stone-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
-          >
-            {syncing ? "동기화 중..." : "지금 동기화"}
-          </button>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Link
+              href="/email/candidates"
+              className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-center text-xs text-emerald-300 transition hover:bg-emerald-500/10 hover:text-emerald-100"
+            >
+              후보자 큐
+            </Link>
+            <button
+              type="button"
+              onClick={syncNow}
+              disabled={syncing}
+              className="rounded-lg border border-stone-700/60 px-3 py-1.5 text-xs text-stone-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
+            >
+              {syncing ? "동기화 중..." : "지금 동기화"}
+            </button>
+            <button
+              type="button"
+              onClick={reanalyzeAttachments}
+              disabled={reanalyzing}
+              className="rounded-lg border border-sky-500/30 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/10 hover:text-sky-100 disabled:opacity-50"
+            >
+              {reanalyzing ? "분석 중..." : "첨부 재분석"}
+            </button>
+          </div>
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-4 gap-2">
           <SignalStat label="Unread" value={unreadCount} />
           <SignalStat label="Urgent" value={urgentCount} />
           <SignalStat label="Reply" value={replyCount} />
+          <SignalStat label="Talent" value={candidateCount} />
         </div>
       </header>
 
@@ -204,6 +267,22 @@ function EmailRowItem({ email }: { email: EmailRow }) {
             <div className="flex items-center gap-2">
               <PriorityBadge priority={email.priority} />
               {email.needsReply && <ReplyNeededBadge />}
+              {(email.attachmentCandidateCount ?? 0) > 0 && <CandidateBadge />}
+              {(email.attachmentCount ?? 0) > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-sky-400/30 bg-sky-400/10 text-sky-300 font-medium shrink-0">
+                  첨부 {email.attachmentCount}
+                </span>
+              )}
+              {(email.attachmentPendingCount ?? 0) > 0 && (
+                <span className="shrink-0 rounded border border-stone-600 bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-stone-400">
+                  분석 대기 {email.attachmentPendingCount}
+                </span>
+              )}
+              {(email.attachmentFallbackCount ?? 0) > 0 && (
+                <span className="shrink-0 rounded border border-amber-400/25 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                  기본 분석 {email.attachmentFallbackCount}
+                </span>
+              )}
               {email.category && <CategoryBadge category={email.category} />}
               {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
             </div>
@@ -215,12 +294,15 @@ function EmailRowItem({ email }: { email: EmailRow }) {
             <p className="mt-0.5 truncate text-xs text-stone-400">{email.subject || "제목 없음"}</p>
             {email.summary ? (
               <p className="mt-1 line-clamp-2 text-[11px] text-amber-200/85">
-                <span className="mr-1 text-amber-300">EVE:</span>
+                <span className="mr-1 text-amber-300">Eve:</span>
                 {email.summary}
               </p>
             ) : email.snippet ? (
               <p className="mt-1 line-clamp-2 text-[11px] text-stone-600">{email.snippet}</p>
             ) : null}
+            {email.candidateProfilePreview && (
+              <CandidatePreview profile={email.candidateProfilePreview} />
+            )}
           </div>
           <time className="shrink-0 pt-0.5 text-[11px] tabular-nums text-stone-500">
             {formatRelative(email.date)}
@@ -230,10 +312,69 @@ function EmailRowItem({ email }: { email: EmailRow }) {
     </li>
   );
 }
+
+function CandidatePreview({ profile }: { profile: CandidateProfilePreview }) {
+  const title = [profile.name || "이름 미확인", profile.role].filter(Boolean).join(" · ");
+  const missing =
+    profile.missingFields.length > 0
+      ? `추가 확인: ${profile.missingFields.map(candidateMissingLabel).join(", ")}`
+      : null;
+  return (
+    <div className="mt-2 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[11px] font-medium text-emerald-200">{title}</p>
+        <span className="shrink-0 text-[10px] tabular-nums text-emerald-300/80">
+          {Math.round(profile.confidence * 100)}%
+        </span>
+      </div>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-stone-400">
+        {profile.summary}
+      </p>
+      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-stone-500">
+        {profile.contact && <span className="truncate">연락처 {profile.contact}</span>}
+        {profile.intakeStatus && <span>{candidateIntakeLabel(profile.intakeStatus)}</span>}
+        <span>파일 {profile.evidenceCount}개</span>
+        {missing && <span className="text-amber-300/80">{missing}</span>}
+      </div>
+    </div>
+  );
+}
+
+function candidateIntakeLabel(status: string): string {
+  const labels: Record<string, string> = {
+    NEEDS_ANALYSIS: "분석 필요",
+    NEEDS_INFO: "정보 확인",
+    READY_TO_REVIEW: "검토 대기",
+    REVIEWING: "검토 중",
+    CONTACTED: "연락 완료",
+    SHORTLISTED: "보류/후보",
+    REJECTED: "거절",
+    ARCHIVED: "보관",
+  };
+  return labels[status] || status;
+}
+
+function candidateMissingLabel(field: string): string {
+  const labels: Record<string, string> = {
+    name: "이름",
+    contact: "연락처",
+    role: "역할",
+    portfolio: "포트폴리오",
+  };
+  return labels[field] || field;
+}
 function ReplyNeededBadge() {
   return (
     <span className="text-[10px] px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-300 font-medium shrink-0">
       답장 필요
+    </span>
+  );
+}
+
+function CandidateBadge() {
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 font-medium shrink-0">
+      후보자
     </span>
   );
 }

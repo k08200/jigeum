@@ -91,9 +91,9 @@ export default function FeedbackPolicyStudio() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
             Policy Studio
           </p>
-          <h2 className="mt-2 text-lg font-semibold text-stone-100">EVE가 배운 운영 규칙</h2>
+          <h2 className="mt-2 text-lg font-semibold text-stone-100">Eve가 배운 운영 규칙</h2>
           <p className="mt-1 max-w-xl text-xs leading-5 text-stone-500">
-            승인, 거절, 수정 패턴에서 뽑은 후보를 켜거나 숨겨 EVE의 제안 성향을 조정합니다.
+            승인, 거절, 수정 패턴에서 뽑은 후보를 켜거나 숨겨 Eve의 제안 성향을 조정합니다.
           </p>
         </div>
         <button

@@ -1,5 +1,5 @@
 /**
- * Reminder / Follow-up system for EVE
+ * Reminder / Follow-up system for Eve
  * "3일 후에 다시 확인해줘", "내일 오전 9시에 알려줘"
  */
 

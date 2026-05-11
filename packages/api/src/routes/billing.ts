@@ -1,7 +1,9 @@
+import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireAuth } from "../auth.js";
-import { encryptOptional } from "../crypto-tokens.js";
+import { decryptOptional, encryptOptional } from "../crypto-tokens.js";
 import { db, prisma } from "../db.js";
+import { clearFallbackState } from "../model-fallback.js";
 import {
   getEffectivePlan,
   isModelAllowedForPlan,
@@ -10,6 +12,11 @@ import {
   PLANS,
   stripe,
 } from "../stripe.js";
+
+function keyHash(apiKey: string | null | undefined): string | null {
+  if (!apiKey) return null;
+  return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
+}
 
 export async function billingRoutes(app: FastifyInstance) {
   // All billing routes require authentication
@@ -126,10 +133,30 @@ export async function billingRoutes(app: FastifyInstance) {
 
     const planModels = PLAN_MODELS[user.plan] || PLAN_MODELS.FREE;
     const userFields = user as unknown as { chatModel?: string; agentModel?: string };
-    const keyFields = user as unknown as {
-      openRouterApiKey?: string | null;
-      geminiApiKey?: string | null;
+    const [keyFields] =
+      typeof prisma.$queryRaw === "function"
+        ? await prisma.$queryRaw<
+            Array<{
+              openRouterApiKey?: string | null;
+              geminiApiKey?: string | null;
+            }>
+          >`
+            SELECT "openRouterApiKey", "geminiApiKey"
+            FROM "User"
+            WHERE "id" = ${userId}
+            LIMIT 1
+          `
+        : [user as unknown as { openRouterApiKey?: string | null; geminiApiKey?: string | null }];
+    const keys = keyFields ?? {
+      openRouterApiKey: null,
+      geminiApiKey: null,
     };
+    const openRouterSameAsPlatform =
+      !!keys.openRouterApiKey &&
+      keyHash(decryptOptional(keys.openRouterApiKey)) === keyHash(process.env.OPENROUTER_API_KEY);
+    const geminiSameAsPlatform =
+      !!keys.geminiApiKey &&
+      keyHash(decryptOptional(keys.geminiApiKey)) === keyHash(process.env.GEMINI_API_KEY);
 
     return {
       plan: user.plan,
@@ -137,8 +164,10 @@ export async function billingRoutes(app: FastifyInstance) {
       agentModels: planModels.agent,
       currentChatModel: userFields.chatModel || planModels.chat[0],
       currentAgentModel: userFields.agentModel || planModels.agent[0] || null,
-      hasOpenRouterApiKey: !!keyFields.openRouterApiKey,
-      hasGeminiApiKey: !!keyFields.geminiApiKey,
+      hasOpenRouterApiKey: !!keys.openRouterApiKey,
+      hasGeminiApiKey: !!keys.geminiApiKey,
+      openRouterSameAsPlatform,
+      geminiSameAsPlatform,
       // Show all models across all plans (locked ones for upsell UI)
       allModels: PLAN_MODELS,
     };
@@ -193,14 +222,28 @@ export async function billingRoutes(app: FastifyInstance) {
 
     if (typeof openRouterApiKey === "string") {
       const trimmed = openRouterApiKey.trim();
+      if (trimmed && keyHash(trimmed) === keyHash(process.env.OPENROUTER_API_KEY)) {
+        return reply.code(400).send({
+          error:
+            "이 OpenRouter 키는 현재 서버의 기본 무료 키와 같아요. 이미 한도가 막힌 키라 복구되지 않습니다. OpenRouter에서 새 개인 키를 만들어 등록해 주세요.",
+        });
+      }
       updateData.openRouterApiKey = trimmed ? encryptOptional(trimmed) : null;
+      if (trimmed) clearFallbackState(`openrouter:${keyHash(trimmed)}`);
     } else if (clearOpenRouterApiKey) {
       updateData.openRouterApiKey = null;
     }
 
     if (typeof geminiApiKey === "string") {
       const trimmed = geminiApiKey.trim();
+      if (trimmed && keyHash(trimmed) === keyHash(process.env.GEMINI_API_KEY)) {
+        return reply.code(400).send({
+          error:
+            "이 Gemini 키는 현재 서버의 기본 무료 키와 같아요. 이미 한도가 막힌 키라 복구되지 않습니다. Google AI Studio에서 새 개인 키를 만들어 등록해 주세요.",
+        });
+      }
       updateData.geminiApiKey = trimmed ? encryptOptional(trimmed) : null;
+      if (trimmed) clearFallbackState(`gemini:${keyHash(trimmed)}`);
     } else if (clearGeminiApiKey) {
       updateData.geminiApiKey = null;
     }
@@ -230,6 +273,8 @@ export async function billingRoutes(app: FastifyInstance) {
         updateData.geminiApiKey !== undefined
           ? !!updateData.geminiApiKey
           : !!(user as unknown as { geminiApiKey?: string | null }).geminiApiKey,
+      ...(updateData.openRouterApiKey !== undefined ? { openRouterSameAsPlatform: false } : {}),
+      ...(updateData.geminiApiKey !== undefined ? { geminiSameAsPlatform: false } : {}),
     };
   });
 }

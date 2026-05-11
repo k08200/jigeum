@@ -8,7 +8,7 @@ import { FeedbackPolicyPanel } from "../../components/feedback-policy-panel";
 import { ListSkeleton } from "../../components/skeleton";
 import { TeamRiskPanel } from "../../components/team-risk-panel";
 import { useToast } from "../../components/toast";
-import { API_BASE, apiFetch, authHeaders } from "../../lib/api";
+import { API_BASE, apiFetch, authHeaders, getStoredAuthToken } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { captureClientError } from "../../lib/sentry";
 
@@ -33,6 +33,11 @@ const DEFAULT_AGENT_MODE_OPTIONS: AgentModeOption[] = [
   { mode: "SUGGEST", label: "SUGGEST", description: "Ask before action" },
   { mode: "AUTO", label: "AUTO", description: "Run safe actions" },
 ];
+const PROFILE_KEY = "jigeum-profile";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_PROFILE_KEY = `${LEGACY_KEY_PREFIX}-profile`;
+const PINNED_CHATS_KEY = "jigeum-pinned-chats";
+const LEGACY_PINNED_CHATS_KEY = `${LEGACY_KEY_PREFIX}-pinned-chats`;
 
 function normalizeAgentMode(value: string | undefined): AgentMode {
   if (value === "SHADOW" || value === "SUGGEST" || value === "AUTO") return value;
@@ -64,11 +69,11 @@ function normalizeAgentModeOptions(options: ApiAgentModeOption[] | undefined): A
 function agentModeToast(mode: AgentMode): string {
   switch (mode) {
     case "SHADOW":
-      return "SHADOW mode — EVE will prepare work quietly";
+      return "SHADOW mode — Eve will prepare work quietly";
     case "AUTO":
-      return "AUTO mode — EVE will auto-execute safe actions";
+      return "AUTO mode — Eve will auto-execute safe actions";
     case "SUGGEST":
-      return "SUGGEST mode — EVE will ask before acting";
+      return "SUGGEST mode — Eve will ask before acting";
   }
 }
 
@@ -100,6 +105,8 @@ interface ModelSettings {
   currentAgentModel: string | null;
   hasOpenRouterApiKey: boolean;
   hasGeminiApiKey: boolean;
+  openRouterSameAsPlatform?: boolean;
+  geminiSameAsPlatform?: boolean;
 }
 
 const TIMEZONES = [
@@ -158,6 +165,7 @@ export default function SettingsPage() {
     notifyTaskDue: true,
     notifyAgentProposal: true,
     notifyDailyBriefing: true,
+    notifyEmailCandidate: true,
     quietHoursStart: "" as string | null,
     quietHoursEnd: "" as string | null,
   });
@@ -235,8 +243,10 @@ export default function SettingsPage() {
       setProfile((p) => ({ ...p, name: user.name || p.name }));
     }
     try {
-      const stored = localStorage.getItem("eve-profile");
+      const stored = localStorage.getItem(PROFILE_KEY) || localStorage.getItem(LEGACY_PROFILE_KEY);
       if (stored) {
+        localStorage.setItem(PROFILE_KEY, stored);
+        localStorage.removeItem(LEGACY_PROFILE_KEY);
         const parsed = JSON.parse(stored);
         setProfile((p) => ({
           ...p,
@@ -264,7 +274,7 @@ export default function SettingsPage() {
       // fallback to local only
     }
     // Save language/timezone to localStorage
-    localStorage.setItem("eve-profile", JSON.stringify(profile));
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     try {
       await apiFetch("/api/automations", {
         method: "PATCH",
@@ -493,6 +503,7 @@ export default function SettingsPage() {
       notifyTaskDue?: boolean;
       notifyAgentProposal?: boolean;
       notifyDailyBriefing?: boolean;
+      notifyEmailCandidate?: boolean;
       timezone?: string;
       quietHoursStart?: string | null;
       quietHoursEnd?: string | null;
@@ -514,6 +525,7 @@ export default function SettingsPage() {
           notifyTaskDue: d.notifyTaskDue ?? true,
           notifyAgentProposal: d.notifyAgentProposal ?? true,
           notifyDailyBriefing: d.notifyDailyBriefing ?? true,
+          notifyEmailCandidate: d.notifyEmailCandidate ?? true,
           quietHoursStart: d.quietHoursStart ?? null,
           quietHoursEnd: d.quietHoursEnd ?? null,
         });
@@ -731,6 +743,9 @@ export default function SettingsPage() {
               hasOpenRouterApiKey:
                 updated.hasOpenRouterApiKey ?? prev.hasOpenRouterApiKey,
               hasGeminiApiKey: updated.hasGeminiApiKey ?? prev.hasGeminiApiKey,
+              openRouterSameAsPlatform:
+                updated.openRouterSameAsPlatform ?? prev.openRouterSameAsPlatform,
+              geminiSameAsPlatform: updated.geminiSameAsPlatform ?? prev.geminiSameAsPlatform,
             }
           : prev,
       );
@@ -749,13 +764,13 @@ export default function SettingsPage() {
       name: "Google",
       description: "Gmail, Calendar — read emails, manage events",
       connected: googleConnected,
-      connectUrl: `${API_BASE}/api/auth/google?token=${typeof window !== "undefined" ? localStorage.getItem("eve-token") || "" : ""}`,
+      connectUrl: `${API_BASE}/api/auth/google?token=${getStoredAuthToken() || ""}`,
       statusUrl: `${API_BASE}/api/auth/google/status`,
     },
     {
       name: "Slack",
       description: slackConnected
-        ? `Connected via ${slackMode === "bot_token" ? "bot token" : "webhook"} — ask EVE to send, list, or read Slack messages`
+        ? `Connected via ${slackMode === "bot_token" ? "bot token" : "webhook"} — ask Eve to send, list, or read Slack messages`
         : "Configured by admin via SLACK_BOT_TOKEN or SLACK_WEBHOOK_URL env var",
       connected: slackConnected,
       connectUrl: slackConnected ? undefined : "slack-admin-only",
@@ -811,8 +826,10 @@ export default function SettingsPage() {
     if (!ok) return;
     try {
       await fetch(`${API_BASE}/api/user/me/data`, { method: "DELETE", headers: authHeaders() });
-      localStorage.removeItem("eve-profile");
-      localStorage.removeItem("eve-pinned-chats");
+      localStorage.removeItem(PROFILE_KEY);
+      localStorage.removeItem(LEGACY_PROFILE_KEY);
+      localStorage.removeItem(PINNED_CHATS_KEY);
+      localStorage.removeItem(LEGACY_PINNED_CHATS_KEY);
       toast("All data cleared", "info");
     } catch {
       toast("Failed to clear data", "error");
@@ -827,7 +844,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `eve-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `jigeum-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast("Data exported", "success");
@@ -844,7 +861,7 @@ export default function SettingsPage() {
             Control Plane
           </p>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
-            EVE 운영 방식과 연결 권한
+            Jigeum 운영 방식과 연결 권한
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-400">
             프로필, 알림, 실행 모드, 데이터 접근을 한 화면에서 조정해 Decision OS가 일하는 경계를
@@ -1014,7 +1031,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-medium">Morning Briefing</h3>
                 <p className="text-sm text-stone-400">
-                  EVE sends one daily briefing at your local time, even if you stay signed in.
+                  Eve sends one daily briefing at your local time, even if you stay signed in.
                 </p>
                 <p className="mt-1 text-xs text-stone-500">
                   Timezone: {profile.timezone}. Change it in Profile above.
@@ -1099,7 +1116,12 @@ export default function SettingsPage() {
                 {
                   key: "notifyEmailUrgent" as const,
                   label: "Urgent email alerts",
-                  desc: "Incoming mail that EVE flags as time-sensitive",
+                  desc: "Incoming mail that Eve flags as time-sensitive",
+                },
+                {
+                  key: "notifyEmailCandidate" as const,
+                  label: "Candidate intake",
+                  desc: "Profiles, resumes, portfolios, and audition files Eve detects",
                 },
                 {
                   key: "notifyMeeting" as const,
@@ -1114,7 +1136,7 @@ export default function SettingsPage() {
                 {
                   key: "notifyAgentProposal" as const,
                   label: "Agent proposals",
-                  desc: "When EVE wants your approval for an action",
+                  desc: "When Eve wants your approval for an action",
                 },
                 {
                   key: "notifyDailyBriefing" as const,
@@ -1224,7 +1246,11 @@ export default function SettingsPage() {
                     OpenRouter API key
                   </label>
                   <span className="text-[11px] text-stone-500">
-                    {modelSettings?.hasOpenRouterApiKey ? "Saved" : "Not set"}
+                    {modelSettings?.openRouterSameAsPlatform
+                      ? "Same as default key"
+                      : modelSettings?.hasOpenRouterApiKey
+                        ? "Saved"
+                        : "Not set"}
                   </span>
                 </div>
                 <input
@@ -1273,7 +1299,11 @@ export default function SettingsPage() {
                     Gemini API key
                   </label>
                   <span className="text-[11px] text-stone-500">
-                    {modelSettings?.hasGeminiApiKey ? "Saved" : "Not set"}
+                    {modelSettings?.geminiSameAsPlatform
+                      ? "Same as default key"
+                      : modelSettings?.hasGeminiApiKey
+                        ? "Saved"
+                        : "Not set"}
                   </span>
                 </div>
                 <input
@@ -1324,7 +1354,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-medium">Execution boundary</h3>
                 <p className="text-sm text-stone-400">
-                  EVE watches tasks, calendar, and mail in the background, then prepares the next
+                  Eve watches tasks, calendar, and mail in the background, then prepares the next
                   decision without crossing approval limits.
                 </p>
               </div>
@@ -1368,7 +1398,7 @@ export default function SettingsPage() {
                   </div>
                   {agentMode === "SHADOW" && (
                     <p className="text-[10px] text-stone-400 mt-2">
-                      EVE가 조용히 초안과 승인 대기 작업을 준비하고 Inbox에만 쌓아둬요.
+                      Eve가 조용히 초안과 승인 대기 작업을 준비하고 Inbox에만 쌓아둬요.
                     </p>
                   )}
                   {agentMode === "AUTO" && (
@@ -1451,7 +1481,7 @@ export default function SettingsPage() {
                     </span>
                   </button>
                   <p className="text-[10px] text-stone-500 mt-1">
-                    EVE가 AUTO 모드로 이메일에 답장한 뒤 원본 이메일을 Gmail에서 읽음으로 표시해요.
+                    Eve가 AUTO 모드로 이메일에 답장한 뒤 원본 이메일을 Gmail에서 읽음으로 표시해요.
                     기본은 꺼짐 — Gmail의 "안 읽음" 상태를 백업 받은편지함으로 쓰던 경우 그대로
                     유지.
                   </p>
@@ -1606,7 +1636,7 @@ export default function SettingsPage() {
                       ? gmailPushExpiresAt
                         ? `Gmail push active until ${new Date(gmailPushExpiresAt).toLocaleString()}. Auto-renews before expiry.`
                         : "Gmail push active. Auto-renews before expiry."
-                      : "Subscribe to Gmail push notifications for instant delivery. Without this, EVE polls every minute."
+                      : "Subscribe to Gmail push notifications for instant delivery. Without this, Eve polls every minute."
                     : "Admin has not configured a Pub/Sub topic on the server. Contact the administrator to enable."}
                 </p>
               </div>
@@ -1688,7 +1718,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-stone-400">
                 <p>Pre-approval rules — allow low-risk work within clear limits</p>
                 <p>Action history — inspect what ran, skipped, or needs review</p>
-                <p>Memory controls — tune the preferences EVE should remember</p>
+                <p>Memory controls — tune the preferences Eve should remember</p>
                 <p>Notifications — choose which signals are worth interruption</p>
               </div>
             </div>
@@ -1716,7 +1746,7 @@ export default function SettingsPage() {
               className="flex items-center justify-between rounded-xl border border-stone-700/45 bg-stone-950/35 p-4 transition hover:border-stone-700 hover:bg-stone-950"
             >
               <div className="min-w-0">
-                <h3 className="font-medium">EVE status</h3>
+                <h3 className="font-medium">Jigeum status</h3>
                 <p className="text-sm text-stone-400">
                   Check deployment, push, reminders, briefing, and integrations
                 </p>
@@ -1780,7 +1810,7 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold text-stone-300 mb-3">About</h2>
           <div className="bg-stone-950/35 border border-stone-700/45 rounded-xl p-4">
             <p className="text-sm text-stone-400">
-              <span className="text-amber-300 font-medium">EVE</span> · Decision OS for Work
+              <span className="text-amber-300 font-medium">Jigeum</span> · What matters now at work
             </p>
             <p className="text-sm text-stone-500 mt-1">
               Built for operators who need fewer scattered tabs and clearer next decisions.

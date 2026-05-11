@@ -7,6 +7,10 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const INSTALL_DISMISSED_KEY = "jigeum-install-dismissed";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_INSTALL_DISMISSED_KEY = `${LEGACY_KEY_PREFIX}-install-dismissed`;
+
 export default function PwaPrompts() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
@@ -19,7 +23,13 @@ export default function PwaPrompts() {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
       // Only show if not dismissed before
-      const dismissed = localStorage.getItem("eve-install-dismissed");
+      const dismissed =
+        localStorage.getItem(INSTALL_DISMISSED_KEY) ||
+        localStorage.getItem(LEGACY_INSTALL_DISMISSED_KEY);
+      if (dismissed) {
+        localStorage.setItem(INSTALL_DISMISSED_KEY, dismissed);
+        localStorage.removeItem(LEGACY_INSTALL_DISMISSED_KEY);
+      }
       if (!dismissed) {
         setShowInstall(true);
       }
@@ -69,7 +79,8 @@ export default function PwaPrompts() {
 
   const dismissInstall = () => {
     setShowInstall(false);
-    localStorage.setItem("eve-install-dismissed", "1");
+    localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
+    localStorage.removeItem(LEGACY_INSTALL_DISMISSED_KEY);
   };
 
   const handleUpdate = () => {
@@ -89,7 +100,7 @@ export default function PwaPrompts() {
       {/* Update available banner */}
       {updateAvailable && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] bg-stone-950 border border-stone-700 rounded-xl shadow-2xl shadow-black/60 px-4 py-3 flex items-center gap-3 animate-slide-up">
-          <div className="text-sm text-stone-200">A new version of EVE is available</div>
+          <div className="text-sm text-stone-200">A new version of Jigeum is available</div>
           <button
             type="button"
             onClick={handleUpdate}
@@ -111,10 +122,10 @@ export default function PwaPrompts() {
       {showInstall && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] bg-stone-950 border border-stone-700 rounded-xl shadow-2xl shadow-black/60 px-4 py-3 flex items-center gap-3 animate-slide-up max-w-sm">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
-            E
+            J
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-stone-200">Install EVE</p>
+            <p className="text-sm font-medium text-stone-200">Install Jigeum</p>
             <p className="text-xs text-stone-500">Add to home screen for quick access</p>
           </div>
           <button

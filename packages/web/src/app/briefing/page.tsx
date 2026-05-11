@@ -15,6 +15,41 @@ interface BriefingResponse {
 interface GenerateResponse {
   briefing: string;
   note?: { id: string; createdAt: string };
+  notification?: { id: string; createdAt: string } | null;
+}
+
+type BriefingPushState =
+  | "received"
+  | "accepted"
+  | "failed"
+  | "skipped"
+  | "pending"
+  | "not_sent"
+  | "no_subscription";
+
+interface BriefingStatus {
+  generated: boolean;
+  notification: {
+    id: string;
+    title: string;
+    message: string;
+    createdAt: string;
+  } | null;
+  push: {
+    state: BriefingPushState;
+    reason: string | null;
+    deliveryId: string | null;
+    acceptedAt: string | null;
+    receivedAt: string | null;
+    clickedAt: string | null;
+  };
+  automation: {
+    configured: boolean;
+    enabled: boolean;
+    briefingTime: string | null;
+    timezone: string;
+    reason: "no_config" | "disabled" | null;
+  };
 }
 
 type BriefingFeedbackChoice = "useful" | "wrong" | "later" | "done";
@@ -59,6 +94,7 @@ function BriefingView() {
   const [content, setContent] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<number, BriefingFeedbackChoice>>({});
+  const [status, setStatus] = useState<BriefingStatus | null>(null);
   const [savingRank, setSavingRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -84,7 +120,11 @@ function BriefingView() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<BriefingResponse>("/api/briefing/today");
+      const [data, statusData] = await Promise.all([
+        apiFetch<BriefingResponse>("/api/briefing/today"),
+        apiFetch<BriefingStatus>("/api/briefing/status"),
+      ]);
+      setStatus(statusData);
       if (data.briefing) {
         setNoteId(data.briefing.id);
         setContent(data.briefing.content);
@@ -116,9 +156,11 @@ function BriefingView() {
         method: "POST",
         body: JSON.stringify({}),
       });
+      const statusData = await apiFetch<BriefingStatus>("/api/briefing/status");
       setContent(data.briefing);
       setNoteId(data.note?.id ?? null);
       setCreatedAt(data.note?.createdAt ?? new Date().toISOString());
+      setStatus(statusData);
       setFeedback({});
     } catch (err) {
       captureClientError(err, { scope: "briefing.generate" });
@@ -193,6 +235,8 @@ function BriefingView() {
           <BriefStat label="State" value={content ? "Ready" : "Empty"} />
         </div>
       </header>
+
+      {status && <BriefingDeliveryStatus status={status} />}
 
       {loading && <p className="text-sm text-stone-500">로딩 중...</p>}
 
@@ -277,6 +321,87 @@ function BriefingView() {
       )}
     </div>
   );
+}
+
+function BriefingDeliveryStatus({ status }: { status: BriefingStatus }) {
+  const push = pushStateCopy(status.push.state, status.push.reason);
+  const auto = status.automation.enabled
+    ? `${status.automation.briefingTime ?? "06:00"} · ${status.automation.timezone}`
+    : status.automation.reason === "no_config"
+      ? "설정 없음"
+      : "꺼짐";
+  const notification = status.notification
+    ? new Date(status.notification.createdAt).toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "아직 없음";
+
+  return (
+    <section className="mb-4 rounded-xl border border-stone-700/45 bg-stone-950/35 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-stone-100">브리핑 전달 상태</h2>
+        <Link href="/settings" className="text-xs text-amber-300 hover:underline">
+          설정
+        </Link>
+      </div>
+      <div className="grid gap-2 text-xs sm:grid-cols-3">
+        <DeliveryFact label="자동 브리핑" value={auto} tone={status.automation.enabled ? "ok" : "warn"} />
+        <DeliveryFact label="앱 알림" value={notification} tone={status.notification ? "ok" : "muted"} />
+        <DeliveryFact label="푸시" value={push.label} tone={push.tone} />
+      </div>
+      {push.reason && (
+        <p className="mt-3 text-[11px] leading-5 text-stone-500">
+          푸시 사유: {push.reason}. 브라우저 권한, 구독 상태, VAPID 키, 조용한 시간대 중 하나가 막고
+          있을 수 있어요.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DeliveryFact({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "ok" | "warn" | "muted";
+}) {
+  const toneClass = {
+    ok: "border-emerald-500/20 bg-emerald-500/5 text-emerald-200",
+    warn: "border-amber-500/20 bg-amber-500/5 text-amber-200",
+    muted: "border-stone-800 bg-black/15 text-stone-400",
+  }[tone];
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${toneClass}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-60">{label}</p>
+      <p className="mt-1 truncate text-xs font-medium">{value}</p>
+    </div>
+  );
+}
+
+function pushStateCopy(
+  state: BriefingPushState,
+  reason: string | null,
+): { label: string; tone: "ok" | "warn" | "muted"; reason: string | null } {
+  switch (state) {
+    case "received":
+      return { label: "수신 확인", tone: "ok", reason };
+    case "accepted":
+      return { label: "전송됨", tone: "ok", reason };
+    case "pending":
+      return { label: "전송 대기", tone: "warn", reason };
+    case "failed":
+      return { label: "전송 실패", tone: "warn", reason };
+    case "skipped":
+      return { label: "전송 생략", tone: "warn", reason };
+    case "not_sent":
+      return { label: "아직 전송 안 됨", tone: "muted", reason };
+    case "no_subscription":
+      return { label: "브라우저 구독 없음", tone: "warn", reason: reason ?? "no_subscriptions" };
+  }
 }
 
 function BriefStat({ label, value }: { label: string; value: number | string }) {

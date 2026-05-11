@@ -12,6 +12,7 @@
 import { createDailyBriefingDelivery } from "./briefing.js";
 import { prisma } from "./db.js";
 import { withDbRetry } from "./db-retry.js";
+import { syncRecentCandidateIntakes } from "./email-candidate-intake.js";
 import {
   checkAutoReplyRules,
   generateSmartReply,
@@ -20,7 +21,7 @@ import {
   syncEmails,
 } from "./email-sync.js";
 import { getAuthedClient, renewExpiringGmailWatches, sendEmail } from "./gmail.js";
-import { formatUrgentEmailBody } from "./notification-format.js";
+import { formatUrgentEmailBody, senderName } from "./notification-format.js";
 import { runProactiveActions } from "./proactive-actions.js";
 import { sendPushNotification } from "./push.js";
 import { captureError } from "./sentry.js";
@@ -88,6 +89,88 @@ function isCalendarSyncDue(userId: string): boolean {
   const last = lastCalendarSyncAt.get(userId);
   if (!last) return true;
   return Date.now() - last >= CALENDAR_SYNC_INTERVAL_MS;
+}
+
+async function notifyCandidateEmails(userId: string): Promise<void> {
+  const candidateEmails = await prisma.emailMessage.findMany({
+    where: {
+      userId,
+      syncedAt: { gte: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+      attachments: {
+        some: {
+          OR: [
+            { category: { in: ["resume", "profile", "portfolio", "audition"] } },
+            { filename: { contains: "resume", mode: "insensitive" } },
+            { filename: { contains: "cv", mode: "insensitive" } },
+            { filename: { contains: "profile", mode: "insensitive" } },
+            { filename: { contains: "portfolio", mode: "insensitive" } },
+            { filename: { contains: "audition", mode: "insensitive" } },
+            { filename: { contains: "casting", mode: "insensitive" } },
+            { filename: { contains: "이력서" } },
+            { filename: { contains: "프로필" } },
+            { filename: { contains: "오디션" } },
+            { filename: { contains: "캐스팅" } },
+            { filename: { contains: "포트폴리오" } },
+          ],
+        },
+      },
+    },
+    orderBy: { receivedAt: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      from: true,
+      subject: true,
+      summary: true,
+      attachments: { select: { id: true }, take: 3 },
+    },
+  });
+
+  for (const email of candidateEmails) {
+    const existing = await prisma.notification.findFirst({
+      where: {
+        userId,
+        type: "email",
+        title: "후보자 자료 도착",
+        sourceEmailId: email.id,
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const message = `${senderName(email.from)} · ${email.summary || email.subject}`;
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type: "email",
+        title: "후보자 자료 도착",
+        message,
+        link: `/email/${email.id}`,
+        sourceEmailId: email.id,
+      },
+      select: { id: true, createdAt: true },
+    });
+    pushNotification(userId, {
+      id: notification.id,
+      type: "email",
+      title: "후보자 자료 도착",
+      message,
+      link: `/email/${email.id}`,
+      createdAt: notification.createdAt.toISOString(),
+    });
+    sendPushNotification(
+      userId,
+      {
+        title: "후보자 자료 도착",
+        body: message,
+        url: `/email/${email.id}`,
+        notificationId: notification.id,
+      },
+      "email_candidate",
+    ).catch((err) => {
+      console.warn(`[AUTOMATION] Candidate email push failed for ${userId}:`, err);
+    });
+  }
 }
 
 /**
@@ -318,10 +401,12 @@ async function runAutomations() {
             if (syncResult.newCount > 0) {
               await summarizeUnsummarizedEmails(config.userId, syncResult.newCount);
             }
+            await syncRecentCandidateIntakes(config.userId, Math.max(syncResult.newCount, 10));
+            await notifyCandidateEmails(config.userId);
 
             // LOW-priority mail is a quarantine signal, not a destructive
             // action. Keep the local/Gmail records intact so the user can audit
-            // EVE's classification and approve any cleanup later.
+            // Eve's classification and approve any cleanup later.
 
             // Auto-reply: check rules for newly synced emails (dedup by gmailId)
             // Requires TEAM+ plan for auto-reply
@@ -469,7 +554,7 @@ async function runAutomations() {
             }
           } catch (err) {
             // Gmail not connected, token expired, rate-limited, or network
-            // flake — log + capture so "EVE stopped reading email" doesn't
+            // flake — log + capture so "Eve stopped reading email" doesn't
             // become an invisible outage. Returns early so the next tick
             // still tries.
             console.error(`[AUTOMATION] Email sync failed for ${config.userId}:`, err);

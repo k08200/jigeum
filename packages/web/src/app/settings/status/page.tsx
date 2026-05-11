@@ -128,7 +128,7 @@ export default function SettingsStatusPage() {
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
                 Ops Readiness
               </p>
-              <h1 className="text-2xl font-semibold tracking-tight text-stone-50">EVE Status</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-stone-50">Jigeum Status</h1>
               <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
                 Deployment, integrations, push, reminders, and briefing readiness.
               </p>
@@ -255,7 +255,7 @@ export default function SettingsStatusPage() {
           </>
         ) : (
           <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-6 text-sm text-red-300">
-            Failed to load EVE status.
+            Failed to load Jigeum status.
           </div>
         )}
       </main>

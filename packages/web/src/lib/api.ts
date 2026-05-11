@@ -1,8 +1,29 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-function getToken(): string | null {
+export const AUTH_TOKEN_KEY = "jigeum-token";
+const LEGACY_KEY_PREFIX = "ev" + "e";
+const LEGACY_AUTH_TOKEN_KEY = `${LEGACY_KEY_PREFIX}-token`;
+
+export function getStoredAuthToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("eve-token");
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token) return token;
+  const legacyToken = localStorage.getItem(LEGACY_AUTH_TOKEN_KEY);
+  if (legacyToken) {
+    localStorage.setItem(AUTH_TOKEN_KEY, legacyToken);
+    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+  }
+  return legacyToken;
+}
+
+export function setStoredAuthToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+}
+
+export function clearStoredAuthToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
 }
 
 // 401 on these endpoints means bad credentials, not session expiry — don't redirect.
@@ -14,12 +35,12 @@ let isHandling401 = false;
 function handleSessionExpired(): void {
   if (isHandling401 || typeof window === "undefined") return;
   isHandling401 = true;
-  localStorage.removeItem("eve-token");
+  clearStoredAuthToken();
   window.location.href = "/login?error=session_expired";
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
+  const token = getStoredAuthToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
@@ -47,7 +68,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
 /** Raw fetch with auth token — for SSE streaming endpoints */
 export function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const token = getToken();
+  const token = getStoredAuthToken();
   const h: Record<string, string> = { "Content-Type": "application/json", ...extra };
   if (token) h.Authorization = `Bearer ${token}`;
   return h;

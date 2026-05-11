@@ -65,9 +65,9 @@ export default function EarlyAccessPage() {
       <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-300 text-sm font-bold text-stone-950">
-            E
+            J
           </div>
-          <span className="text-lg font-bold tracking-tight">EVE</span>
+          <span className="text-lg font-bold tracking-tight">Jigeum</span>
         </Link>
         <div className="flex items-center gap-5 text-sm text-stone-400">
           <Link href="/privacy" className="transition hover:text-white">
@@ -90,7 +90,7 @@ export default function EarlyAccessPage() {
           매일 흩어진 일을 결정 가능한 신호로 정리하는 Decision OS
         </h1>
         <p className="mt-5 text-base leading-7 text-stone-400">
-          EVE는 비공개 베타입니다. 메일/캘린더 사용량이 많은 분들에게 우선 초대합니다. 신청하시면
+          Jigeum은 비공개 베타입니다. 메일/캘린더 사용량이 많은 분들에게 우선 초대합니다. 신청하시면
           24시간 안에 확인하고 메일로 답변드릴게요.
         </p>
 
@@ -102,7 +102,7 @@ export default function EarlyAccessPage() {
             <p className="mt-2 text-sm leading-6 text-stone-300">
               {status === "already"
                 ? "기존 신청을 기준으로 검토 후 메일로 답변드릴게요."
-                : "검토 후 24시간 안에 메일로 답변드릴게요. 메일이 도착하면 EVE에 로그인하실 수 있어요."}
+                : "검토 후 24시간 안에 메일로 답변드릴게요. 메일이 도착하면 Jigeum에 로그인하실 수 있어요."}
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-sm">
               <Link

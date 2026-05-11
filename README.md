@@ -1,30 +1,30 @@
-# hireEVE
+# Jigeum
 
-**Decision OS for work signals, approvals, and memory.**
+**What matters now, from work signals, approvals, and memory.**
 
-EVE is a Decision OS for work. It reads email, calendar, tasks, and memory, connects the hidden context between them, and turns scattered signals into decisions you can inspect, approve, and trust.
+Jigeum is a Decision OS for work. Its agent, Eve, reads email, calendar, tasks, and memory, connects the hidden context between them, and turns scattered signals into decisions you can inspect, approve, and trust.
 
-## Why EVE?
+## Why Jigeum?
 
 Every team checks five apps every morning and none of them answer the question that matters: **"What decision needs my attention now?"**
 
-EVE connects Gmail, Calendar, Slack, and Notion, then cross-references everything to surface decisions — not just summaries.
+Jigeum connects Gmail, Calendar, Slack, and Notion, then Eve cross-references everything to surface decisions — not just summaries.
 
-| Tool | What it does | What EVE does |
+| Tool | What it does | What Jigeum does |
 |------|-------------|---------------|
 | Gmail | "30 unread emails" | "Investor reply needed within 48h — draft ready" |
 | Calendar | "3 meetings today" | "2pm meeting — prep pack ready, no conflicts" |
 | Tasks | "12 tasks open" | "These 2 are overdue and blocking others" |
-| ChatGPT | Answers when asked | EVE acts before you ask |
+| ChatGPT | Answers when asked | Eve acts before you ask |
 | Zapier | Rule-based automation | LLM-powered judgment with approval gates |
 
 ## How It Works
 
 1. **Connect** — Link Gmail and Calendar in one click
-2. **EVE connects context** — Ingests email, events, and tasks; extracts people, promises, deadlines, and risks
+2. **Eve connects context** — Ingests email, events, and tasks; extracts people, promises, deadlines, and risks
 3. **Command Center** — Your home screen shows what to act on now, what needs approval, what was handled
 4. **Morning briefing** — Prioritized day-plan delivered before you open your laptop
-5. **Trust ladder** — EVE earns scope gradually: observe → suggest → draft → execute with approval → report exceptions
+5. **Trust ladder** — Eve earns scope gradually: observe → suggest → draft → execute with approval → report exceptions
 
 ### Command Center (the home screen)
 
@@ -33,12 +33,12 @@ Not a chat. Not an inbox. An **operations console**:
 - Top 3 things to act on now
 - Pending approvals
 - Today's commitments and risks
-- What EVE prepared quietly
+- What Eve prepared quietly
 - What's likely to bite you tomorrow
 
 ### Commitment Ledger
 
-EVE extracts implicit promises from your conversations — *"I'll send it by Friday"*, *"Let's revisit next week"* — and tracks them so they don't fall through the cracks.
+Eve extracts implicit promises from your conversations — *"I'll send it by Friday"*, *"Let's revisit next week"* — and tracks them so they don't fall through the cracks.
 
 ### Work Graph
 
@@ -46,7 +46,7 @@ People, companies, projects, and threads linked together. *"Min-soo Kim = ABC Ve
 
 ### Shadow Mode
 
-EVE doesn't auto-execute on day one. She watches for two weeks, learns your patterns, and asks for permission:
+Eve doesn't auto-execute on day one. She watches for two weeks, learns your patterns, and asks for permission:
 > "I noticed you always prep meeting notes the night before. Want me to start drafting them automatically?"
 
 Trust is earned, not toggled.
@@ -156,8 +156,8 @@ apps/
 ### Quick Start
 
 ```bash
-git clone https://github.com/k08200/hireEVE.git
-cd hireEVE
+git clone https://github.com/k08200/probeai.git
+cd probeai
 pnpm install
 
 # API
@@ -177,7 +177,7 @@ pnpm dev                # Web on :8001
 
 ```bash
 # Required
-DATABASE_URL=postgresql://user:password@localhost:5433/hireeve
+DATABASE_URL=postgresql://user:password@localhost:5433/jigeum
 JWT_SECRET=your-secret
 OPENROUTER_API_KEY=your-key
 TOKEN_ENCRYPTION_KEY=             # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
@@ -239,7 +239,7 @@ cd packages/api && npx prisma migrate deploy && node dist/index.js
 
 ## Language Support
 
-EVE works in both Korean and English. She mirrors the language you use.
+Jigeum works in both Korean and English. Eve mirrors the language you use.
 
 ## License
 

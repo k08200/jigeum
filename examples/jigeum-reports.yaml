@@ -1,6 +1,6 @@
-id: eve-reports-list
-name: "EVE Reports List"
-description: "Verify EVE can list generated reports"
+id: jigeum-reports-list
+name: "Jigeum Reports List"
+description: "Verify Jigeum can list generated reports"
 
 agent:
   type: command

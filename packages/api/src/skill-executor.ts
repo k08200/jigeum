@@ -1,7 +1,7 @@
 /**
- * Skill Executor — EVE tool for running saved reusable workflows.
+ * Skill Executor — Eve tool for running saved reusable workflows.
  *
- * Provides execute_skill and list_skills tools so EVE can discover
+ * Provides execute_skill and list_skills tools so Eve can discover
  * and run user-defined skills during chat and autonomous mode.
  */
 

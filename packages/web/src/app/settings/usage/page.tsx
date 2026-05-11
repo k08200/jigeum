@@ -52,7 +52,7 @@ export default function UsagePage() {
           Usage Ledger
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
-          EVE 운영량과 추정 비용
+          Jigeum 운영량과 추정 비용
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
           결정 스레드와 판단 생성에 쓰인 토큰을 기간별로 확인하고, 어떤 스레드가 비용을 만드는지

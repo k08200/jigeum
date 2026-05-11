@@ -50,15 +50,26 @@ attachPerfMonitor(app);
 
 const ALLOWED_ORIGINS = (
   process.env.CORS_ORIGINS ||
-  "http://localhost:8001,http://localhost:3000,tauri://localhost,https://tauri.localhost,http://tauri.localhost"
+  "http://localhost:8001,http://127.0.0.1:8001,http://127.0.2.2:8001,http://127.0.2.3:8001,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000,tauri://localhost,https://tauri.localhost,http://tauri.localhost"
 )
   .split(",")
   .map((o) => o.trim());
 
+function isAllowedDevOrigin(origin: string): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  try {
+    const parsed = new URL(origin);
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    return /^(localhost|127\.0\.0\.1|127\.0\.2\.\d+)$/.test(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 await app.register(cors, {
   origin: (origin, cb) => {
     // Allow requests with no origin (mobile apps, curl, server-to-server)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || isAllowedDevOrigin(origin)) {
       cb(null, true);
     } else {
       cb(new Error("Not allowed by CORS"), false);
@@ -388,7 +399,7 @@ try {
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: "0.0.0.0" });
-  console.log(`hireEVE API running on http://localhost:${port}`);
+  console.log(`Jigeum API running on http://localhost:${port}`);
 
   // Attach WebSocket server to the underlying HTTP server
   const httpServer = app.server;

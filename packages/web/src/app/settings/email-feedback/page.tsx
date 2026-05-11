@@ -12,7 +12,7 @@ export default function EmailFeedbackPage() {
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-stone-50">메일 판단 교정 로그</h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
-          사용자가 고친 우선순위와 답장 필요 판단을 모아 EVE의 신호 분류 품질을 확인합니다.
+          사용자가 고친 우선순위와 답장 필요 판단을 모아 Eve의 신호 분류 품질을 확인합니다.
         </p>
       </header>
 

@@ -85,13 +85,13 @@ export function EmailFeedbackList() {
             {loading ? "Loading corrections..." : `${count} corrections recorded`}
           </p>
           <p className="mt-1 text-sm text-stone-500">
-            These corrections train your EVE classifier.
+            These corrections train your Eve classifier.
           </p>
         </div>
         {exportHref && (
           <a
             href={exportHref}
-            download="eve-email-feedback-fixtures.json"
+            download="jigeum-email-feedback-fixtures.json"
             className="inline-flex w-fit items-center rounded-lg border border-stone-700/60 bg-stone-950/45 px-3 py-2 text-sm font-medium text-stone-200 transition hover:border-amber-500/35 hover:bg-amber-500/10"
           >
             Export JSON

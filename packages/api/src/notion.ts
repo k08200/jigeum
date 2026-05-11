@@ -1,5 +1,5 @@
 /**
- * Notion Integration for EVE
+ * Notion Integration for Eve
  *
  * Connects to user's Notion workspace to read/create pages.
  * Requires NOTION_API_KEY env var.

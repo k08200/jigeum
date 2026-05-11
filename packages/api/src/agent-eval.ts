@@ -1,5 +1,5 @@
 /**
- * Agent Evaluation Harness — Scenario-based regression tests for EVE's
+ * Agent Evaluation Harness — Scenario-based regression tests for Eve's
  * autonomous agent decision logic.
  *
  * Tests focus on the logic that doesn't require LLM calls:
@@ -148,7 +148,7 @@ function scenarioNotifDedupDistinguishesDifferent(): EvalScenario {
     id: "dedup-02",
     name: "Dedup does not collapse genuinely different notifications",
     description:
-      "Two unrelated notifications must produce different keys so EVE doesn't miss real alerts.",
+      "Two unrelated notifications must produce different keys so Eve doesn't miss real alerts.",
     severity: "high",
     category: "dedup",
     run() {

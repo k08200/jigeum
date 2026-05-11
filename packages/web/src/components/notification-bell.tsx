@@ -47,7 +47,8 @@ const typeIcon: Record<string, string> = {
 };
 
 function isAgentNotification(title: string): boolean {
-  return title.startsWith("[EVE]");
+  const legacyPrefix = "[EV" + "E]";
+  return title.startsWith("[Eve]") || title.startsWith(legacyPrefix);
 }
 
 export default function NotificationBell({ userId }: { userId: string }) {
@@ -314,9 +315,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
           {n.title}
         </span>
         {isAgentNotification(n.title) && (
-          <span className="text-[9px] text-amber-300 bg-amber-300/10 px-1 py-0.5 rounded shrink-0">
-            EVE
-          </span>
+          <span className="text-[9px] text-amber-300 bg-amber-300/10 px-1 py-0.5 rounded shrink-0">Eve</span>
         )}
         {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shrink-0 ml-auto" />}
       </div>
@@ -364,7 +363,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
   );
 
   const renderGroupHeader = (group: NotificationGroup<Notification>, expanded: boolean) => {
-    const label = `${group.isEve ? "EVE " : ""}${getTypeLabel(group.type)}`;
+    const label = `${group.isAgent ? "Eve " : ""}${getTypeLabel(group.type)}`;
     return (
       <button
         key={`${group.key}_header`}
@@ -372,13 +371,13 @@ export default function NotificationBell({ userId }: { userId: string }) {
         onClick={() => toggleGroup(group.key)}
         className={`w-full text-left px-4 py-3 border-b border-stone-800/50 hover:bg-stone-800/50 transition ${
           group.unreadCount > 0 ? "bg-amber-400/5" : ""
-        } ${group.isEve ? "border-l-2 border-l-amber-300/60" : ""}`}
+        } ${group.isAgent ? "border-l-2 border-l-amber-300/60" : ""}`}
         aria-expanded={expanded}
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm">{group.isEve ? "🤖" : typeIcon[group.type] || "📌"}</span>
+          <span className="text-sm">{group.isAgent ? "🤖" : typeIcon[group.type] || "📌"}</span>
           <span
-            className={`text-sm ${group.unreadCount > 0 ? "font-semibold" : "text-stone-300"} ${group.isEve ? "text-amber-200" : ""}`}
+            className={`text-sm ${group.unreadCount > 0 ? "font-semibold" : "text-stone-300"} ${group.isAgent ? "text-amber-200" : ""}`}
           >
             {label} {group.items.length}건
           </span>

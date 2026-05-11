@@ -10,26 +10,26 @@ import ServiceWorkerRegister from "../components/sw-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EVE - Decision OS for Work",
+  title: "Jigeum - What matters now at work",
   description:
-    "EVE turns email, calendar, tasks, and memory into decision cards you can inspect, approve, and trust.",
+    "Jigeum turns email, calendar, tasks, and memory into what matters now: decision cards you can inspect, approve, and trust.",
   manifest: "/manifest.json",
   openGraph: {
-    title: "EVE - Decision OS for Work",
+    title: "Jigeum - What matters now at work",
     description:
       "A quiet operating layer for work signals, decision context, approvals, and memory.",
-    siteName: "hireEVE",
+    siteName: "Jigeum",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "EVE - Decision OS for Work",
+    title: "Jigeum - What matters now at work",
     description: "Turn scattered work signals into decisions with context, approval, and memory.",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "EVE",
+    title: "Jigeum",
   },
 };
 

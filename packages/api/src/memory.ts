@@ -1,7 +1,7 @@
 /**
- * Memory Tools for EVE — Inspired by Claude Code's memdir/ system
+ * Memory Tools for Eve — Inspired by Claude Code's memdir/ system
  *
- * Allows EVE to remember facts, preferences, and context about each user
+ * Allows Eve to remember facts, preferences, and context about each user
  * across conversations. Memories are automatically loaded into system prompt.
  */
 
@@ -177,7 +177,7 @@ export async function forget(userId: string, key: string, type: string): Promise
 
 /**
  * Load relevant memories for system prompt injection.
- * Called before each chat message to give EVE context about the user.
+ * Called before each chat message to give Eve context about the user.
  */
 export async function loadMemoriesForPrompt(userId: string): Promise<string> {
   const memories = await db.memory.findMany({

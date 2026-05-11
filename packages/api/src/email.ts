@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-const FROM_EMAIL = process.env.FROM_EMAIL || "EVE <noreply@hireeve.com>";
+const FROM_EMAIL = process.env.FROM_EMAIL || "Jigeum <noreply@jigeum.ai>";
 const WEB_URL = process.env.WEB_URL || "http://localhost:8001";
 
 /** Mask email for safe logging: "user@example.com" → "u***@example.com" */
@@ -25,10 +25,10 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: "Reset your EVE password",
+      subject: "Reset your Jigeum password",
       html: `
         <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-          <h2 style="color: #d8a45d; margin-bottom: 24px;">EVE</h2>
+          <h2 style="color: #d8a45d; margin-bottom: 24px;">Jigeum</h2>
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
             You requested a password reset. Click the button below to set a new password.
           </p>
@@ -40,7 +40,7 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
           <p style="color: #9ca3af; font-size: 12px;">
-            EVE — Decision OS for Work
+            Jigeum — What matters now at work
           </p>
         </div>
       `,
@@ -88,7 +88,7 @@ export async function sendWaitlistAdminAlert(entry: {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: alertTo,
-      subject: `[EVE] New waitlist signup: ${safeEmail}`,
+      subject: `[Jigeum] New waitlist signup: ${safeEmail}`,
       html: `
         <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h2 style="color: #d8a45d; margin: 0 0 16px;">New early-access request</h2>
@@ -123,25 +123,25 @@ export async function sendBetaInviteEmail(to: string, name?: string | null): Pro
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: "You're in — early access to EVE",
+      subject: "You're in — early access to Jigeum",
       html: `
         <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-          <h2 style="color: #d8a45d; margin-bottom: 24px;">Welcome to EVE</h2>
+          <h2 style="color: #d8a45d; margin-bottom: 24px;">Welcome to Jigeum</h2>
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
             ${greeting}
           </p>
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            You're approved for early access. Create your account with the email you signed up with, and EVE will start connecting your Gmail and Calendar into a decision queue — surfacing the context, risk, and next move before anything runs.
+            You're approved for early access. Create your account with the email you signed up with, and Eve will start connecting your Gmail and Calendar into a decision queue — surfacing the context, risk, and next move before anything runs.
           </p>
           <a href="${loginUrl}" style="display: inline-block; background: #d8a45d; color: #10100d; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0;">
             Create your account
           </a>
           <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-            Heads-up: the first few days EVE is still learning your decision patterns. Tell it "less" or "more" and it adjusts.
+            Heads-up: the first few days Eve is still learning your decision patterns. Tell it "less" or "more" and it adjusts.
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
           <p style="color: #9ca3af; font-size: 12px;">
-            EVE — Decision OS for Work
+            Jigeum — What matters now at work
           </p>
         </div>
       `,
@@ -167,12 +167,12 @@ export async function sendVerificationEmail(to: string, verifyToken: string): Pr
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: "Verify your EVE account",
+      subject: "Verify your Jigeum account",
       html: `
         <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-          <h2 style="color: #d8a45d; margin-bottom: 24px;">EVE</h2>
+          <h2 style="color: #d8a45d; margin-bottom: 24px;">Jigeum</h2>
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            Welcome to EVE! Please verify your email address to get started.
+            Welcome to Jigeum! Please verify your email address to get started.
           </p>
           <a href="${verifyUrl}" style="display: inline-block; background: #d8a45d; color: #10100d; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0;">
             Verify Email
@@ -182,7 +182,7 @@ export async function sendVerificationEmail(to: string, verifyToken: string): Pr
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
           <p style="color: #9ca3af; font-size: 12px;">
-            EVE — Decision OS for Work
+            Jigeum — What matters now at work
           </p>
         </div>
       `,

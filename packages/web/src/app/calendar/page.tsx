@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
-import { API_BASE, apiFetch } from "../../lib/api";
+import { API_BASE, apiFetch, getStoredAuthToken } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
 interface CalendarEvent {
@@ -166,12 +166,12 @@ function CalendarView() {
           </p>
           <p className="mb-4 text-xs text-stone-500">
             {googleConnected === false
-              ? "연결 후 동기화하면 EVE가 실제 캘린더 상태를 기준으로 브리핑합니다."
+              ? "연결 후 동기화하면 Eve가 실제 캘린더 상태를 기준으로 브리핑합니다."
               : "Google 연결은 정상입니다. 캘린더가 비어 있으면 빈 상태 그대로 브리핑에 반영됩니다."}
           </p>
           {googleConnected === false ? (
             <a
-              href={`${API_BASE}/api/auth/google?token=${typeof window !== "undefined" ? localStorage.getItem("eve-token") || "" : ""}`}
+              href={`${API_BASE}/api/auth/google?token=${getStoredAuthToken() || ""}`}
               className="inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm text-stone-950 transition hover:bg-amber-200"
             >
               Google 연결

@@ -8,6 +8,12 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const REDIRECT_URI =
   process.env.GOOGLE_REDIRECT_URI || "http://localhost:8000/api/auth/google/callback";
 
+export interface GmailDraftAttachment {
+  filename: string;
+  mimeType: string;
+  content: Buffer;
+}
+
 export function getOAuth2Client(): InstanceType<typeof google.auth.OAuth2> {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 }
@@ -112,7 +118,7 @@ export async function getAuthedClient(
   return oauth2;
 }
 
-// Gmail tool functions for EVE
+// Gmail tool functions for Eve
 
 export async function listEmails(userId: string, maxResults = 10) {
   const auth = await getAuthedClient(userId);
@@ -253,6 +259,79 @@ export function isNoReplyAddress(raw: string): boolean {
   return false;
 }
 
+function encodeSubject(subject: string): string {
+  return `=?UTF-8?B?${Buffer.from(safeHeaderValue(subject)).toString("base64")}?=`;
+}
+
+function safeHeaderValue(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function wrapBase64(value: string): string {
+  return value.replace(/.{1,76}/g, "$&\r\n").trimEnd();
+}
+
+function safeAsciiFilename(filename: string): string {
+  const fallback = filename
+    .replace(/[\r\n"]/g, "")
+    .replace(/[^\x20-\x7E]+/g, "_")
+    .trim();
+  return fallback || "attachment";
+}
+
+function buildPlainTextRawEmail(
+  to: string,
+  subject: string,
+  body: string,
+  attachments: GmailDraftAttachment[] = [],
+): string {
+  if (attachments.length === 0) {
+    return Buffer.from(
+      [
+        `To: ${safeHeaderValue(to)}`,
+        `Subject: ${encodeSubject(subject)}`,
+        "MIME-Version: 1.0",
+        "Content-Type: text/plain; charset=utf-8",
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        body,
+      ].join("\r\n"),
+    ).toString("base64url");
+  }
+
+  const boundary = `jigeum_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  const parts = [
+    `To: ${safeHeaderValue(to)}`,
+    `Subject: ${encodeSubject(subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=utf-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    body,
+  ];
+
+  for (const attachment of attachments) {
+    const filename = safeHeaderValue(attachment.filename || "attachment");
+    const asciiFilename = safeAsciiFilename(filename);
+    parts.push(
+      `--${boundary}`,
+      `Content-Type: ${attachment.mimeType || "application/octet-stream"}; name="${asciiFilename}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "",
+      wrapBase64(attachment.content.toString("base64")),
+    );
+  }
+
+  parts.push(`--${boundary}--`, "");
+  return Buffer.from(
+    parts.join("\r\n"),
+  ).toString("base64url");
+}
+
 export async function sendEmail(userId: string, to: string, subject: string, body: string) {
   if (!looksLikeEmailAddress(to)) {
     return {
@@ -270,10 +349,7 @@ export async function sendEmail(userId: string, to: string, subject: string, bod
 
   const gmail = google.gmail({ version: "v1", auth });
 
-  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
-  const raw = Buffer.from(
-    `To: ${to}\r\nSubject: ${encodedSubject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`,
-  ).toString("base64url");
+  const raw = buildPlainTextRawEmail(to, subject, body);
 
   const res = await gmail.users.messages.send({
     userId: "me",
@@ -281,6 +357,48 @@ export async function sendEmail(userId: string, to: string, subject: string, bod
   });
 
   return { success: true, messageId: res.data.id };
+}
+
+export async function createEmailDraft(
+  userId: string,
+  to: string,
+  subject: string,
+  body: string,
+  threadId?: string | null,
+  attachments: GmailDraftAttachment[] = [],
+) {
+  if (!looksLikeEmailAddress(to)) {
+    return {
+      error: `올바른 이메일 주소가 아니에요: "${to}". 도메인(accounts.google.com 등)이 아닌 전체 주소(local@domain)가 필요해요.`,
+    };
+  }
+  if (isNoReplyAddress(to)) {
+    return {
+      error: `이 주소(${to})는 답장을 받지 않는 시스템 발신자예요. Gmail 초안을 만들지 않습니다.`,
+    };
+  }
+
+  const auth = await getAuthedClient(userId);
+  if (!auth) return { error: "Gmail not connected." };
+
+  const gmail = google.gmail({ version: "v1", auth });
+  const raw = buildPlainTextRawEmail(to, subject, body, attachments);
+  const res = await gmail.users.drafts.create({
+    userId: "me",
+    requestBody: {
+      message: {
+        raw,
+        ...(threadId ? { threadId } : {}),
+      },
+    },
+  });
+
+  return {
+    success: true,
+    draftId: res.data.id,
+    messageId: res.data.message?.id,
+    url: "https://mail.google.com/mail/u/0/#drafts",
+  };
 }
 
 /** Mark a Gmail message as read (remove UNREAD label) */

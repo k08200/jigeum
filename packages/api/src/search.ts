@@ -1,5 +1,5 @@
 /**
- * Web Search for EVE — uses DuckDuckGo HTML scraping (no API key needed)
+ * Web Search for Eve — uses DuckDuckGo HTML scraping (no API key needed)
  */
 
 import { wrapUntrusted } from "./untrusted.js";
@@ -19,7 +19,7 @@ export async function webSearch(
 
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; EVE-Bot/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; Eve-Bot/1.0)",
     },
   });
 

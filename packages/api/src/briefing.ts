@@ -1,5 +1,5 @@
 /**
- * Daily Briefing — EVE's autonomous planning feature
+ * Daily Briefing — Eve's autonomous planning feature
  *
  * Aggregates tasks, calendar events, and recent emails into a daily summary.
  * Can be triggered manually or via cron.
@@ -15,7 +15,7 @@ import { recordFeedback } from "./feedback.js";
 import { listEmails } from "./gmail.js";
 import { getUserLlmCredentials } from "./llm-credentials.js";
 import { listNotes } from "./notes.js";
-import { createCompletion, EVE_SYSTEM_PROMPT, MODEL } from "./openai.js";
+import { createCompletion, CHAT_SYSTEM_PROMPT, MODEL } from "./openai.js";
 import { sendPushNotification } from "./push.js";
 import { listTasks } from "./tasks.js";
 import { localDayUtcRange, normalizeTimeZone } from "./time-zone.js";
@@ -158,7 +158,7 @@ Recent Notes: ${JSON.stringify(data.notes)}`;
     {
       model: MODEL,
       messages: [
-        { role: "system", content: EVE_SYSTEM_PROMPT },
+        { role: "system", content: CHAT_SYSTEM_PROMPT },
         { role: "user", content: briefingPrompt },
       ],
     },
@@ -224,7 +224,7 @@ async function ensureDailyBriefingNotification(
     orderBy: { createdAt: "desc" },
     select: { id: true, createdAt: true },
   });
-  if (existing) return null;
+  if (existing) return existing;
 
   const briefingMsg = briefing.slice(0, 200) + (briefing.length > 200 ? "..." : "");
   const notification = await prisma.notification.create({
@@ -438,7 +438,7 @@ async function todayRangeForUser(userId: string): Promise<{ gte: Date; lt: Date 
   return { gte, lt };
 }
 
-// Tool for EVE to generate briefing on demand
+// Tool for Eve to generate briefing on demand
 export const BRIEFING_TOOLS = [
   {
     type: "function" as const,

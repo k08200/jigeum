@@ -168,7 +168,7 @@ export async function forceCompact(
 async function generateSummary(messages: ChatMessage[]): Promise<string> {
   const transcript = messages
     .map((m) => {
-      const role = m.role === "USER" ? "User" : "EVE";
+      const role = m.role === "USER" ? "User" : "Eve";
       // Truncate very long messages in the summary input
       const content = m.content.length > 500 ? `${m.content.slice(0, 500)}...` : m.content;
       return `${role}: ${content}`;
@@ -204,7 +204,7 @@ Keep the summary under 500 words. Use the same language as the conversation (Kor
     return messages
       .slice(-5)
       .map((m) => {
-        const role = m.role === "USER" ? "User" : "EVE";
+        const role = m.role === "USER" ? "User" : "Eve";
         return `${role}: ${m.content.slice(0, 100)}`;
       })
       .join("\n");

@@ -47,6 +47,8 @@ model User {
   tokenUsages               TokenUsage[]
   devices                   Device[]
   emailMessages             EmailMessage[]
+  emailAttachments          EmailAttachment[]
+  candidateIntakes          CandidateIntake[]
   emailRules                EmailRule[]
   attentionItems            AttentionItem[]
   commitments               Commitment[]
@@ -325,7 +327,7 @@ model AutomationConfig {
   agentMode            String   @default("SUGGEST") // "SHADOW" | "SUGGEST" | "AUTO"
   agentIntervalMin     Int      @default(5)
   alwaysAllowedTools   String[] @default([]) // MEDIUM-risk tools the user has pre-approved for AUTO mode
-  // Gmail read-state opt-in: when true, EVE marks the original email as read
+  // Gmail read-state opt-in: when true, Eve marks the original email as read
   // after AUTO-replying to it. Default off so Gmail's "unread" remains a user signal.
   autoMarkReadEnabled  Boolean  @default(false)
   // Notification preferences — granular opt-out by category
@@ -334,6 +336,7 @@ model AutomationConfig {
   notifyTaskDue        Boolean  @default(true) // task due soon/overdue
   notifyAgentProposal  Boolean  @default(true) // autonomous agent proposals
   notifyDailyBriefing  Boolean  @default(true) // daily briefing notification
+  notifyEmailCandidate Boolean  @default(true) // candidate/profile attachment intake alerts
   quietHoursStart      String? // "22:00" — suppress push during this window
   quietHoursEnd        String? // "08:00"
   createdAt            DateTime @default(now())
@@ -353,8 +356,8 @@ model AgentLog {
   @@index([userId, createdAt])
 }
 
-// Tracks EVE's processing of individual emails (SUGGEST vs AUTO, which action taken).
-// Used to distinguish "EVE touched this" vs "Gmail native read state" so users can
+// Tracks Eve's processing of individual emails (SUGGEST vs AUTO, which action taken).
+// Used to distinguish "Eve touched this" vs "Gmail native read state" so users can
 // opt into auto-mark-read without losing their fallback inbox signal.
 model EmailProcessingLog {
   id          String   @id @default(uuid())
@@ -423,7 +426,7 @@ model PushDeliveryLog {
   @@index([subscriptionId])
 }
 
-// Memory System — EVE remembers facts about each user across conversations
+// Memory System — Eve remembers facts about each user across conversations
 // Inspired by Claude Code's memdir/ persistent memory architecture
 model Memory {
   id         String     @id @default(uuid())
@@ -450,7 +453,7 @@ enum MemoryType {
   FEEDBACK // corrections or instructions from user
 }
 
-// Reusable workflows the user defines for EVE to execute
+// Reusable workflows the user defines for Eve to execute
 model Skill {
   id          String   @id @default(uuid())
   userId      String
@@ -499,7 +502,7 @@ model ConversationSummary {
   @@index([conversationId])
 }
 
-// Pending Action — EVE's proposals awaiting user approval
+// Pending Action — Eve's proposals awaiting user approval
 // Agent creates these when it wants to take action on behalf of the user
 model PendingAction {
   id             String        @id @default(uuid())
@@ -511,7 +514,7 @@ model PendingAction {
   status         ActionStatus  @default(PENDING)
   toolName       String // e.g. "create_reminder", "update_task"
   toolArgs       String // JSON string of tool arguments
-  reasoning      String? // Why EVE suggests this action
+  reasoning      String? // Why Eve suggests this action
   result         String? // Result after execution (JSON)
   notification   Notification?
   createdAt      DateTime      @default(now())
@@ -560,6 +563,8 @@ model EmailMessage {
   syncedAt             DateTime      @default(now()) // When we synced from Gmail
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
+  attachments          EmailAttachment[]
+  candidateIntakes     CandidateIntake[]
 
   @@unique([userId, gmailId])
   @@index([userId, receivedAt])
@@ -570,7 +575,61 @@ model EmailMessage {
   @@index([userId, needsReply])
 }
 
-// User-supplied corrections of EVE's automatic email priority classification.
+model EmailAttachment {
+  id                String       @id @default(uuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailId           String
+  email             EmailMessage @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  gmailAttachmentId String
+  filename          String
+  mimeType          String
+  size              Int?
+  contentText       String?
+  summary           String?
+  keyPoints         String?
+  extractedFields   String?
+  category          String?
+  analysisStatus    String       @default("PENDING")
+  analysisError     String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([emailId, gmailAttachmentId])
+  @@index([userId, createdAt])
+  @@index([emailId])
+  @@index([userId, category])
+  @@index([userId, analysisStatus])
+}
+
+model CandidateIntake {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailId        String
+  email          EmailMessage @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  status         String       @default("READY_TO_REVIEW") // NEEDS_ANALYSIS | NEEDS_INFO | READY_TO_REVIEW | REVIEWING | CONTACTED | SHORTLISTED | REJECTED | ARCHIVED
+  name           String?
+  role           String?
+  contact        String?
+  emailAddress   String?
+  phone          String?
+  summary        String
+  confidence     Float        @default(0.0)
+  missingFields  Json         @default("[]")
+  evidenceFiles  Json         @default("[]")
+  notes          String?
+  lastDetectedAt DateTime     @default(now())
+  reviewedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, emailId])
+  @@index([userId, status, updatedAt])
+  @@index([emailId])
+}
+
+// User-supplied corrections of Eve's automatic email priority classification.
 // Each row captures both the auto-label that was wrong AND the heuristic
 // signals/reason at the moment of feedback, so we can later replay the
 // classifier against these cases as a regression suite or feed them in as
@@ -580,7 +639,7 @@ model EmailLabelFeedback {
   userId            String
   user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailId           String // EmailMessage.id (soft FK — keep history if email is deleted)
-  originalPriority  EmailPriority // priority EVE assigned at the moment of feedback
+  originalPriority  EmailPriority // priority Eve assigned at the moment of feedback
   correctedPriority EmailPriority // priority the user intended
   reason            String? // classifyPriorityDetailed.reason snapshot (or "auto" if pre-detailed)
   signals           String[] // classifyPriorityDetailed.signals snapshot
@@ -636,7 +695,7 @@ enum EmailRuleAction {
 // Unified queue of "things the user should look at." Replaces the ad-hoc join
 // of PendingAction/Task/CalendarEvent/Notification used by /api/inbox/summary.
 //
-// Notification stays as the bell. AttentionItem is the work queue — what EVE
+// Notification stays as the bell. AttentionItem is the work queue — what Eve
 // believes you would lose value by missing.
 //
 // This first migration only adds the table. Producers and consumers land in
@@ -658,7 +717,7 @@ model AttentionItem {
   // Default 50 = medium; producers can override deterministically.
   priority      Int             @default(50)
   // Confidence in the classification (0.0-1.0). 1.0 for hand-built items
-  // (PendingAction → AttentionItem), <1.0 for inferred ones (e.g. EVE-derived).
+  // (PendingAction → AttentionItem), <1.0 for inferred ones (e.g. Eve-derived).
   confidence    Float           @default(1.0)
   // Autopilot Ladder rung this item is allowed to act at. 0 = observe only,
   // 5 = exception-only. Default 1 = suggest.
@@ -787,7 +846,7 @@ enum CommitmentSource {
 }
 
 // ─── Feedback Ledger ───────────────────────────────────────────────────────
-// Captures every signal the user gives EVE about what was useful — approve,
+// Captures every signal the user gives Eve about what was useful — approve,
 // reject, edit, ignore, dismiss, snooze. Step 8 of the Attention OS roadmap
 // uses this ledger as the substrate for policy extraction (Step 8.2) and
 // agent prompt integration (Step 8.3). This first PR only writes the rows;
@@ -838,7 +897,7 @@ enum FeedbackSignal {
 }
 
 // Durable Work Graph snapshots. WorkGraph v0 is still inferred from source
-// tables, but every summary write-throughs the active contexts here so EVE can
+// tables, but every summary write-throughs the active contexts here so Eve can
 // build longitudinal project memory without waiting for a full graph schema.
 model WorkContextSnapshot {
   id     String @id @default(uuid())
@@ -865,7 +924,7 @@ model WorkContextSnapshot {
 }
 
 // User-enabled operating patterns. Recommendations can stay read-only, but an
-// activation tells EVE to bias ranking, briefings, and future playbook work
+// activation tells Eve to bias ranking, briefings, and future playbook work
 // around that domain.
 model ActivatedPlaybook {
   id         String   @id @default(uuid())
@@ -882,7 +941,7 @@ model ActivatedPlaybook {
 
 // User controls over extracted feedback policies. The extractor remains
 // conservative; this table records which candidates the user explicitly wants
-// EVE to apply or ignore.
+// Eve to apply or ignore.
 model FeedbackPolicyPreference {
   id          String   @id @default(uuid())
   userId      String

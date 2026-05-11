@@ -11,7 +11,7 @@ vi.mock("../gmail.js", () => ({
   getOAuth2Client: vi.fn(),
 }));
 vi.mock("../openai.js", () => ({
-  EVE_SYSTEM_PROMPT: "You are EVE",
+  CHAT_SYSTEM_PROMPT: "You are Eve",
   MODEL: "gpt-4o-mini",
   openai: {
     chat: {
@@ -240,12 +240,12 @@ describe("chat routes (conversation CRUD)", () => {
       method: "POST",
       url: "/api/chat/conversations",
       headers: auth(),
-      payload: { initialMessage: "Hello EVE" },
+      payload: { initialMessage: "Hello Eve" },
     });
     expect(res.statusCode).toBe(201);
     const conv = convStore.get(res.json().id);
     expect(conv?.messages).toHaveLength(1);
-    expect(conv?.messages[0].content).toBe("Hello EVE");
+    expect(conv?.messages[0].content).toBe("Hello Eve");
     await app.close();
   });
 

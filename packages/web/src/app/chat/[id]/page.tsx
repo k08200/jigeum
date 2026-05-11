@@ -484,16 +484,16 @@ function ChatPageContent() {
   const exportConversation = () => {
     if (messages.length === 0) return;
     const lines = messages.map((m) => {
-      const label = m.role === "USER" ? "**You**" : "**EVE**";
+      const label = m.role === "USER" ? "**You**" : "**Eve**";
       const time = new Date(m.createdAt).toLocaleString("ko-KR");
       return `### ${label} — ${time}\n\n${m.content}`;
     });
-    const md = `# EVE Conversation\n\nExported: ${new Date().toLocaleString("ko-KR")}\n\n---\n\n${lines.join("\n\n---\n\n")}`;
+    const md = `# Eve Conversation\n\nExported: ${new Date().toLocaleString("ko-KR")}\n\n---\n\n${lines.join("\n\n---\n\n")}`;
     const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `eve-chat-${id.slice(0, 8)}.md`;
+    a.download = `jigeum-chat-${id.slice(0, 8)}.md`;
     a.click();
     URL.revokeObjectURL(url);
     toast("Exported as Markdown", "success");
@@ -624,7 +624,7 @@ function ChatPageContent() {
                 Start with the outcome you need.
               </h2>
               <p className="mb-8 max-w-md text-center text-sm leading-6 text-stone-500">
-                EVE can inspect live work context, explain why it matters, and package the next
+                Eve can inspect live work context, explain why it matters, and package the next
                 action for approval.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
@@ -702,7 +702,7 @@ function ChatPageContent() {
                 {/* Content */}
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold text-stone-300 mb-1.5">
-                    {msg.role === "USER" ? "You" : "EVE"}
+                    {msg.role === "USER" ? "You" : "Eve"}
                   </p>
                   {msg.role === "USER" && editingMsgId === msg.id ? (
                     <div>
@@ -995,7 +995,7 @@ function ChatPageContent() {
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-stone-300 mb-1.5">EVE</p>
+                  <p className="text-[13px] font-semibold text-stone-300 mb-1.5">Eve</p>
                   <div className="text-[15px] text-stone-200 leading-relaxed">
                     <Markdown content={streamingContent} />
                     <span className="inline-block w-0.5 h-5 bg-stone-400 rounded-full animate-pulse ml-0.5 align-text-bottom" />
@@ -1255,7 +1255,7 @@ function ChatPageContent() {
           </div>
 
           <p className="mt-2 text-center text-[11px] text-stone-600">
-            EVE prepares the reasoning chain. You approve the action.
+            Eve prepares the reasoning chain. You approve the action.
           </p>
         </div>
       </div>

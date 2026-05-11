@@ -38,12 +38,12 @@ export function humanizeAutoExec(
   const summary = TOOL_SUMMARIES[fnName];
   if (summary) {
     const built = summary(args);
-    return { autoTitle: `[EVE] ${built.title}`, autoMessage: built.body };
+    return { autoTitle: `[Eve] ${built.title}`, autoMessage: built.body };
   }
   // Unknown tool — at least drop the JSON dump.
   const friendly = fnName.replace(/_/g, " ");
   return {
-    autoTitle: "[EVE] 작업 완료",
+    autoTitle: "[Eve] 작업 완료",
     autoMessage: `${friendly} 처리했습니다.`,
   };
 }

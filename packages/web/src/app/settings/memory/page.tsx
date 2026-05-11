@@ -58,7 +58,7 @@ export default function MemoryPage() {
           Memory Graph
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
-          EVE가 판단에 쓰는 기억
+          Eve가 판단에 쓰는 기억
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
           승인 방식, 선호, 반복되는 업무 맥락을 확인하고 필요 없는 기억은 지웁니다.
@@ -171,7 +171,7 @@ export default function MemoryPage() {
           <div className="rounded-xl border border-stone-700/45 bg-stone-950/35 py-12 text-center">
             <p className="mb-1 text-sm text-stone-400">No memories yet</p>
             <p className="text-xs text-stone-600">
-              EVE will remember decision preferences as you work.
+              Eve will remember decision preferences as you work.
             </p>
           </div>
         )}

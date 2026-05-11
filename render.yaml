@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: hireeve-api
+    name: jigeum-api
     runtime: node
     region: singapore
     plan: free
@@ -32,9 +32,9 @@ services:
       - key: PORT
         value: "3001"
       - key: CORS_ORIGINS
-        value: "https://hireeve.com,https://www.hireeve.com,https://hire-eve-web.vercel.app"
+        value: "https://jigeum.ai,https://www.jigeum.ai"
       - key: RENDER_EXTERNAL_URL
-        value: "https://hireeve.onrender.com"
+        value: "https://jigeum.onrender.com"
       - key: BETA_AUTO_PRO_ENABLED
         sync: false
       - key: BETA_AUTO_PRO_LIMIT

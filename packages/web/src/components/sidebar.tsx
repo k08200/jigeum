@@ -377,9 +377,9 @@ export default function Sidebar({
         >
           <img src="/brand/mark.svg" alt="" className="h-7 w-7" />
           <span>
-            <span className="block leading-none">EVE</span>
+            <span className="block leading-none">Jigeum</span>
             <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-stone-500">
-              Decision OS
+              What matters now
             </span>
           </span>
         </Link>
@@ -446,7 +446,7 @@ export default function Sidebar({
 
       {/* Conversation list */}
       <div className="relative flex-1 overflow-y-auto px-2 pb-2">
-        {/* Decision Queue — EVE threads with pending actions */}
+        {/* Decision Queue — Eve threads with pending actions */}
         {agentSuggestions.length > 0 && (
           <div className="mb-3">
             <Link

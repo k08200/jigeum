@@ -59,12 +59,12 @@ function keyHash(apiKey: string): string {
   return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
 }
 
-function buildOpenRouter(apiKey = process.env.OPENROUTER_API_KEY, scope = "env"): Provider | null {
+function buildOpenRouter(apiKey: string | null | undefined): Provider | null {
   if (!apiKey) return null;
   const client = new OpenAISDK({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
   return {
     name: "openrouter",
-    quotaKey: `openrouter:${scope}:${keyHash(apiKey)}`,
+    quotaKey: `openrouter:${keyHash(apiKey)}`,
     client,
     defaultModel: process.env.FALLBACK_MODEL || "google/gemma-4-31b-it:free",
     supportsTools: true,
@@ -78,12 +78,12 @@ function buildOpenRouter(apiKey = process.env.OPENROUTER_API_KEY, scope = "env")
   };
 }
 
-function buildGemini(apiKey = process.env.GEMINI_API_KEY, scope = "env"): Provider | null {
+function buildGemini(apiKey: string | null | undefined): Provider | null {
   if (!apiKey) return null;
   const defaultModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
   return {
     name: "gemini",
-    quotaKey: `gemini:${scope}:${keyHash(apiKey)}`,
+    quotaKey: `gemini:${keyHash(apiKey)}`,
     client: null, // uses native adapter, not OpenAI SDK
     defaultModel,
     // Gemini's OpenAI-compat tools support is unreliable; caller should strip
@@ -110,8 +110,8 @@ function buildGemini(apiKey = process.env.GEMINI_API_KEY, scope = "env"): Provid
 }
 
 const providers: Record<ProviderName, Provider | null> = {
-  openrouter: buildOpenRouter(),
-  gemini: buildGemini(),
+  openrouter: buildOpenRouter(process.env.OPENROUTER_API_KEY),
+  gemini: buildGemini(process.env.GEMINI_API_KEY),
 };
 
 if (!providers.openrouter) {
@@ -131,8 +131,8 @@ export function getProvider(name: ProviderName): Provider | null {
 /** Ordered list of providers to try, skipping any that aren't configured */
 export function getProviderChain(credentials: ProviderCredentials = {}): Provider[] {
   const chain = [
-    buildOpenRouter(credentials.openRouterApiKey ?? undefined, "user"),
-    buildGemini(credentials.geminiApiKey ?? undefined, "user"),
+    credentials.openRouterApiKey ? buildOpenRouter(credentials.openRouterApiKey) : null,
+    credentials.geminiApiKey ? buildGemini(credentials.geminiApiKey) : null,
     providers.openrouter,
     providers.gemini,
   ].filter((p): p is Provider => p !== null);

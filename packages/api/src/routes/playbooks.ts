@@ -1,5 +1,5 @@
 /**
- * Built-in EVE Playbooks API.
+ * Built-in Jigeum Playbooks API.
  *
  * These routes are read-only in v0. They expose the canonical playbook
  * registry and context-aware recommendations inferred from the Work Graph.
@@ -12,7 +12,7 @@ import {
   buildPlaybookRecommendations,
   deactivatePlaybook,
   listActivePlaybookIds,
-  listEvePlaybooks,
+  listJigeumPlaybooks,
 } from "../playbooks.js";
 
 const playbookIdParamSchema = {
@@ -30,7 +30,7 @@ export function playbookRoutes(app: FastifyInstance) {
   app.get("/", async (request) => {
     const userId = getUserId(request);
     const activeIds = await listActivePlaybookIds(userId);
-    return { playbooks: listEvePlaybooks(activeIds) };
+    return { playbooks: listJigeumPlaybooks(activeIds) };
   });
 
   app.get("/activations", async (request) => {

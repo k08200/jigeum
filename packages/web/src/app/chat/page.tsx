@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import { useToast } from "../../components/toast";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, getStoredAuthToken } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -86,13 +86,13 @@ function NewChatWelcome() {
     },
     {
       label: "Update memory",
-      message: "Remember how I want EVE to handle approvals.",
+      message: "Remember how I want Eve to handle approvals.",
       meta: "memory",
     },
   ];
 
   const { googleConnected } = useAuth();
-  const connectUrl = `${API_BASE}/api/auth/google?token=${typeof window !== "undefined" ? localStorage.getItem("eve-token") || "" : ""}`;
+  const connectUrl = `${API_BASE}/api/auth/google?token=${getStoredAuthToken() || ""}`;
 
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-4 pb-28 pt-10 md:py-10">
@@ -122,7 +122,7 @@ function NewChatWelcome() {
             Turn the work stream into decisions.
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-stone-500">
-            Ask EVE to inspect signals, assemble context, draft the move, or prepare a decision card
+            Ask Eve to inspect signals, assemble context, draft the move, or prepare a decision card
             before anything gets executed.
           </p>
         </div>
@@ -135,7 +135,7 @@ function NewChatWelcome() {
             className="group w-full rounded-2xl border border-stone-700/60 bg-stone-950/55 px-5 py-4 text-left text-sm text-stone-500 shadow-2xl shadow-black/20 transition hover:border-amber-500/45 hover:bg-stone-900/80"
           >
             <span className="flex items-center justify-between gap-3">
-              <span>Ask EVE to build a decision, brief, or next move...</span>
+              <span>Ask Eve to build a decision, brief, or next move...</span>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-300 text-stone-950 transition group-hover:bg-amber-200">
                 <svg
                   aria-hidden="true"

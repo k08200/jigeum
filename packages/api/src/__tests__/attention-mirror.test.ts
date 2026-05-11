@@ -389,7 +389,7 @@ describe("upsertAttentionForNotification", () => {
       id: "n-3",
       userId: "u",
       type: "agent_proposal",
-      title: "[EVE] heads-up",
+      title: "[Eve] heads-up",
       message: "something to look at",
       isRead: false,
       pendingActionId: null,
@@ -399,7 +399,7 @@ describe("upsertAttentionForNotification", () => {
     };
     expect(call.create.status).toBe("OPEN");
     expect(call.create.type).toBe("FOLLOWUP");
-    expect(call.create.title).toBe("[EVE] heads-up");
+    expect(call.create.title).toBe("[Eve] heads-up");
     expect(call.create.autonomyLevel).toBe(1);
   });
 
@@ -408,7 +408,7 @@ describe("upsertAttentionForNotification", () => {
       id: "n-4",
       userId: "u",
       type: "agent_proposal",
-      title: "[EVE] heads-up",
+      title: "[Eve] heads-up",
       message: "msg",
       isRead: true,
       pendingActionId: null,

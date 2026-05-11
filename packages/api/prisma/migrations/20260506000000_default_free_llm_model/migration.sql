@@ -1,4 +1,4 @@
--- Default EVE to a zero-cost OpenRouter model for beta.
+-- Default Eve to a zero-cost OpenRouter model for beta.
 ALTER TABLE "User"
   ALTER COLUMN "chatModel" SET DEFAULT 'google/gemma-4-31b-it:free';
 
