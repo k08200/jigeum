@@ -35,7 +35,7 @@ function NewChatWelcome() {
         });
         router.push(`/chat/${conv.id}?prefill=${encodeURIComponent(prefill)}`);
       } catch {
-        toast("Failed to create conversation", "error");
+        toast("결정 스레드를 만들지 못했습니다.", "error");
       }
     })();
   }, [searchParams, router, toast]);
@@ -52,7 +52,7 @@ function NewChatWelcome() {
         router.push(`/chat/${conv.id}`);
       }
     } catch {
-      toast("Failed to create conversation", "error");
+      toast("결정 스레드를 만들지 못했습니다.", "error");
     }
   };
 
@@ -116,7 +116,7 @@ function NewChatWelcome() {
         <div className="mb-8 text-center">
           <img src="/brand/mark.svg" alt="" className="mx-auto mb-4 h-14 w-14" />
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300/80">
-            Decision Thread
+            결정 스레드
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-stone-50 sm:text-4xl">
             오늘 처리할 결정을 바로 만드세요.

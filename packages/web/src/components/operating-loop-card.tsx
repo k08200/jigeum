@@ -53,13 +53,13 @@ export default function OperatingLoopCard() {
   return (
     <section
       className="mb-6 overflow-hidden rounded-2xl border border-amber-300/15 bg-stone-950/70"
-      aria-label="EVE operating loop"
+      aria-label="EVE 운영 루프"
     >
       <div className="border-b border-stone-800 bg-gradient-to-br from-stone-950 via-stone-950 to-amber-950/25 p-4 md:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-              Operating Loop
+              운영 루프
             </p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-stone-50">
               {modeLabel(plan.mode)}
@@ -99,7 +99,7 @@ export default function OperatingLoopCard() {
           {plan.playbookNudge && (
             <div className="rounded-xl border border-stone-800 bg-stone-900/35 p-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-200">
-                Playbook
+                플레이북
               </p>
               <p className="mt-2 text-sm font-medium text-stone-100">{plan.playbookNudge.name}</p>
               <p className="mt-1 text-xs leading-5 text-stone-500">
@@ -112,7 +112,7 @@ export default function OperatingLoopCard() {
           {plan.watchlist.length > 0 && (
             <div className="rounded-xl border border-stone-800 bg-stone-900/35 p-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-stone-500">
-                Watchlist
+                워치리스트
               </p>
               <ul className="mt-2 space-y-2">
                 {plan.watchlist.map((context) => (
@@ -221,11 +221,11 @@ function modeLabel(mode: OperatingPlan["mode"]): string {
 function sourceLabel(source: OperatingPlanMove["source"]): string {
   switch (source) {
     case "attention":
-      return "Decision Card";
+      return "결정 카드";
     case "work_context":
-      return "Work Graph";
+      return "업무 그래프";
     case "playbook":
-      return "Playbook";
+      return "플레이북";
   }
 }
 

@@ -9,17 +9,17 @@ export default function Footer() {
             <span className="text-amber-300/80 font-medium">EVE</span> v0.2.0
           </span>
           <span className="hidden sm:inline text-stone-800">|</span>
-          <span className="hidden sm:inline">Decision OS workspace</span>
+          <span className="hidden sm:inline">Decision OS 워크스페이스</span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-stone-600">
           <Link href="/billing" className="hover:text-stone-400 transition-colors">
-            Plans
+            플랜
           </Link>
           <Link href="/settings" className="hover:text-stone-400 transition-colors">
-            Control Plane
+            컨트롤 플레인
           </Link>
           <span className="hidden sm:inline text-stone-800">|</span>
-          <span className="hidden sm:inline">Cmd+K surfaces</span>
+          <span className="hidden sm:inline">Cmd+K 화면 검색</span>
         </div>
       </div>
     </footer>

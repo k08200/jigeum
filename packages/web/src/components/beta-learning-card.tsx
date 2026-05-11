@@ -94,7 +94,7 @@ export default function BetaLearningCard() {
             type="button"
             onClick={dismiss}
             className="rounded-lg border border-stone-700 px-2.5 py-1.5 text-xs text-stone-400 transition hover:bg-stone-800 hover:text-stone-200"
-            aria-label="Hide beta learning notice"
+            aria-label="베타 학습 안내 숨기기"
           >
             닫기
           </button>

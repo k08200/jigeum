@@ -168,7 +168,7 @@ function BriefingView() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-              Decision Brief
+              결정 브리프
             </p>
             <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
               오늘 처리할 결정만 압축
@@ -188,9 +188,9 @@ function BriefingView() {
           </button>
         </div>
         <div className="mt-5 grid grid-cols-3 gap-2">
-          <BriefStat label="Top actions" value={topActions.length} />
-          <BriefStat label="Feedback" value={Object.keys(feedback).length} />
-          <BriefStat label="State" value={content ? "Ready" : "Empty"} />
+          <BriefStat label="핵심 행동" value={topActions.length} />
+          <BriefStat label="피드백" value={Object.keys(feedback).length} />
+          <BriefStat label="상태" value={content ? "준비됨" : "비어 있음"} />
         </div>
       </header>
 

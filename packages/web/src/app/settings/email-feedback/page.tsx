@@ -8,7 +8,7 @@ export default function EmailFeedbackPage() {
     <div className="mx-auto max-w-3xl px-4 pb-28 pt-6 sm:px-6 md:py-10">
       <header className="mb-5 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-2xl shadow-black/10">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-          Feedback Lab
+          피드백 랩
         </p>
         <h1 className="text-2xl font-semibold tracking-tight text-stone-50">메일 판단 교정 로그</h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">

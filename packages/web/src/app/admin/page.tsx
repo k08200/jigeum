@@ -205,7 +205,7 @@ function AdminDashboard() {
   if (user?.role !== "ADMIN") {
     return (
       <div className="flex h-full items-center justify-center text-stone-500">
-        Admin access required
+        관리자 권한이 필요합니다
       </div>
     );
   }
@@ -215,7 +215,7 @@ function AdminDashboard() {
       <div className="mx-auto max-w-6xl space-y-6">
         {errors.length > 0 && (
           <div className="space-y-1 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs">
-            <p className="font-medium text-amber-300">Some sections failed to load</p>
+            <p className="font-medium text-amber-300">일부 섹션을 불러오지 못했습니다</p>
             {errors.map((e) => (
               <p key={e.endpoint} className="font-mono text-amber-200/80">
                 {e.endpoint} — {e.message}
@@ -226,10 +226,10 @@ function AdminDashboard() {
         <header className="flex flex-col gap-4 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-sm shadow-black/20 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">
-              Operations Command
+              운영 커맨드
             </p>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50">
-              Control Plane
+              컨트롤 플레인
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-400">
               실행 성공률, 승인 흐름, 사용자 상태를 운영 판단에 필요한 신호로 정리합니다.
@@ -241,14 +241,14 @@ function AdminDashboard() {
               onClick={() => setTab("ops")}
               className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition md:flex-none ${tab === "ops" ? "bg-amber-300 text-stone-950" : "text-stone-500 hover:text-stone-200"}`}
             >
-              Ops
+              운영
             </button>
             <button
               type="button"
               onClick={() => setTab("users")}
               className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition md:flex-none ${tab === "users" ? "bg-amber-300 text-stone-950" : "text-stone-500 hover:text-stone-200"}`}
             >
-              Accounts
+              계정
             </button>
           </div>
         </header>
@@ -257,9 +257,9 @@ function AdminDashboard() {
         <section className="rounded-2xl border border-stone-700/45 bg-stone-950/35 p-4">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-medium text-stone-50">Agent Decision Eval</h2>
+              <h2 className="text-sm font-medium text-stone-50">에이전트 결정 평가</h2>
               <p className="mt-0.5 text-xs text-stone-500">
-                Regression checks for tool risk, dedup, and plan gating logic
+                도구 리스크, 중복 제거, 플랜 게이트 로직의 회귀를 점검합니다
               </p>
             </div>
             <button
@@ -268,19 +268,19 @@ function AdminDashboard() {
               disabled={evalLoading}
               className="rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-semibold text-stone-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {evalLoading ? "Running..." : "Run eval"}
+              {evalLoading ? "실행 중..." : "평가 실행"}
             </button>
           </div>
           {evalData && (
             <div className="space-y-2">
               <div className="flex items-center gap-4 text-xs">
                 <span className="text-stone-400">
-                  {evalData.summary.passed}/{evalData.summary.total} passed
+                  {evalData.summary.passed}/{evalData.summary.total} 통과
                 </span>
                 <span
                   className={`font-medium ${evalData.summary.failed === 0 ? "text-emerald-400" : "text-red-400"}`}
                 >
-                  {(evalData.summary.passRate * 100).toFixed(0)}% pass rate
+                  통과율 {(evalData.summary.passRate * 100).toFixed(0)}%
                 </span>
                 <span className="text-stone-600">
                   {new Date(evalData.runAt).toLocaleString("ko-KR")}
@@ -321,11 +321,11 @@ function AdminDashboard() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Accounts" value={stats.totalUsers} />
-            <StatCard label="Decision Threads" value={stats.totalConversations} />
-            <StatCard label="Decision Turns (month)" value={stats.monthlyMessages} />
+            <StatCard label="전체 계정" value={stats.totalUsers} />
+            <StatCard label="결정 스레드" value={stats.totalConversations} />
+            <StatCard label="월간 결정 턴" value={stats.monthlyMessages} />
             <StatCard
-              label="Plan Distribution"
+              label="플랜 분포"
               value={Object.entries(stats.planDistribution)
                 .map(([k, v]) => `${k}: ${v}`)
                 .join(", ")}
@@ -336,99 +336,84 @@ function AdminDashboard() {
         {tab === "ops" && ops && (
           <div className="space-y-6">
             <section>
-              <h2 className="mb-3 text-sm font-medium text-stone-400">Tool Execution (last 7d)</h2>
+              <h2 className="mb-3 text-sm font-medium text-stone-400">도구 실행 (최근 7일)</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard
-                  label="Success Rate"
-                  value={`${(ops.tools.successRate * 100).toFixed(1)}%`}
-                />
-                <StatCard label="Executed" value={ops.tools.executed} />
-                <StatCard label="Errors" value={ops.tools.errors} />
-                <StatCard label="Skipped (dedup)" value={ops.tools.skipped} />
+                <StatCard label="성공률" value={`${(ops.tools.successRate * 100).toFixed(1)}%`} />
+                <StatCard label="실행" value={ops.tools.executed} />
+                <StatCard label="오류" value={ops.tools.errors} />
+                <StatCard label="중복 제외" value={ops.tools.skipped} />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-stone-400">Approval Flow (last 7d)</h2>
+              <h2 className="mb-3 text-sm font-medium text-stone-400">승인 흐름 (최근 7일)</h2>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <StatCard
-                  label="Approval Rate"
+                  label="승인율"
                   value={`${(ops.approvals.approvalRate * 100).toFixed(1)}%`}
                 />
-                <StatCard label="Proposed" value={ops.approvals.proposed} />
-                <StatCard label="Approved" value={ops.approvals.approved} />
-                <StatCard label="Rejected" value={ops.approvals.rejected} />
-                <StatCard label="Pending" value={ops.approvals.pending} />
+                <StatCard label="제안" value={ops.approvals.proposed} />
+                <StatCard label="승인" value={ops.approvals.approved} />
+                <StatCard label="거절" value={ops.approvals.rejected} />
+                <StatCard label="대기" value={ops.approvals.pending} />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-stone-400">
-                Daily Trust Loop (last 7d)
-              </h2>
+              <h2 className="mb-3 text-sm font-medium text-stone-400">일일 신뢰 루프 (최근 7일)</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
-                  label="Top 3 Useful"
+                  label="상위 3개 유용률"
                   value={formatNullableRate(ops.trust?.briefingTop3.usefulRate)}
                 />
-                <StatCard label="Top 3 Votes" value={ops.trust?.briefingTop3.total ?? 0} />
+                <StatCard label="상위 3개 투표" value={ops.trust?.briefingTop3.total ?? 0} />
                 <StatCard
-                  label="Reply Needed Precision"
+                  label="답장 필요 정확도"
                   value={formatNullableRate(ops.trust?.replyNeeded.usefulRate)}
                 />
-                <StatCard label="Reply Votes" value={ops.trust?.replyNeeded.total ?? 0} />
+                <StatCard label="답장 투표" value={ops.trust?.replyNeeded.total ?? 0} />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-stone-400">
-                Active Accounts & Notifications
-              </h2>
+              <h2 className="mb-3 text-sm font-medium text-stone-400">활성 계정과 알림</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="DAU" value={ops.activeUsers.dau} />
                 <StatCard label="WAU" value={ops.activeUsers.wau} />
                 <StatCard label="MAU" value={ops.activeUsers.mau} />
                 <StatCard
-                  label="Notif Read Rate"
+                  label="알림 읽음률"
                   value={`${(ops.notifications.readRate * 100).toFixed(1)}%`}
                 />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-medium text-stone-400">
-                Model Spend Ledger (last 7d)
-              </h2>
+              <h2 className="mb-3 text-sm font-medium text-stone-400">모델 비용 장부 (최근 7일)</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard
-                  label="Estimated Cost"
-                  value={`$${ops.tokens.estimatedCostUsd.toFixed(2)}`}
-                />
-                <StatCard label="Prompt Tokens" value={ops.tokens.promptTokens.toLocaleString()} />
-                <StatCard
-                  label="Completion Tokens"
-                  value={ops.tokens.completionTokens.toLocaleString()}
-                />
-                <StatCard label="Total Tokens" value={ops.tokens.totalTokens.toLocaleString()} />
+                <StatCard label="예상 비용" value={`$${ops.tokens.estimatedCostUsd.toFixed(2)}`} />
+                <StatCard label="프롬프트 토큰" value={ops.tokens.promptTokens.toLocaleString()} />
+                <StatCard label="완성 토큰" value={ops.tokens.completionTokens.toLocaleString()} />
+                <StatCard label="전체 토큰" value={ops.tokens.totalTokens.toLocaleString()} />
               </div>
             </section>
 
             {perf && perf.routes.length > 0 && (
               <section>
                 <h2 className="mb-3 text-sm font-medium text-stone-400">
-                  Route Latency (since last restart)
+                  라우트 지연 시간 (마지막 재시작 이후)
                 </h2>
                 <div className="overflow-x-auto rounded-2xl border border-stone-700/45 bg-stone-950/35">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-stone-800 text-left text-stone-500">
-                        <th className="p-3">Route</th>
-                        <th className="p-3">Count</th>
-                        <th className="p-3">Errors</th>
+                        <th className="p-3">라우트</th>
+                        <th className="p-3">횟수</th>
+                        <th className="p-3">오류</th>
                         <th className="p-3">p50</th>
                         <th className="p-3">p95</th>
                         <th className="p-3">p99</th>
-                        <th className="p-3">Max</th>
+                        <th className="p-3">최대</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -465,18 +450,18 @@ function AdminDashboard() {
 
             {ops.recentErrors.length > 0 && (
               <section>
-                <h2 className="mb-3 text-sm font-medium text-stone-400">Recent Errors</h2>
+                <h2 className="mb-3 text-sm font-medium text-stone-400">최근 오류</h2>
                 <div className="divide-y divide-stone-800 rounded-2xl border border-stone-700/45 bg-stone-950/35">
                   {ops.recentErrors.map((e, idx) => (
                     <div key={`${e.createdAt}-${idx}`} className="p-3 text-xs">
                       <div className="flex justify-between mb-1">
-                        <span className="text-red-400 font-mono">{e.tool || "unknown"}</span>
+                        <span className="text-red-400 font-mono">{e.tool || "알 수 없음"}</span>
                         <span className="text-stone-600">
                           {new Date(e.createdAt).toLocaleString("ko-KR")}
                         </span>
                       </div>
                       <p className="truncate text-stone-400">{e.summary}</p>
-                      <p className="mt-1 text-stone-600">user: {e.userId.slice(0, 8)}</p>
+                      <p className="mt-1 text-stone-600">사용자: {e.userId.slice(0, 8)}</p>
                     </div>
                   ))}
                 </div>
@@ -490,14 +475,14 @@ function AdminDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stone-800 text-left text-stone-500">
-                  <th className="p-3 pr-4">Email</th>
-                  <th className="p-3 pr-4">Name</th>
-                  <th className="p-3 pr-4">Role</th>
-                  <th className="p-3 pr-4">Plan</th>
-                  <th className="p-3 pr-4">Decision Turns</th>
-                  <th className="p-3 pr-4">Threads</th>
-                  <th className="p-3 pr-4">Joined</th>
-                  <th className="p-3">Actions</th>
+                  <th className="p-3 pr-4">이메일</th>
+                  <th className="p-3 pr-4">이름</th>
+                  <th className="p-3 pr-4">역할</th>
+                  <th className="p-3 pr-4">플랜</th>
+                  <th className="p-3 pr-4">결정 턴</th>
+                  <th className="p-3 pr-4">스레드</th>
+                  <th className="p-3 pr-4">가입일</th>
+                  <th className="p-3">액션</th>
                 </tr>
               </thead>
               <tbody>
@@ -538,7 +523,7 @@ function AdminDashboard() {
                           onClick={() => deleteUser(u.id, u.email)}
                           className="text-red-500 hover:text-red-400 text-xs"
                         >
-                          Delete
+                          삭제
                         </button>
                       )}
                     </td>
