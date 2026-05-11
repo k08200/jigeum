@@ -17,6 +17,7 @@ export interface OperatingPlanMove {
   title: string;
   reason: string;
   href: string | null;
+  prompt: string;
   label: string;
   tone: OperatingPlanTone;
   source: "attention" | "work_context" | "playbook";
