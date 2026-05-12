@@ -100,7 +100,7 @@ export default function PwaPrompts() {
       {/* Update available banner */}
       {updateAvailable && (
         <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up">
-          <div className="text-sm text-stone-200">새 Decision OS 빌드가 준비되었습니다</div>
+          <div className="text-sm text-stone-200">새 Jigeum 빌드가 준비되었습니다</div>
           <button
             type="button"
             onClick={handleUpdate}
@@ -121,11 +121,11 @@ export default function PwaPrompts() {
       {/* Install prompt */}
       {showInstall && (
         <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/20 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up sm:max-w-md">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-200 to-stone-600 flex items-center justify-center text-sm font-bold text-stone-950 shrink-0">
-            E
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#f5f0e8]">
+            <img src="/brand/mark.svg" alt="" className="h-9 w-9" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-stone-200">EVE 워크스페이스 설치</p>
+            <p className="text-sm font-medium text-stone-200">Jigeum 설치</p>
             <p className="text-xs text-stone-500">홈 화면에서 결정 큐를 바로 열 수 있어요</p>
           </div>
           <button

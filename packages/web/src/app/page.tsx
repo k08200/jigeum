@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import LandingRedirect from "../components/landing-redirect";
 
@@ -63,17 +62,103 @@ function BrandMark({ className = "" }: { className?: string }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect width="40" height="40" rx="9" fill="#111827" />
-      <path d="M20 6.5v27" stroke="#d8a45d" strokeWidth="1.8" strokeLinecap="round" />
+      <rect width="40" height="40" rx="9" fill="#F5F0E8" />
       <path
-        d="M8 22.5c7.7-1.2 12.8-5.1 15.5-12.2 1.6 7.1 4.4 11.2 8.5 12.2-6.4.9-10.3 4.6-11.9 11.1-2.1-6.6-6.1-10.3-12.1-11.1Z"
-        fill="#f3efe7"
+        d="M24.5 9.2h5.6v13.1c0 5.8-4 9.4-9.8 9.4-5.4 0-9.1-2.9-10-7.6l5.3-1.6c.7 2.8 2.3 4.2 5 4.2 2.6 0 3.9-1.6 3.9-4.6V9.2Z"
+        fill="#151515"
       />
-      <path
-        d="M13.5 22.3c3.8-1.1 6.4-3.6 7.7-7.6 1 3.8 2.9 6.3 5.8 7.6-3.6 1-5.9 3.3-6.9 6.9-1.2-3.6-3.4-5.9-6.6-6.9Z"
-        fill="#d8a45d"
-      />
+      <path d="M12.3 9.2h9v5h-9v-5Z" fill="#151515" />
+      <path d="M9 20h10.3" stroke="#C7A46A" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function HeroProductScene() {
+  const rows = [
+    ["답장 필요", "OpenRouter Team", "Video generation, workspaces, 35 new models", "2m"],
+    ["긴급", "Vercel Security", "보안 사고 안내 및 환경변수 점검 권고", "18m"],
+    ["미팅", "김용린", "내일 6시 미팅 준비 질문 정리", "1h"],
+  ];
+
+  return (
+    <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[#0f1115]" />
+      <div className="absolute inset-y-0 right-0 hidden w-[64vw] min-w-[760px] lg:block">
+        <div className="absolute right-[-80px] top-20 h-[560px] w-[920px] rotate-[-2deg] rounded-2xl border border-stone-700/60 bg-[#151922] shadow-2xl shadow-black/45">
+          <div className="flex h-12 items-center gap-2 border-b border-stone-800 px-4">
+            <span className="h-2.5 w-2.5 rounded-full bg-stone-700" />
+            <span className="h-2.5 w-2.5 rounded-full bg-stone-700" />
+            <span className="h-2.5 w-2.5 rounded-full bg-stone-700" />
+            <span className="ml-4 text-xs font-medium text-stone-500">Jigeum / Today</span>
+          </div>
+          <div className="grid h-[508px] grid-cols-[220px_1fr]">
+            <aside className="border-r border-stone-800 bg-[#111318] p-4">
+              <div className="mb-8 flex items-center gap-3">
+                <BrandMark className="h-8 w-8" />
+                <div>
+                  <p className="text-sm font-semibold text-stone-100">Jigeum</p>
+                  <p className="text-[10px] text-stone-500">What matters now</p>
+                </div>
+              </div>
+              {["결정 큐", "메일", "캘린더", "브리핑"].map((item, index) => (
+                <div
+                  key={item}
+                  className={`mb-1 rounded-md px-3 py-2 text-sm ${
+                    index === 0 ? "bg-stone-800 text-stone-100" : "text-stone-500"
+                  }`}
+                >
+                  {item}
+                </div>
+              ))}
+            </aside>
+            <main className="p-6">
+              <div className="mb-6 flex items-end justify-between gap-6">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    Decision queue
+                  </p>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                    오늘 처리할 일
+                  </h2>
+                </div>
+                <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-800 bg-[#111318] text-center">
+                  {["7", "3", "1"].map((value, index) => (
+                    <div
+                      key={value}
+                      className="border-r border-stone-800 px-5 py-3 last:border-r-0"
+                    >
+                      <p className="text-lg font-semibold text-stone-100">{value}</p>
+                      <p className="text-[10px] text-stone-500">
+                        {["신호", "답장", "승인"][index]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                {rows.map(([tag, sender, subject, time]) => (
+                  <div
+                    key={subject}
+                    className="rounded-lg border border-stone-800 bg-[#111318] p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <span className="rounded border border-stone-700 px-2 py-1 text-[10px] text-stone-400">
+                        {tag}
+                      </span>
+                      <span className="text-xs text-stone-600">{time}</span>
+                    </div>
+                    <p className="text-sm font-medium text-stone-100">{sender}</p>
+                    <p className="mt-1 text-sm text-stone-500">{subject}</p>
+                  </div>
+                ))}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#0f1115_0%,rgba(15,17,21,0.93)_38%,rgba(15,17,21,0.4)_72%,rgba(15,17,21,0.72)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#0f1115] to-transparent" />
+    </div>
   );
 }
 
@@ -146,16 +231,7 @@ export default function LandingPage() {
       <LandingRedirect />
 
       <section className="relative min-h-[88svh] overflow-hidden">
-        <Image
-          src="/scenes/hero-workspace-photo.jpg"
-          alt="노트북과 노트가 놓인 실제 업무 책상"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,10,13,0.94)_0%,rgba(9,10,13,0.78)_42%,rgba(9,10,13,0.34)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,17,21,0.1)_0%,rgba(15,17,21,0.22)_48%,#0f1115_100%)]" />
+        <HeroProductScene />
 
         <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <Link href="/" className="flex items-center gap-3">
