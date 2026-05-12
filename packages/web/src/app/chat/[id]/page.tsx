@@ -2,6 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import AuthGuard from "../../../components/auth-guard";
 import { Markdown } from "../../../components/markdown";
 import SpeakButton from "../../../components/speak-button";
 import { useToast } from "../../../components/toast";
@@ -54,9 +55,11 @@ function ThreadMetric({
 
 export default function ChatPage() {
   return (
-    <Suspense>
-      <ChatPageContent />
-    </Suspense>
+    <AuthGuard>
+      <Suspense>
+        <ChatPageContent />
+      </Suspense>
+    </AuthGuard>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
 import { apiFetch } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
@@ -27,6 +28,14 @@ interface ConvUsage {
 }
 
 export default function UsagePage() {
+  return (
+    <AuthGuard>
+      <UsagePageContent />
+    </AuthGuard>
+  );
+}
+
+function UsagePageContent() {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [convUsages, setConvUsages] = useState<ConvUsage[]>([]);
   const [period, setPeriod] = useState("month");
