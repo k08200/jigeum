@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
 import { apiFetch } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
@@ -24,6 +25,14 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function MemoryPage() {
+  return (
+    <AuthGuard>
+      <MemoryPageContent />
+    </AuthGuard>
+  );
+}
+
+function MemoryPageContent() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
