@@ -273,6 +273,18 @@ function displayText(value: string): string {
     .replace(/\bEVE\b/g, "Jigeum")
     .replace(/\bEve\b/g, "Jigeum")
     .replace(
+      /Operating Loop에서 "([^"]+)"를 다음 움직임으로 골랐어\./g,
+      'The Operating Loop picked "$1" as the next move.',
+    )
+    .replace(/분류:/g, "Category:")
+    .replace(/출처:/g, "Source:")
+    .replace(/근거:/g, "Reason:")
+    .replace(/관련 위치:/g, "Source link:")
+    .replace(
+      /이걸 실행 전 승인 가능한 결정 카드로 정리하고, 필요한 초안\/체크리스트\/리스크를 만들어줘\./g,
+      "Turn this into an approval-ready decision card with any needed draft, checklist, and risk notes.",
+    )
+    .replace(
       /먼저 승인 대기 결정을 비우면 오늘 루프가 풀립니다\./g,
       "Clear the decisions waiting for approval first.",
     )
