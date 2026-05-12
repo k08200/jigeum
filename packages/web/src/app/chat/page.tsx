@@ -38,7 +38,7 @@ function NewChatWelcome() {
         });
         router.push(`/chat/${conv.id}?prefill=${encodeURIComponent(prefill)}`);
       } catch {
-        toast("결정 스레드를 만들지 못했어요.", "error");
+        toast("Could not create a decision thread.", "error");
       }
     })();
   }, [searchParams, router, toast]);
@@ -55,40 +55,43 @@ function NewChatWelcome() {
         router.push(`/chat/${conv.id}`);
       }
     } catch {
-      toast("결정 스레드를 만들지 못했어요.", "error");
+      toast("Could not create a decision thread.", "error");
     }
   };
 
   const suggestions = [
     {
-      label: "오늘 결정할 일 정리",
-      message: "오늘 내가 처리해야 할 결정을 우선순위로 정리해줘.",
-      meta: "결정함",
+      label: "Prioritize today",
+      message:
+        "Review today's mail, meetings, and tasks, then rank the decisions I should handle first.",
+      meta: "Queue",
     },
     {
-      label: "숨은 리스크 찾기",
-      message: "메일, 캘린더, 작업에서 위험 신호를 찾아줘.",
-      meta: "신호",
+      label: "Find hidden risks",
+      message: "Scan mail, calendar, and tasks for anything that could become urgent or blocked.",
+      meta: "Signals",
     },
     {
-      label: "미팅 준비",
-      message: "오늘 미팅을 훑고 필요한 맥락과 질문을 준비해줘.",
-      meta: "맥락",
+      label: "Prepare meetings",
+      message:
+        "Review today's meetings and prepare the context, questions, and follow-ups I should bring.",
+      meta: "Context",
     },
     {
-      label: "후속 조치 초안",
-      message: "후속 조치가 필요한 스레드를 찾고 다음 액션을 써줘.",
-      meta: "액션",
+      label: "Draft follow-ups",
+      message: "Find threads that need follow-up and write the next action.",
+      meta: "Action",
     },
     {
-      label: "집중 시간 확보",
-      message: "가장 중요한 일을 고르고 집중 블록을 제안해줘.",
-      meta: "시간",
+      label: "Protect focus time",
+      message: "Pick the most important work and suggest a focus block around my current calendar.",
+      meta: "Time",
     },
     {
-      label: "작동 규칙 저장",
-      message: "승인과 자동화를 Jigeum이 어떻게 다뤄야 하는지 기억해줘.",
-      meta: "메모리",
+      label: "Save an operating rule",
+      message:
+        "Remember how Jigeum should handle approvals, automation, and risky actions for my workspace.",
+      meta: "Memory",
     },
   ];
 
@@ -107,9 +110,11 @@ function NewChatWelcome() {
               i
             </span>
             <div>
-              <p className="text-sm font-medium text-stone-100">더 좋은 맥락을 위해 Google 연결</p>
+              <p className="text-sm font-medium text-stone-100">
+                Connect Google for better context
+              </p>
               <p className="text-xs text-stone-500">
-                Jigeum이 Gmail과 캘린더를 바탕으로 결정 카드, 알림, 미팅 준비를 도와요.
+                Jigeum can turn Gmail and Calendar signals into cards, reminders, and meeting prep.
               </p>
             </div>
           </a>
@@ -120,13 +125,13 @@ function NewChatWelcome() {
               <img src="/brand/mark.svg" alt="" className="h-9 w-9" />
             </div>
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              새 스레드
+              New thread
             </p>
             <h1 className="max-w-xl text-4xl font-semibold leading-tight tracking-tight text-stone-50 sm:text-5xl">
-              지금 필요한 결정을 바로 시작하세요.
+              Start with the decision in front of you.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-stone-500">
-              관련 메일, 미팅, 작업, 다음 액션을 Jigeum에게 한 번에 연결해달라고 요청하세요.
+              Ask Jigeum to connect the relevant mail, meetings, tasks, and next move in one place.
             </p>
           </div>
 
@@ -138,7 +143,7 @@ function NewChatWelcome() {
               className="group relative w-full rounded-lg border border-stone-700 bg-[#111318] px-5 py-4 text-left text-sm text-stone-500 shadow-xl shadow-black/10 transition hover:border-stone-600 hover:bg-stone-900"
             >
               <span className="flex items-center justify-between gap-3">
-                <span>스레드를 열고 맥락, 판단, 다음 액션을 요청하세요...</span>
+                <span>Open a thread and ask for context, judgment, or the next move...</span>
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-950 transition group-hover:bg-white">
                   <svg
                     aria-hidden="true"
