@@ -607,7 +607,9 @@ function ChatPageContent() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-300/75">
                 결정 스레드
               </p>
-              <p className="text-xs text-stone-500">맥락을 먼저 보고, 실행은 승인 뒤에 진행합니다.</p>
+              <p className="text-xs text-stone-500">
+                맥락을 먼저 보고, 실행은 승인 뒤에 진행합니다.
+              </p>
             </div>
             <div className="hidden items-center gap-2 md:flex">
               <ThreadMetric label="요청" value={userCount} />

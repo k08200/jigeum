@@ -241,9 +241,7 @@ function WatchRow({ context }: { context: OperatingPlanWatchContext }) {
         </p>
         <span className="shrink-0 text-[10px] text-stone-600">{riskLabel(context.risk)}</span>
       </div>
-      <p className="mt-1 line-clamp-1 text-[11px] text-stone-600">
-        {displayText(context.reason)}
-      </p>
+      <p className="mt-1 line-clamp-1 text-[11px] text-stone-600">{displayText(context.reason)}</p>
     </div>
   );
   return context.href ? (

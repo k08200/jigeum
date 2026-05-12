@@ -107,9 +107,7 @@ function NewChatWelcome() {
               i
             </span>
             <div>
-              <p className="text-sm font-medium text-stone-100">
-                더 좋은 맥락을 위해 Google 연결
-              </p>
+              <p className="text-sm font-medium text-stone-100">더 좋은 맥락을 위해 Google 연결</p>
               <p className="text-xs text-stone-500">
                 Jigeum이 Gmail과 캘린더를 바탕으로 결정 카드, 알림, 미팅 준비를 도와요.
               </p>
