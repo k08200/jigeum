@@ -71,7 +71,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "chat.send": "Send",
     // Briefing
     "briefing.learningMode":
-      "Jigeum learns mail and calendar patterns during the first 2-3 days. The Top 3 gets sharper as you use the workspace.",
+      "Jigeum learns mail and calendar patterns during the first 2-3 days. The top actions get sharper as you use the workspace.",
     // Common
     "common.loading": "Loading...",
     "common.cancel": "Cancel",
@@ -172,7 +172,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "chat.send": "전송",
     // Briefing
     "briefing.learningMode":
-      "Jigeum learns mail and calendar patterns during the first 2-3 days. The Top 3 gets sharper as you use the workspace.",
+      "Jigeum은 처음 2-3일 동안 메일과 캘린더 패턴을 학습합니다. 사용할수록 상위 행동 추천이 더 정확해져요.",
     // Common
     "common.loading": "로딩 중...",
     "common.cancel": "취소",

@@ -1,246 +1,159 @@
 # Jigeum
 
-**What matters now, from work signals, approvals, and memory.**
+Jigeum은 메일, 캘린더, 약속, 업무 맥락을 읽고 **지금 확인해야 할 결정**으로 정리하는 작업 공간입니다. 사용자는 실행 전에 근거를 보고 승인하거나 거절할 수 있고, Jigeum은 그 피드백을 다음 판단에 반영합니다.
 
-Jigeum is a Decision OS for work. Its agent, Eve, reads email, calendar, tasks, and memory, connects the hidden context between them, and turns scattered signals into decisions you can inspect, approve, and trust.
+## 지금 만드는 것
 
-## Why Jigeum?
+Jigeum의 첫 화면은 채팅이나 알림함이 아니라 결정함입니다. 흩어진 신호를 모아 “무엇을 봐야 하는지”, “왜 중요한지”, “어떤 행동이 준비됐는지”를 한 카드에서 확인하게 합니다.
 
-Every team checks five apps every morning and none of them answer the question that matters: **"What decision needs my attention now?"**
+- **결정함**: 승인 대기 작업, 약속 장부, 오늘의 리스크를 모읍니다.
+- **메일**: 우선순위, 답장 필요 여부, 첨부파일/후보자 신호를 정리합니다.
+- **캘린더**: 회의 준비 상태, 충돌, 다음 일정의 맥락을 보여줍니다.
+- **브리핑**: 하루의 주요 신호와 상위 행동을 요약합니다.
+- **설정**: Google 연결, 알림, 실행 경계, 모델, 데이터 관리 상태를 조정합니다.
 
-Jigeum connects Gmail, Calendar, Slack, and Notion, then Eve cross-references everything to surface decisions — not just summaries.
+## 제품 원칙
 
-| Tool | What it does | What Jigeum does |
-|------|-------------|---------------|
-| Gmail | "30 unread emails" | "Investor reply needed within 48h — draft ready" |
-| Calendar | "3 meetings today" | "2pm meeting — prep pack ready, no conflicts" |
-| Tasks | "12 tasks open" | "These 2 are overdue and blocking others" |
-| ChatGPT | Answers when asked | Eve acts before you ask |
-| Zapier | Rule-based automation | LLM-powered judgment with approval gates |
+- **한국어 우선**: 핵심 사용 흐름은 한국어 UX를 기준으로 다듬습니다.
+- **실행 전 승인**: 메일 발송, 캘린더 변경, 외부 전송은 사용자가 확인할 수 있어야 합니다.
+- **근거 있는 자동화**: 단순 요약보다 신호, 판단, 실행 내용을 함께 보여줍니다.
+- **점진적 신뢰**: 초기에는 관찰과 제안을 중심으로 동작하고, 피드백으로 범위를 넓힙니다.
+- **빈 상태도 제품**: 새 사용자와 연결 전 상태에서도 다음 행동이 분명해야 합니다.
 
-## How It Works
+## 핵심 흐름
 
-1. **Connect** — Link Gmail and Calendar in one click
-2. **Eve connects context** — Ingests email, events, and tasks; extracts people, promises, deadlines, and risks
-3. **Command Center** — Your home screen shows what to act on now, what needs approval, what was handled
-4. **Morning briefing** — Prioritized day-plan delivered before you open your laptop
-5. **Trust ladder** — Eve earns scope gradually: observe → suggest → draft → execute with approval → report exceptions
+1. 사용자가 이메일 계정으로 로그인하거나 Google을 연결합니다.
+2. API가 Gmail, Calendar, 업무 데이터에서 신호를 수집합니다.
+3. 분류기와 에이전트가 답장 필요 여부, 약속, 리스크, 후보자 신호를 추출합니다.
+4. 웹 앱은 결정함, 메일, 캘린더, 브리핑에 사용자에게 필요한 다음 행동만 노출합니다.
+5. 사용자의 승인, 거절, 피드백은 이후 판단 정책에 반영됩니다.
 
-### Command Center (the home screen)
+## 기술 스택
 
-Not a chat. Not an inbox. An **operations console**:
+| 영역 | 기술 |
+| --- | --- |
+| 웹 | Next.js 15, React 19, TypeScript, Tailwind CSS |
+| API | Fastify, TypeScript, Prisma |
+| DB | PostgreSQL |
+| 인증 | JWT, bcrypt, Google OAuth |
+| AI | OpenRouter, Gemini fallback |
+| 실시간 | WebSocket, Web Push |
+| 결제 | Stripe |
+| 모노레포 | pnpm workspaces |
 
-- Top 3 things to act on now
-- Pending approvals
-- Today's commitments and risks
-- What Eve prepared quietly
-- What's likely to bite you tomorrow
+## 구조
 
-### Commitment Ledger
-
-Eve extracts implicit promises from your conversations — *"I'll send it by Friday"*, *"Let's revisit next week"* — and tracks them so they don't fall through the cracks.
-
-### Work Graph
-
-People, companies, projects, and threads linked together. *"Min-soo Kim = ABC Ventures investor → linked to pitch deck task → due before Friday meeting."*
-
-### Shadow Mode
-
-Eve doesn't auto-execute on day one. She watches for two weeks, learns your patterns, and asks for permission:
-> "I noticed you always prep meeting notes the night before. Want me to start drafting them automatically?"
-
-Trust is earned, not toggled.
-
-### Trust Ladder
-
-Not AUTO/OFF. Five stages:
-
-| Level | Behavior |
-|-------|----------|
-| L0 | Observe only |
-| L1 | Suggest |
-| L2 | Draft |
-| L3 | Execute on approval |
-| L4 | Auto within pre-approved scope |
-| L5 | Report exceptions only |
-
-### Other Autonomous Behaviors
-- **Meeting prep pack** — Briefing doc auto-generated before each event
-- **Feedback policy learning** — Your approvals and rejections shape future judgments
-- **Team risk radar** — For teams: detects cross-member conflicts (release delayed, launch scheduled)
-- **Playbooks** — Reusable patterns: investor follow-up, customer ticket triage, launch week, hiring pipeline
-
-## For Teams
-
-The bigger the team, the more powerful the cross-context decisions:
-
-> "Dev team's release is delayed but marketing scheduled the launch announcement for tomorrow. Should I flag this?"
-
-One person's email + another's calendar + the team's tasks = decisions no single tool can make.
-
-| Plan | For | Price |
-|------|-----|-------|
-| Free | Try it out | $0/mo (50 messages) |
-| Pro | Individuals | $29/mo |
-| Team | Small teams | $99/mo |
-| Enterprise | Organizations | Custom |
-
-## Features
-
-### Core
-- **Command Center** — Attention queue, not a notification feed
-- **Morning briefing** — Prioritized daily plan
-- **Commitment Ledger** — Tracks implicit promises across email and chat
-- **Work Graph** — People, projects, and threads connected
-- **Shadow mode** — Trust-earning observation period
-- **Trust ladder** — Five autonomy levels per action class
-- **Meeting prep pack** — Auto-generated briefings before events
-- **Feedback learning** — Policy that adapts to your approvals
-- **Team risk radar** — Cross-member conflict detection
-- **Playbooks** — Reusable workflow templates
-
-### Tools (60+)
-
-| Category | Tools |
-|----------|-------|
-| Email | List, read, send, classify, draft, auto-reply rules |
-| Calendar | List, create, delete events, conflict check, prep packs |
-| Tasks | Create, update, delete, prioritize, deadline tracking |
-| Notes | Create, update, delete, search |
-| Reminders | Create, dismiss, snooze, bulk delete |
-| Contacts | Manage, tag, auto-populate from email |
-| Memory | Remember, recall, forget across conversations |
-| Knowledge | Web search, news, weather |
-| Documents | Write, translate |
-
-### Integrations
-- Gmail + Google Calendar (OAuth)
-- Slack (send/read messages, webhooks)
-- Web Push notifications (works with tab closed)
-- WebSocket real-time updates
-- Notion *(coming soon)*
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 15, Tailwind CSS, TypeScript |
-| Backend | Fastify, Prisma ORM, PostgreSQL |
-| Desktop | Tauri v2 |
-| AI | OpenRouter (primary) + Gemini (fallback) |
-| Auth | JWT + Google OAuth2 + bcrypt |
-| Real-time | WebSocket + Server-Sent Events |
-| Push | VAPID Web Push |
-| Billing | Stripe |
-| Monorepo | pnpm workspaces |
-
-## Project Structure
-
-```
+```text
 packages/
-  api/    Fastify server, autonomous agent, 60+ tools, attention queue
-  web/    Next.js frontend (Command Center, Briefing, Inbox)
-  core/   Shared utilities and types
-apps/
-  desktop/  Tauri v2 desktop app
+  api/   Fastify API, Prisma schema, agent/tool orchestration
+  web/   Next.js app: decision inbox, mail, calendar, briefing, settings
+  core/  shared utilities and CLI-facing primitives
+docs/    screenshots and operational notes
 ```
 
-## Setup
+## 로컬 개발
 
-### Prerequisites
+### 요구 사항
 
-- Node.js 22+
-- PostgreSQL
+- Node.js 22 이상
 - pnpm
+- PostgreSQL 16 권장
 
-### Quick Start
+### 설치
 
 ```bash
-git clone https://github.com/k08200/probeai.git
-cd probeai
+git clone https://github.com/k08200/jigeum.git
+cd jigeum
 pnpm install
-
-# API
-cd packages/api
-cp .env.example .env    # Edit with your credentials
-npx prisma migrate dev
-pnpm dev                # API on :8000
-
-# Web (in another terminal)
-cd packages/web
-pnpm dev                # Web on :8001
 ```
 
-### Environment Variables
-
-#### Backend (`packages/api/.env`)
+### API 환경 변수
 
 ```bash
-# Required
-DATABASE_URL=postgresql://user:password@localhost:5433/jigeum
-JWT_SECRET=your-secret
-OPENROUTER_API_KEY=your-key
-TOKEN_ENCRYPTION_KEY=             # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-# Google OAuth (Gmail + Calendar)
-GOOGLE_CLIENT_ID=your-id
-GOOGLE_CLIENT_SECRET=your-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
-WEB_URL=http://localhost:8001
-
-# Optional
-GEMINI_API_KEY=                   # Fallback when OpenRouter quota exhausted
-STRIPE_SECRET_KEY=
-SLACK_BOT_TOKEN=
-SLACK_WEBHOOK_URL=
-SLACK_SIGNING_SECRET=
-VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-CORS_ORIGINS=http://localhost:8001
+cp packages/api/.env.example packages/api/.env
 ```
 
-#### Frontend (`packages/web/.env.local`)
+최소 실행에는 아래 값이 필요합니다.
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
+DATABASE_URL="postgresql://user:password@localhost:5432/jigeum"
+JWT_SECRET="local-dev-secret"
+TOKEN_ENCRYPTION_KEY="" # 아래 명령으로 생성한 32-byte base64 값
+OPENROUTER_API_KEY=""
+WEB_URL="http://localhost:8001"
+PORT=8000
 ```
 
-### Google OAuth Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials
-2. Create an OAuth 2.0 Client ID (Web application)
-3. Add authorized redirect URI: `http://localhost:8000/api/auth/google/callback`
-4. Copy Client ID and Secret to your `.env`
-5. Enable Gmail API and Google Calendar API
-
-### Docker
+`TOKEN_ENCRYPTION_KEY`는 다음처럼 만들 수 있습니다.
 
 ```bash
-docker compose up
-# API on :3001, Web on :3000, PostgreSQL on :5432
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-## Deployment
+Google 연동을 테스트하려면 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`도 설정합니다.
 
-**Backend** (Render, Railway, etc.):
+### 데이터베이스
+
+로컬 PostgreSQL을 직접 띄우거나 Docker Compose의 Postgres를 사용할 수 있습니다.
+
 ```bash
-cd packages/core && pnpm build
-cd ../api && npx prisma generate && pnpm build
-cd packages/api && npx prisma migrate deploy && node dist/index.js
+docker compose up -d postgres
+pnpm --filter @jigeum/api exec prisma migrate dev
 ```
 
-**Frontend** (Vercel):
-- Set `NEXT_PUBLIC_API_URL` to your backend URL
+### 개발 서버
 
-**Production env vars**:
-- `CORS_ORIGINS=https://your-frontend.vercel.app`
-- `WEB_URL=https://your-frontend.vercel.app`
-- `GOOGLE_REDIRECT_URI=https://your-api.onrender.com/api/auth/google/callback`
+터미널 1:
 
-## Language Support
+```bash
+pnpm --filter @jigeum/api dev
+```
 
-Jigeum works in both Korean and English. Eve mirrors the language you use.
+터미널 2:
 
-## License
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000 pnpm --filter @jigeum/web dev
+```
+
+기본 포트는 API `8000`, Web `8001`입니다.
+
+## Docker
+
+전체 스택을 컨테이너로 띄우려면 루트 `.env`에 필요한 시크릿을 둔 뒤 실행합니다.
+
+```bash
+docker compose up --build
+```
+
+Docker Compose 기준 포트는 Web `3000`, API `3001`, PostgreSQL `5432`입니다.
+
+## 자주 쓰는 명령
+
+```bash
+pnpm --filter @jigeum/web build
+pnpm --filter @jigeum/api build
+pnpm --filter @jigeum/api test
+packages/api/node_modules/.bin/biome format packages/
+packages/api/node_modules/.bin/biome check packages/
+```
+
+## 배포 메모
+
+- Vercel Web: `NEXT_PUBLIC_API_URL`을 배포된 API URL로 설정합니다.
+- API: `DATABASE_URL`, `JWT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `WEB_URL`, `CORS_ORIGINS`를 환경에 맞게 설정합니다.
+- Google OAuth redirect URI는 API의 `/api/auth/google/callback`을 가리켜야 합니다.
+- Neon/서버리스 Postgres를 쓰는 경우 `.env.example`의 PgBouncer 메모처럼 connection 옵션을 붙입니다.
+
+## QA 기준
+
+핵심 UX를 바꿀 때는 적어도 아래 흐름을 확인합니다.
+
+- 창업자: 결정함에서 승인 대기 카드를 확인하고 승인/거절까지 진행
+- 세일즈: 메일 목록, 메일 상세, 답장 초안/첨부파일 신호 확인
+- 운영: 캘린더 준비 상태와 브리핑 확인
+- 모바일 사용자: 390px 폭에서 결정함, 메일, 하단/상단 탐색 확인
+- 새 사용자: 연결 전 상태, 초기 학습 안내, 설정 첫 화면 확인
+
+## 라이선스
 
 MIT

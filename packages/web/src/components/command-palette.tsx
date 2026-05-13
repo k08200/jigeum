@@ -45,26 +45,26 @@ export default function CommandPalette() {
     },
     {
       id: "briefing",
-      label: "Open briefing",
-      sublabel: "Review today's signal summary",
+      label: "브리핑 열기",
+      sublabel: "오늘의 업무 신호 요약 확인",
       action: () => router.push("/briefing"),
     },
     {
       id: "settings",
-      label: "Open settings",
-      sublabel: "Manage connections, trust, and memory",
+      label: "설정 열기",
+      sublabel: "연결, 실행 경계, 기억 관리",
       action: () => router.push("/settings"),
     },
     {
       id: "billing",
-      label: "Open plan and usage",
-      sublabel: "Check limits and billing status",
+      label: "플랜과 사용량 열기",
+      sublabel: "한도와 결제 상태 확인",
       action: () => router.push("/billing"),
     },
     {
       id: "shortcuts",
-      label: "Keyboard shortcuts",
-      sublabel: "View the shortcut list (Cmd+/)",
+      label: "키보드 단축키",
+      sublabel: "단축키 목록 보기 (Cmd+/)",
       action: () => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "/", metaKey: true }));
       },

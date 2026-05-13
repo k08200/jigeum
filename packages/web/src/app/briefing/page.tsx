@@ -48,7 +48,7 @@ interface BriefingStatus {
     configured: boolean;
     enabled: boolean;
     briefingTime: string | null;
-    timezone: string;
+    timezone?: string | null;
     reason: "no_config" | "disabled" | null;
   };
 }
@@ -75,8 +75,8 @@ interface TopAction {
 }
 
 const FEEDBACK_OPTIONS: Array<{ choice: BriefingFeedbackChoice; label: string }> = [
-  { choice: "useful", label: "Useful" },
-  { choice: "wrong", label: "Wrong" },
+  { choice: "useful", label: "유용함" },
+  { choice: "wrong", label: "틀림" },
   { choice: "later", label: "나중에" },
   { choice: "done", label: "완료" },
 ];
@@ -198,7 +198,7 @@ function BriefingView() {
   };
 
   const formattedTime = createdAt
-    ? new Date(createdAt).toLocaleTimeString("en-US", {
+    ? new Date(createdAt).toLocaleTimeString("ko-KR", {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -253,16 +253,16 @@ function BriefingView() {
 
       {!loading && !error && !content && (
         <div className="rounded-lg border border-stone-700/45 bg-stone-950/35 p-6 text-center">
-          <p className="mb-3 text-sm text-stone-300">No briefing for today yet.</p>
+          <p className="mb-3 text-sm text-stone-300">아직 오늘 브리핑이 없어요.</p>
           <p className="mx-auto mb-4 max-w-md text-xs leading-5 text-amber-100/85">
             {t("briefing.learningMode")}
           </p>
           <p className="mb-4 text-xs text-stone-500">
-            You can change the automatic briefing time in{" "}
+            자동 브리핑 시간은{" "}
             <Link href="/settings" className="text-amber-300 hover:underline">
-              settings
+              설정
             </Link>
-            .
+            에서 바꿀 수 있어요.
           </p>
           <button
             type="button"
@@ -285,9 +285,9 @@ function BriefingView() {
           {noteId && topActions.length > 0 && (
             <section className="rounded-lg border border-stone-700/45 bg-stone-950/35 p-4">
               <div className="mb-3">
-                <h2 className="text-sm font-semibold text-stone-100">Top 3 feedback</h2>
+                <h2 className="text-sm font-semibold text-stone-100">상위 3개 피드백</h2>
                 <p className="mt-1 text-xs text-stone-500">
-                  Record whether today's selected items were right.
+                  오늘 선택된 항목이 실제로 맞았는지 남겨 주세요.
                 </p>
               </div>
               <div className="space-y-3">
@@ -315,7 +315,7 @@ function BriefingView() {
                                 : "border-stone-700 text-stone-400 hover:bg-stone-800"
                             }`}
                           >
-                            {savingRank === action.rank && !selected ? "Saving" : option.label}
+                            {savingRank === action.rank && !selected ? "저장 중" : option.label}
                           </button>
                         );
                       })}
@@ -333,17 +333,19 @@ function BriefingView() {
 
 function BriefingDeliveryStatus({ status }: { status: BriefingStatus }) {
   const push = pushStateCopy(status.push.state, status.push.reason);
+  const timezone =
+    status.automation.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "로컬 시간";
   const auto = status.automation.enabled
-    ? `${status.automation.briefingTime ?? "06:00"} · ${status.automation.timezone}`
+    ? `${status.automation.briefingTime ?? "06:00"} · ${timezone}`
     : status.automation.reason === "no_config"
-      ? "Not configured"
-      : "Off";
+      ? "미설정"
+      : "꺼짐";
   const notification = status.notification
     ? new Date(status.notification.createdAt).toLocaleTimeString("ko-KR", {
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "None yet";
+    : "아직 없음";
 
   return (
     <section className="mb-4 rounded-xl border border-stone-700/45 bg-stone-950/35 p-4">
@@ -360,16 +362,16 @@ function BriefingDeliveryStatus({ status }: { status: BriefingStatus }) {
           tone={status.automation.enabled ? "ok" : "warn"}
         />
         <DeliveryFact
-          label="App alert"
+          label="앱 알림"
           value={notification}
           tone={status.notification ? "ok" : "muted"}
         />
-        <DeliveryFact label="Push" value={push.label} tone={push.tone} />
+        <DeliveryFact label="푸시" value={push.label} tone={push.tone} />
       </div>
       {push.reason && (
         <p className="mt-3 text-[11px] leading-5 text-stone-500">
-          Push reason: {pushReasonLabel(push.reason)}. Browser permission, subscription state, VAPID
-          keys, or quiet hours may be blocking delivery.
+          푸시 상태: {pushReasonLabel(push.reason)}. 브라우저 권한, 구독 상태, VAPID 키, 방해 금지
+          시간이 전송을 막고 있을 수 있어요.
         </p>
       )}
     </section>
@@ -404,20 +406,20 @@ function pushStateCopy(
 ): { label: string; tone: "ok" | "warn" | "muted"; reason: string | null } {
   switch (state) {
     case "received":
-      return { label: "Received", tone: "ok", reason };
+      return { label: "수신됨", tone: "ok", reason };
     case "accepted":
-      return { label: "Sent", tone: "ok", reason };
+      return { label: "전송됨", tone: "ok", reason };
     case "pending":
-      return { label: "Pending", tone: "warn", reason };
+      return { label: "대기 중", tone: "warn", reason };
     case "failed":
       return { label: "실패", tone: "warn", reason };
     case "skipped":
-      return { label: "Skipped", tone: "warn", reason };
+      return { label: "건너뜀", tone: "warn", reason };
     case "not_sent":
-      return { label: "Not sent yet", tone: "muted", reason };
+      return { label: "아직 안 보냄", tone: "muted", reason };
     case "no_subscription":
       return {
-        label: "No browser subscription",
+        label: "브라우저 구독 없음",
         tone: "warn",
         reason: reason ?? "no_subscriptions",
       };
@@ -426,10 +428,10 @@ function pushStateCopy(
 
 function pushReasonLabel(reason: string): string {
   const labels: Record<string, string> = {
-    no_subscriptions: "No browser push subscription",
-    permission_denied: "Browser notifications are blocked",
-    quiet_hours: "Quiet hours are active",
-    vapid_missing: "Push keys need configuration",
+    no_subscriptions: "브라우저 푸시 구독이 없어요",
+    permission_denied: "브라우저 알림이 차단됐어요",
+    quiet_hours: "방해 금지 시간이 켜져 있어요",
+    vapid_missing: "푸시 키 설정이 필요해요",
   };
   return labels[reason] || reason;
 }

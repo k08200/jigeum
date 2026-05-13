@@ -27,41 +27,41 @@ function formatTokens(n: number): string {
 const PLANS = [
   {
     key: "FREE",
-    name: "Free",
+    name: "무료",
     price: "$0",
     period: "",
-    limit: "50 messages/mo · 500K tokens",
-    features: ["Read mail and calendar", "Manage tasks and memory", "Free OpenRouter models"],
+    limit: "월 50회 결정 · 토큰 50만",
+    features: ["메일과 캘린더 읽기", "업무와 기억 관리", "무료 OpenRouter 모델"],
   },
   {
     key: "PRO",
     name: "Pro",
     price: "$29",
-    period: "/mo",
-    limit: "2K messages/mo · 10M tokens",
+    period: "/월",
+    limit: "월 2천회 결정 · 토큰 1천만",
     features: [
-      "Everything in Free",
-      "Send mail and create calendar events",
-      "Decision loop modes (Suggest + Policy Run)",
-      "Daily briefing and mail classification",
-      "Auto-drafted replies and pattern learning",
-      "Slack/Notion integrations",
-      "Web research and document drafting",
-      "GPT-5.4 and Claude Sonnet model choices",
+      "무료 플랜 전체",
+      "메일 발송과 캘린더 이벤트 생성",
+      "결정 루프 모드(제안 + 정책 실행)",
+      "일일 브리핑과 메일 분류",
+      "자동 답장 초안과 패턴 학습",
+      "Slack/Notion 연동",
+      "웹 리서치와 문서 초안",
+      "GPT-5.4, Claude Sonnet 모델 선택",
     ],
   },
   {
     key: "ENTERPRISE",
-    name: "Enterprise",
-    price: "Custom",
+    name: "엔터프라이즈",
+    price: "맞춤",
     period: "",
-    limit: "Unlimited",
+    limit: "무제한",
     features: [
-      "Everything in Pro",
-      "Claude Opus model choice",
-      "On-prem options",
-      "SLA support",
-      "Custom integrations",
+      "Pro 플랜 전체",
+      "Claude Opus 모델 선택",
+      "온프레미스 옵션",
+      "SLA 지원",
+      "맞춤 연동",
     ],
   },
 ];
@@ -88,7 +88,7 @@ function BillingContent() {
   useEffect(() => {
     apiFetch<BillingStatus>("/api/billing/status")
       .then(setStatus)
-      .catch(() => toast("Could not load billing status.", "error"))
+      .catch(() => toast("결제 상태를 불러오지 못했어요.", "error"))
       .finally(() => setLoading(false));
   }, [toast]);
 
@@ -99,10 +99,10 @@ function BillingContent() {
       if (parsed.hostname.endsWith(".stripe.com")) {
         window.location.href = url;
       } else {
-        toast("Invalid redirect URL.", "error");
+        toast("안전하지 않은 결제 이동 URL이에요.", "error");
       }
     } catch {
-      toast("Invalid redirect URL.", "error");
+      toast("결제 이동 URL을 확인하지 못했어요.", "error");
     }
   }
 
@@ -114,7 +114,7 @@ function BillingContent() {
       });
       if (url) safeRedirect(url);
     } catch {
-      toast("Could not create a checkout session.", "error");
+      toast("결제 세션을 만들지 못했어요.", "error");
     }
   }
 
@@ -126,7 +126,7 @@ function BillingContent() {
       });
       if (url) safeRedirect(url);
     } catch {
-      toast("Could not open the billing portal.", "error");
+      toast("결제 포털을 열지 못했어요.", "error");
     }
   }
 
@@ -134,25 +134,24 @@ function BillingContent() {
     <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 sm:px-6 md:py-10">
       <header className="mb-6 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-sm shadow-black/20">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">
-          Plan record
+          플랜 기록
         </p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
-          Jigeum limits and execution access
+          Jigeum 한도와 실행 권한
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-400">
-          Review decision turns, model usage, execution modes, and the plan that fits your team's
-          decision flow.
+          결정 횟수, 모델 사용량, 실행 모드, 팀의 결정 흐름에 맞는 플랜을 확인합니다.
         </p>
       </header>
 
       {success && (
         <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-          Subscription is active.
+          구독이 활성화됐어요.
         </div>
       )}
       {canceled && (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-          Checkout was canceled.
+          결제가 취소됐어요.
         </div>
       )}
 
@@ -169,14 +168,14 @@ function BillingContent() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                Current plan
+                현재 플랜
               </p>
               <p className="mt-1 text-xl font-semibold text-stone-50">{status.planName}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               {status.estimatedCost > 0 && (
                 <span className="rounded-full border border-stone-700 bg-stone-900/70 px-3 py-1 text-xs text-stone-400">
-                  About ${status.estimatedCost.toFixed(4)} this month
+                  이번 달 약 ${status.estimatedCost.toFixed(4)}
                 </span>
               )}
               {status.stripeId && (
@@ -185,7 +184,7 @@ function BillingContent() {
                   onClick={handleManage}
                   className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-400/15"
                 >
-                  Manage subscription
+                  구독 관리
                 </button>
               )}
             </div>
@@ -195,7 +194,7 @@ function BillingContent() {
             {/* Decision turns usage */}
             <div>
               <div className="mb-1 flex justify-between text-sm">
-                <span className="text-stone-400">Decision turns</span>
+                <span className="text-stone-400">결정 횟수</span>
                 <span className="text-stone-300">
                   {status.messageCount} /{" "}
                   {status.messageLimit === Infinity ? "∞" : status.messageLimit.toLocaleString()}
@@ -222,7 +221,7 @@ function BillingContent() {
             {/* Tokens usage */}
             <div>
               <div className="mb-1 flex justify-between text-sm">
-                <span className="text-stone-400">Tokens</span>
+                <span className="text-stone-400">토큰</span>
                 <span className="text-stone-300">
                   {formatTokens(status.tokenUsage)} /{" "}
                   {status.tokenLimit === Infinity ? "∞" : formatTokens(status.tokenLimit)}
@@ -265,7 +264,7 @@ function BillingContent() {
             >
               {plan.key === "PRO" && (
                 <span className="mb-2 self-start rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-950">
-                  Recommended
+                  추천
                 </span>
               )}
               <p className="mb-1 text-lg font-semibold text-stone-50">{plan.name}</p>
@@ -286,7 +285,7 @@ function BillingContent() {
 
               {isCurrent ? (
                 <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 py-2 text-center text-sm font-medium text-amber-100">
-                  Current plan
+                  현재 플랜
                 </div>
               ) : plan.key === "FREE" ? (
                 <div />
@@ -295,7 +294,7 @@ function BillingContent() {
                   href="mailto:sales@jigeum.ai"
                   className="block rounded-lg border border-stone-700 bg-stone-900/70 py-2.5 text-center text-sm font-medium text-stone-100 transition hover:border-stone-500"
                 >
-                  Contact sales
+                  영업팀 문의
                 </a>
               ) : (
                 <button
@@ -303,7 +302,7 @@ function BillingContent() {
                   onClick={() => handleUpgrade(plan.key as "PRO")}
                   className="rounded-lg bg-amber-300 py-2.5 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
                 >
-                  Upgrade to {plan.name}
+                  {plan.name}로 업그레이드
                 </button>
               )}
             </div>
