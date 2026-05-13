@@ -11,10 +11,10 @@ interface Tab {
 
 const TABS: Tab[] = [
   { href: "/chat", label: "스레드", icon: "chat" },
-  { href: "/calendar", label: "캘린더", icon: "calendar" },
+  { href: "/calendar", label: "일정", icon: "calendar" },
   { href: "/email", label: "메일", icon: "email" },
   { href: "/briefing", label: "브리핑", icon: "briefing" },
-  { href: "/inbox", label: "결정함", icon: "inbox" },
+  { href: "/inbox", label: "큐", icon: "inbox" },
 ];
 
 export default function BottomTabs() {
@@ -22,7 +22,7 @@ export default function BottomTabs() {
 
   return (
     <nav
-      aria-label="기본 탐색"
+      aria-label="주요 탐색"
       className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t border-stone-700/50 bg-[#10100d]/92 pb-safe shadow-[0_-16px_44px_rgba(0,0,0,0.35)] backdrop-blur-xl"
     >
       <ul className="grid grid-cols-5">
@@ -33,7 +33,7 @@ export default function BottomTabs() {
               <Link
                 href={tab.href}
                 className={`flex min-h-[62px] flex-col items-center justify-center gap-1 py-2 text-[10px] transition ${
-                  active ? "text-amber-200" : "text-stone-500"
+                  active ? "text-[#FF8A70]" : "text-stone-500"
                 }`}
               >
                 <TabIcon type={tab.icon} active={active} />

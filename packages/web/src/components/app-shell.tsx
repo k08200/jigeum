@@ -54,10 +54,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <img src="/brand/mark.svg" alt="" className="h-6 w-6" />
+          <img src="/brand/mark.svg?v=flow-3" alt="" className="h-6 w-6" />
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-none text-stone-100">Jigeum</p>
-            <p className="mt-0.5 text-[10px] leading-none text-stone-500">지금 중요한 것</p>
+            <p className="mt-0.5 text-[10px] leading-none text-stone-500">결정 큐</p>
           </div>
         </div>
         <main className="relative z-10 flex-1 overflow-y-auto pb-[calc(62px+env(safe-area-inset-bottom))] md:pb-safe">

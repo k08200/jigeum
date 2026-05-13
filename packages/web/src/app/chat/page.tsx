@@ -122,7 +122,7 @@ function NewChatWelcome() {
         <section>
           <div className="mb-7">
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg border border-stone-800 bg-[#111318]">
-              <img src="/brand/mark.svg" alt="" className="h-9 w-9" />
+              <img src="/brand/mark.svg?v=flow-3" alt="" className="h-9 w-9" />
             </div>
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
               New thread
