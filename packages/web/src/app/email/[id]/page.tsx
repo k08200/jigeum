@@ -126,6 +126,56 @@ export default function EmailDetailPage() {
   );
 }
 
+function normalizeEmailDetail(email: EmailDetail): EmailDetail {
+  const raw = email as EmailDetail & {
+    receivedAt?: string;
+    urgency?: string;
+    labels?: string[];
+  };
+  return {
+    ...email,
+    date: email.date ?? raw.receivedAt ?? new Date().toISOString(),
+    priority: toPriority(email.priority ?? raw.urgency),
+    category: email.category ?? raw.labels?.[0] ?? null,
+    keyPoints: Array.isArray(email.keyPoints) ? email.keyPoints : [],
+    actionItems: Array.isArray(email.actionItems) ? email.actionItems : [],
+    attachments: Array.isArray(email.attachments) ? email.attachments.map(normalizeAttachment) : [],
+    attachmentCount:
+      typeof email.attachmentCount === "number"
+        ? email.attachmentCount
+        : Array.isArray(email.attachments)
+          ? email.attachments.length
+          : 0,
+  };
+}
+
+function normalizeAttachment(attachment: EmailAttachment): EmailAttachment {
+  return {
+    ...attachment,
+    keyPoints: Array.isArray(attachment.keyPoints) ? attachment.keyPoints : [],
+    extractedFields:
+      attachment.extractedFields && typeof attachment.extractedFields === "object"
+        ? attachment.extractedFields
+        : {},
+    analysisStatus: attachment.analysisStatus ?? "PENDING",
+  };
+}
+
+function toPriority(priority: string | undefined): EmailPriority {
+  if (priority === "URGENT" || priority === "HIGH") return "URGENT";
+  if (priority === "LOW") return "LOW";
+  return "NORMAL";
+}
+
+function normalizeReplyDraft(draft: ReplyDraft, email: EmailDetail | null): ReplyDraft {
+  return {
+    to: draft.to ?? email?.from ?? "",
+    subject: draft.subject ?? (email?.subject ? `Re: ${email.subject}` : ""),
+    body: draft.body ?? "",
+    candidateProfile: draft.candidateProfile ?? email?.candidateProfile ?? null,
+  };
+}
+
 function EmailDetailView() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -151,7 +201,7 @@ function EmailDetailView() {
       if ("error" in data) {
         setError(data.error);
       } else {
-        setEmail(data);
+        setEmail(normalizeEmailDetail(data));
         setSelectedDraftAttachmentIds([]);
       }
     } catch (err) {
@@ -184,7 +234,7 @@ function EmailDetailView() {
         prev
           ? {
               ...prev,
-              attachments: data.attachments,
+              attachments: data.attachments.map(normalizeAttachment),
               attachmentCount: data.attachments.length,
               candidateProfile: data.candidateProfile,
               candidateIntake: data.candidateIntake,
@@ -193,7 +243,7 @@ function EmailDetailView() {
       );
     } catch (err) {
       captureClientError(err, { scope: "email.attachments.reanalyze", id });
-      setError("Could not reanalyze attachments.");
+      setError("첨부파일을 다시 분석하지 못했어요.");
     } finally {
       setReanalyzing(false);
     }
@@ -217,7 +267,7 @@ function EmailDetailView() {
       setEmail((prev) => (prev ? { ...prev, candidateIntake: data.candidateIntake } : prev));
     } catch (err) {
       captureClientError(err, { scope: "email.candidate-intake.update", id });
-      setError("Could not save candidate status.");
+      setError("후보자 상태를 저장하지 못했어요.");
     } finally {
       setUpdatingCandidate(false);
     }
@@ -232,11 +282,11 @@ function EmailDetailView() {
         method: "POST",
         body: JSON.stringify({ intent: draftIntent }),
       });
-      setDraft(data);
+      setDraft(normalizeReplyDraft(data, email));
       setGmailDraftUrl(null);
     } catch (err) {
       captureClientError(err, { scope: "email.reply-draft", id });
-      setError("Could not create a reply draft.");
+      setError("답장 초안을 만들지 못했어요.");
     } finally {
       setDrafting(false);
     }
@@ -254,7 +304,7 @@ function EmailDetailView() {
       setDraft(null);
     } catch (err) {
       captureClientError(err, { scope: "email.reply-draft.send", id });
-      setError("Could not send the reply. Check the recipient and body.");
+      setError("답장을 보내지 못했어요. 받는 사람과 본문을 확인해 주세요.");
     } finally {
       setSendingDraft(false);
     }
@@ -290,7 +340,7 @@ function EmailDetailView() {
       );
     } catch (err) {
       captureClientError(err, { scope: "email.reply-draft.gmail-draft", id });
-      setError("Could not save as a Gmail draft. Check Gmail connection and permissions.");
+      setError("Gmail 초안으로 저장하지 못했어요. Gmail 연결과 권한을 확인해 주세요.");
     } finally {
       setSavingGmailDraft(false);
     }
@@ -389,6 +439,43 @@ function EmailDetailView() {
               </section>
             ) : null}
           </div>
+
+          {email.candidateProfile && (
+            <CandidateProfileCard
+              profile={email.candidateProfile}
+              intake={email.candidateIntake ?? null}
+              updating={updatingCandidate}
+              onUpdate={updateCandidateIntake}
+            />
+          )}
+
+          {email.attachments && email.attachments.length > 0 && (
+            <AttachmentAnalysis
+              emailId={email.id}
+              attachments={email.attachments}
+              onReanalyze={reanalyzeAttachments}
+              reanalyzing={reanalyzing}
+            />
+          )}
+
+          {email.needsReply && (
+            <ReplyDraftBox
+              draft={draft}
+              intent={draftIntent}
+              drafting={drafting}
+              sending={sendingDraft}
+              savingGmailDraft={savingGmailDraft}
+              gmailDraftUrl={gmailDraftUrl}
+              attachments={email.attachments ?? []}
+              selectedAttachmentIds={selectedDraftAttachmentIds}
+              onSelectedAttachmentIdsChange={setSelectedDraftAttachmentIds}
+              onIntentChange={setDraftIntent}
+              onGenerate={generateReplyDraft}
+              onDraftChange={setDraft}
+              onSaveGmailDraft={saveGmailDraft}
+              onSend={sendReplyDraft}
+            />
+          )}
         </article>
       )}
     </div>
@@ -555,7 +642,7 @@ function AttachmentAnalysis({
       URL.revokeObjectURL(url);
     } catch (err) {
       captureClientError(err, { scope: "email.attachment.download", attachmentId: attachment.id });
-      alert("Could not download the original attachment. Check Gmail connection.");
+      alert("원본 첨부파일을 내려받지 못했어요. Gmail 연결을 확인해 주세요.");
     } finally {
       setDownloading(null);
     }
@@ -565,17 +652,17 @@ function AttachmentAnalysis({
     <section className="mt-5 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-          Attachment analysis
+          첨부파일 분석
         </h2>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-stone-500">Files {attachments.length}</span>
+          <span className="text-[11px] text-stone-500">파일 {attachments.length}</span>
           <button
             type="button"
             onClick={onReanalyze}
             disabled={reanalyzing}
             className="rounded border border-sky-400/25 bg-sky-400/10 px-2 py-1 text-[11px] text-sky-200 transition hover:bg-sky-400/15 disabled:opacity-50"
           >
-            {reanalyzing ? "Analyzing..." : "Reanalyze"}
+            {reanalyzing ? "분석 중..." : "다시 분석"}
           </button>
         </div>
       </div>
@@ -603,7 +690,7 @@ function AttachmentAnalysis({
                 disabled={downloading === attachment.id}
                 className="rounded border border-stone-700/70 bg-stone-950/45 px-2 py-0.5 text-[10px] text-stone-400 transition hover:border-sky-400/30 hover:text-sky-200 disabled:opacity-50"
               >
-                {downloading === attachment.id ? "Downloading" : "Download original"}
+                {downloading === attachment.id ? "내려받는 중" : "원본 다운로드"}
               </button>
             </div>
             {attachment.summary && (
@@ -639,7 +726,7 @@ function AttachmentAnalysis({
             {attachment.textPreview && (
               <details className="mt-2 rounded-lg border border-stone-800/70 bg-black/15 px-3 py-2">
                 <summary className="cursor-pointer text-[11px] font-medium text-stone-500">
-                  Converted text preview
+                  변환된 텍스트 미리보기
                 </summary>
                 <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-sans text-[11px] leading-relaxed text-stone-500">
                   {attachment.textPreview}
@@ -648,7 +735,7 @@ function AttachmentAnalysis({
             )}
             {attachment.analysisError && (
               <p className="mt-2 text-[11px] leading-relaxed text-amber-300/70">
-                Handled by fallback analysis: {attachment.analysisError}
+                기본 분석으로 처리됨: {attachment.analysisError}
               </p>
             )}
           </div>
@@ -703,10 +790,10 @@ function ReplyDraftBox({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-300">
-            Reply draft
+            답장 초안
           </h2>
           <p className="mt-1 text-xs text-stone-500">
-            Jigeum drafts the reply, and you approve before sending.
+            Jigeum이 답장을 초안으로 만들고, 보내기 전 사용자가 승인합니다.
           </p>
         </div>
         <button
@@ -715,13 +802,13 @@ function ReplyDraftBox({
           disabled={drafting}
           className="rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-200 transition hover:bg-amber-500/10 disabled:opacity-50"
         >
-          {drafting ? "Drafting..." : draft ? "Redraft" : "Draft reply"}
+          {drafting ? "초안 작성 중..." : draft ? "다시 작성" : "답장 초안"}
         </button>
       </div>
       <input
         value={intent}
         onChange={(e) => onIntentChange(e.target.value)}
-        placeholder="Example: Confirm the profile and ask about availability for the next audition"
+        placeholder="예: 프로필 확인 후 다음 오디션 가능 일정을 물어보기"
         className="mb-3 w-full rounded-lg border border-stone-700/60 bg-black/20 px-3 py-2 text-xs text-stone-300 placeholder-stone-600 outline-none transition focus:border-amber-500/40"
       />
       {draft && (
@@ -729,7 +816,7 @@ function ReplyDraftBox({
           <div className="grid gap-2 text-xs sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-stone-600">
-                To
+                받는 사람
               </span>
               <input
                 value={draft.to}
@@ -739,7 +826,7 @@ function ReplyDraftBox({
             </label>
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-stone-600">
-                Subject
+                제목
               </span>
               <input
                 value={draft.subject}
@@ -758,7 +845,7 @@ function ReplyDraftBox({
             <div className="rounded-lg border border-stone-800/70 bg-black/15 px-3 py-2">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <span className="text-[10px] font-medium uppercase tracking-wider text-stone-600">
-                  Include original attachments
+                  원본 첨부파일 포함
                 </span>
                 <button
                   type="button"
@@ -771,7 +858,7 @@ function ReplyDraftBox({
                   }
                   className="text-[11px] text-sky-300 transition hover:text-sky-200"
                 >
-                  {selectedCount === attachments.length ? "Clear all" : "Select all"}
+                  {selectedCount === attachments.length ? "전체 해제" : "전체 선택"}
                 </button>
               </div>
               <div className="grid gap-1.5 sm:grid-cols-2">
@@ -806,7 +893,7 @@ function ReplyDraftBox({
                   rel="noreferrer"
                   className="rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-400/10"
                 >
-                  Open Gmail draft
+                  Gmail 초안 열기
                 </a>
               )}
               <button
@@ -816,10 +903,10 @@ function ReplyDraftBox({
                 className="rounded-lg border border-sky-400/30 px-3 py-1.5 text-xs font-medium text-sky-200 transition hover:bg-sky-400/10 disabled:opacity-50"
               >
                 {savingGmailDraft
-                  ? "Saving..."
+                  ? "저장 중..."
                   : selectedCount > 0
-                    ? `Save Gmail draft + ${selectedCount} attachments`
-                    : "Save Gmail draft"}
+                    ? `Gmail 초안 저장 + 첨부 ${selectedCount}개`
+                    : "Gmail 초안 저장"}
               </button>
               <button
                 type="button"
@@ -827,7 +914,7 @@ function ReplyDraftBox({
                 disabled={sending || !draft.to || !draft.subject || !draft.body}
                 className="rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-medium text-stone-950 transition hover:bg-amber-200 disabled:opacity-50"
               >
-                {sending ? "Sending..." : "Send this reply"}
+                {sending ? "보내는 중..." : "이 답장 보내기"}
               </button>
             </div>
           </div>
@@ -856,7 +943,7 @@ function EveAnalysis({ email }: { email: EmailDetail }) {
     return (
       <section className="rounded-lg border border-stone-700/45 bg-stone-950/35 p-4">
         <p className="text-xs text-stone-500">
-          Jigeum has not analyzed this mail yet. Check again shortly after sync.
+          아직 이 메일을 분석하지 않았어요. 동기화 후 잠시 뒤 다시 확인해 주세요.
         </p>
       </section>
     );
@@ -867,8 +954,8 @@ function EveAnalysis({ email }: { email: EmailDetail }) {
       <div className="absolute bottom-0 left-0 top-0 w-1 bg-gradient-to-b from-sky-300 via-amber-300 to-teal-300" />
       <div className="pl-2">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
-            Jigeum judgment
+          <span className="text-[11px] font-semibold tracking-wider text-amber-300">
+            Jigeum 판단
           </span>
           <div className="flex items-center gap-1.5">
             <PriorityPill priority={email.priority} />
@@ -883,7 +970,7 @@ function EveAnalysis({ email }: { email: EmailDetail }) {
         {email.keyPoints.length > 0 && (
           <div className="mt-3">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-500">
-              Key points
+              핵심 포인트
             </p>
             <ul className="space-y-1">
               {email.keyPoints.map((k, i) => (
@@ -899,7 +986,7 @@ function EveAnalysis({ email }: { email: EmailDetail }) {
         {email.actionItems.length > 0 && (
           <div className="mt-3">
             <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-stone-500">
-              Action items
+              실행 항목
             </p>
             <ul className="space-y-1">
               {email.actionItems.map((a, i) => (
@@ -921,15 +1008,15 @@ function EveAnalysis({ email }: { email: EmailDetail }) {
 function ReplyNeededPill() {
   return (
     <span className="text-[10px] px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-300 font-medium">
-      Needs reply
+      답장 필요
     </span>
   );
 }
 
 const PRIORITY_LABELS: Record<EmailPriority, string> = {
-  URGENT: "Urgent",
-  NORMAL: "Normal",
-  LOW: "Low",
+  URGENT: "긴급",
+  NORMAL: "보통",
+  LOW: "낮음",
 };
 
 function LabelFeedbackControl({
@@ -969,7 +1056,7 @@ function LabelFeedbackControl({
       setOpen(false);
     } catch (err) {
       captureClientError(err, { scope: "email.feedback.submit", emailId, correctedPriority });
-      setError("Could not report this. Please try again shortly.");
+      setError("피드백을 남기지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSubmitting(null);
     }
@@ -979,7 +1066,7 @@ function LabelFeedbackControl({
     return (
       <span className="text-[11px] text-emerald-300/80 inline-flex items-center gap-1">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        Reported: {PRIORITY_LABELS[feedback.originalPriority]} →{" "}
+        반영됨: {PRIORITY_LABELS[feedback.originalPriority]} →{" "}
         {PRIORITY_LABELS[feedback.correctedPriority]}
       </span>
     );
@@ -992,7 +1079,7 @@ function LabelFeedbackControl({
         onClick={() => setOpen(true)}
         className="text-[11px] text-stone-500 underline-offset-2 hover:text-stone-300 hover:underline"
       >
-        Wrong priority
+        우선순위가 달라요
       </button>
     );
   }
@@ -1003,7 +1090,7 @@ function LabelFeedbackControl({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] text-stone-500">Actual priority:</span>
+      <span className="text-[11px] text-stone-500">실제 우선순위:</span>
       {options.map((p) => (
         <button
           key={p}
@@ -1024,7 +1111,7 @@ function LabelFeedbackControl({
         disabled={!!submitting}
         className="text-[11px] text-stone-500 hover:text-stone-300"
       >
-        Cancel
+        취소
       </button>
       {error && <span className="text-[11px] text-red-300">{error}</span>}
     </div>
@@ -1072,15 +1159,15 @@ function ReplyNeededFeedbackControl({ emailId }: { emailId: string }) {
       });
     } catch (err) {
       captureClientError(err, { scope: "email.reply-needed-feedback.submit", emailId, choice });
-      setError("Could not save.");
+      setError("저장하지 못했어요.");
     } finally {
       setSubmitting(null);
     }
   };
 
   const options: Array<{ choice: ReplyNeededChoice; label: string }> = [
-    { choice: "needed", label: "Correct" },
-    { choice: "not_needed", label: "Not needed" },
+    { choice: "needed", label: "맞음" },
+    { choice: "not_needed", label: "필요 없음" },
     { choice: "later", label: "나중에" },
     { choice: "done", label: "완료" },
   ];
@@ -1088,7 +1175,7 @@ function ReplyNeededFeedbackControl({ emailId }: { emailId: string }) {
   return (
     <div className="mt-4 border-t border-amber-500/10 pt-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-stone-500">Reply-needed judgment:</span>
+        <span className="text-[11px] text-stone-500">답장 필요 판단:</span>
         {options.map((option) => {
           const selected = feedback?.choice === option.choice;
           return (
@@ -1120,7 +1207,7 @@ function PriorityPill({ priority }: { priority: EmailDetail["priority"] }) {
     URGENT: "bg-red-500/15 text-red-300 border-red-500/30",
     LOW: "bg-stone-900 text-stone-500 border-stone-800",
   };
-  const labels = { URGENT: "Urgent", LOW: "Low" };
+  const labels = { URGENT: "긴급", LOW: "낮음" };
   return (
     <span
       className={`text-[10px] px-1.5 py-0.5 rounded border ${styles[priority as "URGENT" | "LOW"]} font-medium`}
@@ -1141,31 +1228,32 @@ function CategoryPill({ category }: { category: string }) {
 
 function categoryLabel(category: string): string {
   const labelMap: Record<string, string> = {
-    business: "Business",
-    engineering: "Engineering",
-    automated: "Automated",
-    newsletter: "Newsletter",
-    meeting: "Meeting",
-    billing: "Billing",
-    conversation: "Conversation",
-    other: "Other",
+    ACTION_REQUIRED: "확인 필요",
+    business: "비즈니스",
+    engineering: "엔지니어링",
+    automated: "자동 알림",
+    newsletter: "뉴스레터",
+    meeting: "회의",
+    billing: "결제",
+    conversation: "대화",
+    other: "기타",
   };
   return labelMap[category] || category;
 }
 
 function attachmentCategoryLabel(category: string): string {
   const labelMap: Record<string, string> = {
-    resume: "Resume",
-    profile: "Profile",
-    portfolio: "Portfolio",
-    audition: "Audition",
-    contract: "Contract",
-    invoice: "Invoice",
-    proposal: "Proposal",
-    schedule: "Schedule",
-    image: "Image",
-    document: "Document",
-    other: "Other",
+    resume: "이력서",
+    profile: "프로필",
+    portfolio: "포트폴리오",
+    audition: "오디션",
+    contract: "계약서",
+    invoice: "청구서",
+    proposal: "제안서",
+    schedule: "일정",
+    image: "이미지",
+    document: "문서",
+    other: "기타",
   };
   return labelMap[category] || category;
 }
@@ -1208,24 +1296,24 @@ function fieldLabel(key: string): string {
     phone: "전화",
     age: "나이",
     height: "키",
-    skills: "Skills",
-    links: "Links",
-    deadline: "Deadline",
-    amount: "Amount",
-    availability: "Availability",
+    skills: "역량",
+    links: "링크",
+    deadline: "마감",
+    amount: "금액",
+    availability: "가능 일정",
   };
   return labelMap[key] || key;
 }
 
 function formatBytes(size: number | null): string {
-  if (!size || size <= 0) return "Unknown size";
+  if (!size || size <= 0) return "크기 정보 없음";
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function formatFull(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
+  return new Date(iso).toLocaleString("ko-KR", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
