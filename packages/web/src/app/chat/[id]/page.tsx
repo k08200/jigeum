@@ -420,7 +420,7 @@ function ChatPageContent() {
         {
           id: crypto.randomUUID(),
           role: "ASSISTANT",
-          content: "Could not regenerate the response. Please try again.",
+          content: "응답을 다시 만들지 못했어요. 다시 시도해 주세요.",
           createdAt: new Date().toISOString(),
         },
       ]);

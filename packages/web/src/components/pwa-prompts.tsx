@@ -94,14 +94,14 @@ export default function PwaPrompts() {
       {/* Offline indicator */}
       {offline && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-stone-950 text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]">
-          You are offline. Saved screens still work, but live signals may pause.
+          오프라인입니다. 저장된 화면은 계속 사용할 수 있지만 실시간 신호는 잠시 멈출 수 있어요.
         </div>
       )}
 
       {/* Update available banner */}
       {updateAvailable && (
         <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up">
-          <div className="text-sm text-stone-200">A new Jigeum build is ready</div>
+          <div className="text-sm text-stone-200">새 Jigeum 빌드가 준비됐어요.</div>
           <button
             type="button"
             onClick={handleUpdate}

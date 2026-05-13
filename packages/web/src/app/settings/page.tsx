@@ -307,7 +307,7 @@ export default function SettingsPage() {
       // Profile still saves locally; automation timezone can be retried later.
     }
     setProfileSaved(true);
-    toast("Profile saved.", "success");
+    toast("프로필을 저장했어요.", "success");
     setTimeout(() => setProfileSaved(false), 2000);
   };
 
@@ -315,7 +315,7 @@ export default function SettingsPage() {
     console.log("[PUSH-SETTINGS] Enable clicked");
     if (!("Notification" in window)) {
       console.warn("[PUSH-SETTINGS] Notification API not available");
-      toast("This browser does not support notifications.", "error");
+      toast("이 브라우저는 알림을 지원하지 않아요.", "error");
       return;
     }
     console.log("[PUSH-SETTINGS] Current permission:", Notification.permission);
@@ -376,13 +376,13 @@ export default function SettingsPage() {
       });
     }
     setPushStatus("default");
-    toast("Push notifications turned off.", "info");
+    toast("푸시 알림을 껐어요.", "info");
   };
 
   const changePassword = async () => {
     if (!currentPassword || !newPassword) return;
     if (newPassword.length < 6) {
-      toast("Password must be at least 6 characters.", "error");
+      toast("비밀번호는 6자 이상이어야 해요.", "error");
       return;
     }
     setPasswordLoading(true);
@@ -391,11 +391,11 @@ export default function SettingsPage() {
         method: "POST",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      toast("Password changed.", "success");
+      toast("비밀번호를 변경했어요.", "success");
       setCurrentPassword("");
       setNewPassword("");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = err instanceof Error ? err.message : "실패했어요.";
       const match = msg.match(/API \d+: (.+)/);
       const parsed = match
         ? (() => {
@@ -414,7 +414,7 @@ export default function SettingsPage() {
   const setPasswordForOAuth = async () => {
     if (!newPassword) return;
     if (newPassword.length < 6) {
-      toast("Password must be at least 6 characters.", "error");
+      toast("비밀번호는 6자 이상이어야 해요.", "error");
       return;
     }
     setPasswordLoading(true);
@@ -423,11 +423,11 @@ export default function SettingsPage() {
         method: "POST",
         body: JSON.stringify({ newPassword }),
       });
-      toast("Password set.", "success");
+      toast("비밀번호를 설정했어요.", "success");
       setNewPassword("");
       setHasPassword(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed";
+      const msg = err instanceof Error ? err.message : "실패했어요.";
       const match = msg.match(/API \d+: (.+)/);
       const parsed = match
         ? (() => {
@@ -445,9 +445,9 @@ export default function SettingsPage() {
 
   const disconnectGoogle = async () => {
     const ok = await confirm({
-      title: "Disconnect Google",
-      message: "This removes Gmail and Calendar access. You can reconnect anytime.",
-      confirmLabel: "Disconnect",
+      title: "Google 연결 해제",
+      message: "Gmail과 캘린더 접근 권한을 제거합니다. 언제든지 다시 연결할 수 있어요.",
+      confirmLabel: "연결 해제",
       danger: true,
     });
     if (!ok) return;
@@ -456,9 +456,9 @@ export default function SettingsPage() {
       setGoogleConnected(false);
       setGmailPushEnabled(false);
       setGmailPushExpiresAt(null);
-      toast("Google disconnected.", "info");
+      toast("Google 연결을 해제했어요.", "info");
     } catch {
-      toast("Could not disconnect Google.", "error");
+      toast("Google 연결을 해제하지 못했어요.", "error");
     }
   };
 
@@ -470,8 +470,8 @@ export default function SettingsPage() {
         headers: authHeaders(),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Request failed" }));
-        toast(body.error || "Could not turn on real-time sync.", "error");
+        const body = await res.json().catch(() => ({ error: "요청에 실패했어요." }));
+        toast(body.error || "실시간 동기화를 켜지 못했어요.", "error");
         return;
       }
       const data = (await res.json()) as { expiration?: string };
@@ -479,9 +479,9 @@ export default function SettingsPage() {
       if (data.expiration) {
         setGmailPushExpiresAt(new Date(Number(data.expiration)).toISOString());
       }
-      toast("Real-time mail sync turned on.", "success");
+      toast("실시간 메일 동기화를 켰어요.", "success");
     } catch {
-      toast("Could not turn on real-time sync.", "error");
+      toast("실시간 동기화를 켜지 못했어요.", "error");
     } finally {
       setGmailPushLoading(false);
     }
@@ -495,8 +495,8 @@ export default function SettingsPage() {
         headers: authHeaders(),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Request failed" }));
-        toast(body.error || "Could not turn off real-time sync.", "error");
+        const body = await res.json().catch(() => ({ error: "요청에 실패했어요." }));
+        toast(body.error || "실시간 동기화를 끄지 못했어요.", "error");
         return;
       }
       setGmailPushEnabled(false);
@@ -654,10 +654,10 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({ autonomousAgent: enabled }),
       });
-      toast(enabled ? "Autonomous agent is on." : "Autonomous agent is off.", "success");
+      toast(enabled ? "결정 에이전트를 켰어요." : "결정 에이전트를 껐어요.", "success");
     } catch {
       setAgentEnabled(!enabled);
-      toast("Update failed.", "error");
+      toast("업데이트하지 못했어요.", "error");
     }
   };
 
@@ -669,7 +669,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ agentIntervalMin: min }),
       });
     } catch {
-      toast("Could not save check interval.", "error");
+      toast("확인 주기를 저장하지 못했어요.", "error");
     }
   };
 
@@ -678,9 +678,9 @@ export default function SettingsPage() {
     setRunningAgent(true);
     try {
       await apiFetch<{ triggered: boolean }>("/api/automations/run-now", { method: "POST" });
-      toast("Agent run started. Check the decision queue for results.", "success");
+      toast("에이전트 실행을 시작했어요. 결과는 결정 큐에서 확인하세요.", "success");
     } catch {
-      toast("Could not run the agent.", "error");
+      toast("에이전트를 실행하지 못했어요.", "error");
     } finally {
       setRunningAgent(false);
     }
@@ -697,7 +697,7 @@ export default function SettingsPage() {
       toast(agentModeToast(mode), "success");
     } catch {
       setAgentMode(previousMode);
-      toast("Could not save mode.", "error");
+      toast("모드를 저장하지 못했어요.", "error");
     }
   };
 
@@ -770,7 +770,7 @@ export default function SettingsPage() {
       setGeminiApiKey("");
       toast(successMessage, "success");
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Could not save model settings.", "error");
+      toast(err instanceof Error ? err.message : "모델 설정을 저장하지 못했어요.", "error");
     } finally {
       setModelSaving(false);
     }
@@ -779,7 +779,7 @@ export default function SettingsPage() {
   const integrations: Integration[] = [
     {
       name: "Google",
-      description: "Read Gmail and Calendar signals, then connect them to meeting prep.",
+      description: "Gmail과 캘린더 신호를 읽고 회의 준비와 연결합니다.",
       connected: googleConnected,
       connectUrl: `${API_BASE}/api/auth/google?token=${getStoredAuthToken() || ""}`,
       statusUrl: `${API_BASE}/api/auth/google/status`,
@@ -787,15 +787,15 @@ export default function SettingsPage() {
     {
       name: "Slack",
       description: slackConnected
-        ? `Connected with ${slackMode === "bot_token" ? "bot token" : "webhook"}`
-        : "An admin must set SLACK_BOT_TOKEN or SLACK_WEBHOOK_URL.",
+        ? `${slackMode === "bot_token" ? "봇 토큰" : "웹훅"}으로 연결됨`
+        : "관리자가 SLACK_BOT_TOKEN 또는 SLACK_WEBHOOK_URL을 설정해야 합니다.",
       connected: slackConnected,
       connectUrl: slackConnected ? undefined : "slack-admin-only",
       statusUrl: `${API_BASE}/api/slack/status`,
     },
     {
       name: "Notion",
-      description: "Prepare page search, document drafting, and database access.",
+      description: "페이지 검색, 문서 초안, 데이터베이스 접근을 준비합니다.",
       connected: notionConnected,
       connectUrl: notionConnected ? undefined : "notion-coming-soon",
       statusUrl: `${API_BASE}/api/notion/status`,
@@ -810,13 +810,13 @@ export default function SettingsPage() {
         headers: authHeaders(),
       });
       if (res.ok) {
-        toast("Slack test message sent.", "success");
+        toast("Slack 테스트 메시지를 보냈어요.", "success");
       } else {
         const body = await res.json().catch(() => ({}));
-        toast(body.error || "Could not send test message.", "error");
+        toast(body.error || "테스트 메시지를 보내지 못했어요.", "error");
       }
     } catch {
-      toast("Could not send test message.", "error");
+      toast("테스트 메시지를 보내지 못했어요.", "error");
     } finally {
       setSlackTesting(false);
     }
@@ -829,15 +829,15 @@ export default function SettingsPage() {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-    toast(data.briefing || "Briefing created. Review it on the briefing screen.", "success");
+    toast(data.briefing || "브리핑을 만들었어요. 브리핑 화면에서 확인하세요.", "success");
   };
 
   const clearAllData = async () => {
     const ok = await confirm({
-      title: "Delete workspace data",
+      title: "워크스페이스 데이터 삭제",
       message:
-        "This deletes all decision threads, tasks, notes, contacts, and reminders. This cannot be undone.",
-      confirmLabel: "Delete workspace",
+        "모든 결정 스레드, 작업, 메모, 연락처, 리마인더를 삭제합니다. 이 작업은 되돌릴 수 없어요.",
+      confirmLabel: "워크스페이스 삭제",
       danger: true,
     });
     if (!ok) return;
@@ -845,9 +845,9 @@ export default function SettingsPage() {
       await fetch(`${API_BASE}/api/user/me/data`, { method: "DELETE", headers: authHeaders() });
       localStorage.removeItem(PROFILE_KEY);
       localStorage.removeItem(PINNED_CHATS_KEY);
-      toast("Workspace data deleted.", "info");
+      toast("워크스페이스 데이터를 삭제했어요.", "info");
     } catch {
-      toast("Could not delete workspace data.", "error");
+      toast("워크스페이스 데이터를 삭제하지 못했어요.", "error");
     }
   };
 
@@ -1273,11 +1273,11 @@ export default function SettingsPage() {
                     type="button"
                     disabled={modelSaving || !openRouterApiKey.trim()}
                     onClick={() =>
-                      patchModelSettings({ openRouterApiKey }, "OpenRouter key saved.")
+                      patchModelSettings({ openRouterApiKey }, "OpenRouter 키를 저장했어요.")
                     }
                     className="rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-medium text-stone-950 transition hover:bg-amber-200 disabled:bg-stone-700 disabled:text-stone-500"
                   >
-                    Save
+                    저장
                   </button>
                   {modelSettings?.hasOpenRouterApiKey && (
                     <button
