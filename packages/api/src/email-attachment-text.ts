@@ -22,9 +22,17 @@ export function isReadableEmailAttachment(
     mimeType.includes("html") ||
     mimeType.includes("pdf") ||
     mimeType.includes("wordprocessingml") ||
+    mimeType.includes("spreadsheetml") ||
+    mimeType.includes("presentationml") ||
     mimeType.includes("msword") ||
+    mimeType.includes("ms-excel") ||
+    mimeType.includes("powerpoint") ||
+    mimeType.includes("haansoft") ||
+    mimeType.includes("hwp") ||
     mimeType.startsWith("image/") ||
-    /\.(txt|md|csv|json|xml|html|htm|pdf|docx|doc|jpg|jpeg|png|webp|heic)$/i.test(lower)
+    /\.(txt|md|csv|json|xml|html|htm|pdf|docx|doc|xlsx|xls|pptx|ppt|hwpx|hwp|jpg|jpeg|png|webp|heic)$/i.test(
+      lower,
+    )
   );
 }
 
@@ -39,6 +47,38 @@ export function extractAttachmentContent(
     const text = extractDocxText(buffer);
     return {
       text: text || metadataText(filename, mimeType, buffer.length, "DOCX 텍스트 추출 실패"),
+      status: text ? "readable" : "metadata",
+    };
+  }
+
+  if (isXlsx(lower, mimeType)) {
+    const text = extractXlsxText(buffer);
+    return {
+      text: text || metadataText(filename, mimeType, buffer.length, "XLSX 텍스트 추출 실패"),
+      status: text ? "readable" : "metadata",
+    };
+  }
+
+  if (isPptx(lower, mimeType)) {
+    const text = extractPptxText(buffer);
+    return {
+      text: text || metadataText(filename, mimeType, buffer.length, "PPTX 텍스트 추출 실패"),
+      status: text ? "readable" : "metadata",
+    };
+  }
+
+  if (isHwpx(lower, mimeType)) {
+    const text = extractHwpxText(buffer);
+    return {
+      text: text || metadataText(filename, mimeType, buffer.length, "HWPX 텍스트 추출 실패"),
+      status: text ? "readable" : "metadata",
+    };
+  }
+
+  if (isLegacyHwp(lower, mimeType)) {
+    const text = extractLegacyHwpText(buffer);
+    return {
+      text: text || metadataText(filename, mimeType, buffer.length, "구형 HWP 본문 자동 추출 제한"),
       status: text ? "readable" : "metadata",
     };
   }
@@ -92,6 +132,40 @@ function isDocx(filename: string, mimeType: string): boolean {
   );
 }
 
+function isXlsx(filename: string, mimeType: string): boolean {
+  return (
+    filename.endsWith(".xlsx") ||
+    mimeType.includes("spreadsheetml") ||
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+}
+
+function isPptx(filename: string, mimeType: string): boolean {
+  return (
+    filename.endsWith(".pptx") ||
+    mimeType.includes("presentationml") ||
+    mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  );
+}
+
+function isHwpx(filename: string, mimeType: string): boolean {
+  return (
+    filename.endsWith(".hwpx") ||
+    mimeType.includes("hwpx") ||
+    mimeType === "application/haansofthwpx" ||
+    mimeType === "application/vnd.hancom.hwpx"
+  );
+}
+
+function isLegacyHwp(filename: string, mimeType: string): boolean {
+  return (
+    filename.endsWith(".hwp") ||
+    mimeType.includes("x-hwp") ||
+    mimeType === "application/haansofthwp" ||
+    mimeType === "application/hwp"
+  );
+}
+
 function metadataText(filename: string, mimeType: string, size: number, reason: string): string {
   return [
     `파일명: ${filename}`,
@@ -126,6 +200,125 @@ function extractDocxText(buffer: Buffer): string | null {
   } catch {
     return null;
   }
+}
+
+function extractXlsxText(buffer: Buffer): string | null {
+  try {
+    const entries = readZipEntries(buffer);
+    const sharedStrings = Array.from(entries.entries())
+      .filter(([name]) => /^xl\/sharedStrings\.xml$/i.test(name))
+      .flatMap(([, entry]) => extractXmlText(entry.toString("utf-8")));
+    const worksheetText = Array.from(entries.entries())
+      .filter(([name]) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name))
+      .flatMap(([, entry]) => extractXmlText(entry.toString("utf-8")));
+    return uniqueLines([...sharedStrings, ...worksheetText]).join("\n") || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractPptxText(buffer: Buffer): string | null {
+  try {
+    const entries = readZipEntries(buffer);
+    const text = Array.from(entries.entries())
+      .filter(([name]) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+      .flatMap(([, entry]) => extractXmlText(entry.toString("utf-8")));
+    return uniqueLines(text).join("\n") || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractHwpxText(buffer: Buffer): string | null {
+  try {
+    const entries = readZipEntries(buffer);
+    const sectionText = Array.from(entries.entries())
+      .filter(([name]) => /^(?:contents|content)\/section\d+\.xml$/i.test(name))
+      .flatMap(([, entry]) => extractHwpxXmlText(entry.toString("utf-8")));
+    if (sectionText.length > 0) return uniqueLines(sectionText).join("\n") || null;
+
+    const xmlText = Array.from(entries.entries())
+      .filter(([name]) => name.toLowerCase().endsWith(".xml"))
+      .filter(([name]) => !/(?:settings|version|manifest|header|meta|preview)\.xml$/i.test(name))
+      .flatMap(([, entry]) => extractHwpxXmlText(entry.toString("utf-8")));
+    return uniqueLines(xmlText).join("\n") || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractLegacyHwpText(buffer: Buffer): string | null {
+  const chunks = [
+    ...extractUtf16TextChunks(buffer),
+    ...extractInflatedTextChunks(buffer),
+    ...extractAsciiKoreanTextChunks(buffer),
+  ];
+  return uniqueLines(chunks).join("\n") || null;
+}
+
+function extractUtf16TextChunks(buffer: Buffer): string[] {
+  const chunks: string[] = [];
+  for (const offset of [0, 1]) {
+    let current = "";
+    for (let i = offset; i + 1 < buffer.length; i += 2) {
+      const code = buffer.readUInt16LE(i);
+      if (isReadableTextCode(code)) {
+        current += String.fromCharCode(code);
+      } else {
+        pushReadableChunk(chunks, current);
+        current = "";
+      }
+    }
+    pushReadableChunk(chunks, current);
+  }
+  return chunks;
+}
+
+function extractInflatedTextChunks(buffer: Buffer): string[] {
+  const chunks: string[] = [];
+  const maxOffset = Math.min(buffer.length - 16, 1_000_000);
+  for (let offset = 0; offset < maxOffset; offset += 64) {
+    try {
+      const inflated = inflateRawSync(buffer.subarray(offset));
+      if (inflated.length < 16) continue;
+      chunks.push(...extractUtf16TextChunks(inflated), ...extractAsciiKoreanTextChunks(inflated));
+      if (chunks.length >= 80) break;
+    } catch {
+      // Most offsets are not deflate streams. Keep scanning sparsely.
+    }
+  }
+  return chunks;
+}
+
+function extractAsciiKoreanTextChunks(buffer: Buffer): string[] {
+  const text = buffer.toString("utf-8");
+  return (
+    text
+      .match(/[A-Za-z0-9가-힣@._+\-:/()[\], ]{8,}/g)
+      ?.map((segment) => segment.replace(/\s+/g, " ").trim())
+      .filter((segment) => /[가-힣A-Za-z0-9]/.test(segment))
+      .slice(0, 120) ?? []
+  );
+}
+
+function isReadableTextCode(code: number): boolean {
+  return (
+    code === 0x09 ||
+    code === 0x0a ||
+    code === 0x0d ||
+    code === 0x20 ||
+    (code >= 0x21 && code <= 0x7e) ||
+    (code >= 0xac00 && code <= 0xd7a3) ||
+    (code >= 0x3130 && code <= 0x318f) ||
+    (code >= 0x1100 && code <= 0x11ff)
+  );
+}
+
+function pushReadableChunk(chunks: string[], value: string): void {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length < 6) return;
+  if (!/[가-힣A-Za-z0-9]/.test(cleaned)) return;
+  chunks.push(cleaned);
 }
 
 function readZipEntries(buffer: Buffer): Map<string, Buffer> {
@@ -249,6 +442,47 @@ function extractWordXmlText(xml: string): string {
         .replace(/\n{3,}/g, "\n\n"),
     ) || ""
   );
+}
+
+function extractXmlText(xml: string): string[] {
+  const chunks = Array.from(xml.matchAll(/<[^:>\s]*:?t\b[^>]*>([\s\S]*?)<\/[^:>\s]*:?t\b[^>]*>/gi))
+    .map((match) => cleanText(decodeXml(match[1])))
+    .filter((value): value is string => !!value);
+  if (chunks.length > 0) return chunks;
+  const fallback = cleanText(decodeXml(xml.replace(/<[^>]+>/g, " ")));
+  return fallback ? [fallback] : [];
+}
+
+function extractHwpxXmlText(xml: string): string[] {
+  const withBreaks = xml
+    .replace(/<[^:>]*:?tab\b[^>]*\/>/g, "\t")
+    .replace(/<[^:>]*:?lineBreak\b[^>]*\/>/g, "\n")
+    .replace(/<[^:>]*:?br\b[^>]*\/>/g, "\n")
+    .replace(/<\/[^:>]*:?p>/g, "\n")
+    .replace(/<\/[^:>]*:?tr>/g, "\n")
+    .replace(/<\/[^:>]*:?tc>/g, "\t");
+
+  const chunks = Array.from(
+    withBreaks.matchAll(/<[^:>\s]*:?t\b[^>]*>([\s\S]*?)<\/[^:>\s]*:?t\b[^>]*>/gi),
+  )
+    .map((match) => cleanText(decodeXml(match[1])))
+    .filter((value): value is string => !!value);
+  if (chunks.length > 0) return chunks;
+
+  const fallback = cleanText(decodeXml(withBreaks.replace(/<[^>]+>/g, " ")));
+  return fallback ? fallback.split("\n") : [];
+}
+
+function uniqueLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of lines) {
+    const cleaned = line.replace(/\s+/g, " ").trim();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+  return out.slice(0, 200);
 }
 
 function decodeXml(value: string): string {

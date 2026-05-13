@@ -17,7 +17,7 @@ import {
   type RawEmailAttachment,
   upsertEmailAttachments,
 } from "./email-attachments.js";
-import { getAuthedClient } from "./gmail.js";
+import { getAuthedClient, isGoogleAuthError, markGoogleTokenForReconnect } from "./gmail.js";
 import { createCompletion, MODEL, openai } from "./openai.js";
 import { captureError } from "./sentry.js";
 import { wrapUntrusted } from "./untrusted.js";
@@ -133,87 +133,95 @@ async function fetchGmailEmails(
     listParams.labelIds = ["INBOX"];
   }
 
-  const res = await gmail.users.messages.list(listParams);
-  const messages = res.data.messages || [];
+  try {
+    const res = await gmail.users.messages.list(listParams);
+    const messages = res.data.messages || [];
 
-  const emails: GmailRawEmail[] = [];
+    const emails: GmailRawEmail[] = [];
 
-  for (const msg of messages) {
-    if (!msg.id) continue;
+    for (const msg of messages) {
+      if (!msg.id) continue;
 
-    const detail = await gmail.users.messages.get({
-      userId: "me",
-      id: msg.id,
-      format: "full",
-    });
+      const detail = await gmail.users.messages.get({
+        userId: "me",
+        id: msg.id,
+        format: "full",
+      });
 
-    const headers = detail.data.payload?.headers || [];
-    const getHeader = (name: string) =>
-      headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
+      const headers = detail.data.payload?.headers || [];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
 
-    // Extract body (Gmail API returns base64url-encoded UTF-8 by default)
-    let body = "";
-    let htmlBody = "";
-    const payload = detail.data.payload;
+      // Extract body (Gmail API returns base64url-encoded UTF-8 by default)
+      let body = "";
+      let htmlBody = "";
+      const payload = detail.data.payload;
 
-    const decodePartBody = (data: string): string => decodeBase64Url(data).toString("utf-8");
-    const attachments: RawEmailAttachment[] = [];
+      const decodePartBody = (data: string): string => decodeBase64Url(data).toString("utf-8");
+      const attachments: RawEmailAttachment[] = [];
 
-    if (payload?.parts) {
-      for (const part of payload.parts) {
-        if (part.mimeType === "text/plain" && part.body?.data) {
-          body = decodePartBody(part.body.data);
-        }
-        if (part.mimeType === "text/html" && part.body?.data) {
-          htmlBody = decodePartBody(part.body.data);
-        }
-        // Handle nested multipart
-        if (part.parts) {
-          for (const sub of part.parts) {
-            if (sub.mimeType === "text/plain" && sub.body?.data && !body) {
-              body = decodePartBody(sub.body.data);
-            }
-            if (sub.mimeType === "text/html" && sub.body?.data && !htmlBody) {
-              htmlBody = decodePartBody(sub.body.data);
+      if (payload?.parts) {
+        for (const part of payload.parts) {
+          if (part.mimeType === "text/plain" && part.body?.data) {
+            body = decodePartBody(part.body.data);
+          }
+          if (part.mimeType === "text/html" && part.body?.data) {
+            htmlBody = decodePartBody(part.body.data);
+          }
+          // Handle nested multipart
+          if (part.parts) {
+            for (const sub of part.parts) {
+              if (sub.mimeType === "text/plain" && sub.body?.data && !body) {
+                body = decodePartBody(sub.body.data);
+              }
+              if (sub.mimeType === "text/html" && sub.body?.data && !htmlBody) {
+                htmlBody = decodePartBody(sub.body.data);
+              }
             }
           }
         }
+      } else if (payload?.body?.data) {
+        const decoded = decodePartBody(payload.body.data);
+        if (payload.mimeType === "text/html") {
+          htmlBody = decoded;
+        } else {
+          body = decoded;
+        }
       }
-    } else if (payload?.body?.data) {
-      const decoded = decodePartBody(payload.body.data);
-      if (payload.mimeType === "text/html") {
-        htmlBody = decoded;
-      } else {
-        body = decoded;
+
+      if (payload) {
+        attachments.push(...(await extractAttachmentsFromPayload(gmail, msg.id, payload)));
       }
+
+      const labelIds = detail.data.labelIds || [];
+      const dateStr = getHeader("Date");
+
+      emails.push({
+        gmailId: msg.id,
+        threadId: detail.data.threadId || msg.id,
+        from: getHeader("From"),
+        to: getHeader("To"),
+        cc: getHeader("Cc"),
+        subject: getHeader("Subject"),
+        snippet: detail.data.snippet || "",
+        body,
+        htmlBody,
+        labels: labelIds,
+        isRead: !labelIds.includes("UNREAD"),
+        isStarred: labelIds.includes("STARRED"),
+        receivedAt: dateStr ? new Date(dateStr) : new Date(),
+        attachments,
+      });
     }
 
-    if (payload) {
-      attachments.push(...(await extractAttachmentsFromPayload(gmail, msg.id, payload)));
+    return emails;
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return null;
     }
-
-    const labelIds = detail.data.labelIds || [];
-    const dateStr = getHeader("Date");
-
-    emails.push({
-      gmailId: msg.id,
-      threadId: detail.data.threadId || msg.id,
-      from: getHeader("From"),
-      to: getHeader("To"),
-      cc: getHeader("Cc"),
-      subject: getHeader("Subject"),
-      snippet: detail.data.snippet || "",
-      body,
-      htmlBody,
-      labels: labelIds,
-      isRead: !labelIds.includes("UNREAD"),
-      isStarred: labelIds.includes("STARRED"),
-      receivedAt: dateStr ? new Date(dateStr) : new Date(),
-      attachments,
-    });
+    throw err;
   }
-
-  return emails;
 }
 
 /**
@@ -341,18 +349,26 @@ export async function reconcileEmails(
   // Get ALL current INBOX message IDs from Gmail (lightweight list call)
   const inboxIds = new Set<string>();
   let pageToken: string | undefined;
-  do {
-    const res = await gmail.users.messages.list({
-      userId: "me",
-      labelIds: ["INBOX"],
-      maxResults: 500,
-      pageToken,
-    });
-    for (const msg of res.data.messages || []) {
-      if (msg.id) inboxIds.add(msg.id);
+  try {
+    do {
+      const res = await gmail.users.messages.list({
+        userId: "me",
+        labelIds: ["INBOX"],
+        maxResults: 500,
+        pageToken,
+      });
+      for (const msg of res.data.messages || []) {
+        if (msg.id) inboxIds.add(msg.id);
+      }
+      pageToken = res.data.nextPageToken || undefined;
+    } while (pageToken);
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      throw new Error("Gmail not connected");
     }
-    pageToken = res.data.nextPageToken || undefined;
-  } while (pageToken);
+    throw err;
+  }
 
   // Get all DB emails for this user
   const dbEmails = await prisma.emailMessage.findMany({

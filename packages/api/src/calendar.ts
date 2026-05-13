@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { getAuthedClient } from "./gmail.js";
+import { getAuthedClient, isGoogleAuthError, markGoogleTokenForReconnect } from "./gmail.js";
 import { wrapUntrusted } from "./untrusted.js";
 
 export async function listEvents(userId: string, maxResults = 10) {
@@ -28,6 +28,10 @@ export async function listEvents(userId: string, maxResults = 10) {
 
     return { events };
   } catch (err: unknown) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Google Calendar not connected. Please reconnect your Google account." };
+    }
     const gaxiosErr = err as {
       response?: { status?: number; data?: { error?: { message?: string; status?: string } } };
       message?: string;
@@ -65,6 +69,10 @@ export async function createEvent(
 
     return { success: true, eventId: res.data.id, htmlLink: res.data.htmlLink };
   } catch (err: unknown) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Google Calendar not connected. Please reconnect your Google account." };
+    }
     const gaxiosErr = err as {
       response?: { status?: number; data?: { error?: { message?: string; status?: string } } };
       message?: string;
@@ -81,10 +89,18 @@ export async function deleteEvent(userId: string, eventId: string) {
   if (!auth) return { error: "Google Calendar not connected." };
 
   const calendar = google.calendar({ version: "v3", auth });
-  await calendar.events.delete({
-    calendarId: "primary",
-    eventId,
-  });
+  try {
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId,
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Google Calendar not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   return { success: true };
 }
@@ -94,13 +110,31 @@ export async function checkConflicts(userId: string, startTime: string, endTime:
   if (!auth) return { error: "Google Calendar not connected." };
 
   const calendar = google.calendar({ version: "v3", auth });
-  const res = await calendar.events.list({
-    calendarId: "primary",
-    timeMin: startTime,
-    timeMax: endTime,
-    singleEvents: true,
-    orderBy: "startTime",
-  });
+  let res: {
+    data: {
+      items?: Array<{
+        id?: string | null;
+        summary?: string | null;
+        start?: { dateTime?: string | null; date?: string | null } | null;
+        end?: { dateTime?: string | null; date?: string | null } | null;
+      }> | null;
+    };
+  };
+  try {
+    res = await calendar.events.list({
+      calendarId: "primary",
+      timeMin: startTime,
+      timeMax: endTime,
+      singleEvents: true,
+      orderBy: "startTime",
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Google Calendar not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   const conflicts = (res.data.items || []).map((e) => ({
     id: e.id,

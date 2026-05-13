@@ -18,6 +18,18 @@ vi.mock("../gmail.js", () => ({
   getAuthUrl: vi.fn(() => "https://example.com/oauth"),
   getLoginAuthUrl: vi.fn(() => "https://example.com/oauth-login"),
   getAuthedClient: vi.fn(),
+  isGoogleAuthError: vi.fn(() => false),
+  markGoogleTokenForReconnect: vi.fn(async () => {}),
+  getGoogleConnectionStatus: vi.fn(async () => ({
+    connected: false,
+    hasRefreshToken: false,
+    expired: false,
+    needsReconnect: false,
+    reason: "not_connected",
+    gmailPushConfigured: false,
+    gmailPushEnabled: false,
+    gmailPushExpiresAt: null,
+  })),
   getGoogleUserInfo: vi.fn(),
   getOAuth2Client: vi.fn(),
 }));

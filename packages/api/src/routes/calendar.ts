@@ -11,7 +11,7 @@ import {
 import { getUserId, requireAuth } from "../auth.js";
 import { createEvent as googleCreateEvent, deleteEvent as googleDeleteEvent } from "../calendar.js";
 import { prisma } from "../db.js";
-import { getAuthedClient } from "../gmail.js";
+import { getAuthedClient, isGoogleAuthError, markGoogleTokenForReconnect } from "../gmail.js";
 import { buildMeetingPrepPack } from "../meeting-prep-pack.js";
 
 export async function calendarRoutes(app: FastifyInstance) {
@@ -247,6 +247,10 @@ export async function calendarRoutes(app: FastifyInstance) {
 
       return { success: true, synced };
     } catch (err) {
+      if (isGoogleAuthError(err)) {
+        await markGoogleTokenForReconnect(uid);
+        return { error: "Google not connected. Please reconnect your Google account.", synced: 0 };
+      }
       const gaxiosErr = err as {
         response?: { status?: number; data?: { error?: { message?: string; errors?: unknown[] } } };
         message?: string;

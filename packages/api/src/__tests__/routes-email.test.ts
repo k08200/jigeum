@@ -48,6 +48,7 @@ vi.mock("../db.js", () => {
         createdAt: new Date("2026-05-03T00:00:00.000Z"),
       })),
       findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
     },
     emailRule: {
       findMany: vi.fn(async () => []),
@@ -161,6 +162,73 @@ describe("email routes (demo mode)", () => {
     const res = await app.inject({ method: "GET", url: "/api/email/threads", headers: auth() });
     expect(res.statusCode).toBe(200);
     expect(res.json().source).toBe("demo");
+    await app.close();
+  });
+
+  it("exports candidate intake CSV", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/candidates/export.csv",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/csv");
+    expect(res.body).toContain('"status","name","role"');
+    await app.close();
+  });
+
+  it("rejects invalid candidate attention filter", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/candidates?attention=unknown",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("Invalid candidate attention filter");
+    await app.close();
+  });
+
+  it("rejects invalid candidate list status", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/candidates?status=DONEISH",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("Invalid candidate intake status");
+    await app.close();
+  });
+
+  it("rejects invalid candidate CSV attention filter", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/candidates/export.csv?attention=unknown",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("Invalid candidate attention filter");
+    await app.close();
+  });
+
+  it("rejects invalid bulk candidate intake status", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/email/candidates/bulk-status",
+      headers: auth(),
+      payload: { emailIds: ["email-1"], status: "DONEISH" },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("Invalid candidate intake status");
     await app.close();
   });
 

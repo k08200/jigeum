@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/ensure-next-dev-manifests.mjs",
+    "predev": "node scripts/ensure-next-dev-manifests.mjs .next-dev",
     "prebuild": "node scripts/ensure-next-dev-manifests.mjs",
-    "dev": "next dev --port 8001",
+    "dev": "NEXT_DEV_DIST=1 next dev --port 8001",
     "build": "next build || (node scripts/ensure-next-dev-manifests.mjs && next build)",
     "start": "next start",
     "lint": "next lint"
