@@ -285,7 +285,7 @@ export default function Sidebar({
         router.push("/chat");
       }
     } catch {
-      toast("Could not delete the thread.", "error");
+      toast("스레드를 삭제하지 못했어요.", "error");
       setDeleteConfirm(null);
     }
   };
@@ -314,7 +314,7 @@ export default function Sidebar({
       if (!res.ok) throw new Error();
       setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: editTitle } : c)));
     } catch {
-      toast("Could not rename the thread.", "error");
+      toast("스레드 이름을 바꾸지 못했어요.", "error");
     }
     setEditingId(null);
   };

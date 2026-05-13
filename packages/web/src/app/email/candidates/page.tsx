@@ -284,17 +284,17 @@ function CandidateIntakeView() {
           </div>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <QueueStat label="Needs info" value={needsCount} />
-          <QueueStat label="Ready" value={readyCount} />
-          <QueueStat label="Duplicates" value={duplicateCount} />
-          <QueueStat label="Originals" value={manualReviewCount} />
+          <QueueStat label="정보 필요" value={needsCount} />
+          <QueueStat label="검토 가능" value={readyCount} />
+          <QueueStat label="중복" value={duplicateCount} />
+          <QueueStat label="원본" value={manualReviewCount} />
         </div>
         {quality && (
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <QueueStat label="AI quality" value={`${Math.round(quality.qualityScore * 100)}%`} />
-            <QueueStat label="Analyzed" value={quality.analyzedCount} />
-            <QueueStat label="Corrected" value={quality.correctedCount} />
-            <QueueStat label="Failed" value={quality.failedCount + quality.manualReviewCount} />
+            <QueueStat label="AI 품질" value={`${Math.round(quality.qualityScore * 100)}%`} />
+            <QueueStat label="분석됨" value={quality.analyzedCount} />
+            <QueueStat label="교정됨" value={quality.correctedCount} />
+            <QueueStat label="실패" value={quality.failedCount + quality.manualReviewCount} />
           </div>
         )}
         {quality?.correctionSummary && quality.correctionSummary.total > 0 && (
