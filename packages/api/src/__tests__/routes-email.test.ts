@@ -40,6 +40,8 @@ vi.mock("../db.js", () => {
       findFirst: vi.fn(async () => null),
       count: vi.fn(async () => 0),
       groupBy: vi.fn(async () => []),
+      updateMany: vi.fn(async () => ({ count: 0 })),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     feedbackEvent: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -229,6 +231,76 @@ describe("email routes (demo mode)", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toBe("Invalid candidate intake status");
+    await app.close();
+  });
+
+  it("marks selected synced emails as read in bulk", async () => {
+    const { prisma } = await import("../db.js");
+    const email = {
+      id: "email-1",
+      userId: "user-1",
+      gmailId: "gmail-1",
+      threadId: "thread-1",
+      from: "sarah@example.com",
+      to: "me@example.com",
+      cc: null,
+      subject: "Can you send the deck?",
+      snippet: "Can you send the deck?",
+      body: "Can you send the deck?",
+      htmlBody: null,
+      labels: ["INBOX"],
+      isRead: false,
+      isStarred: false,
+      priority: "NORMAL",
+      category: "conversation",
+      summary: "Sarah: deck 요청",
+      keyPoints: null,
+      actionItems: JSON.stringify(["덱 보내기"]),
+      needsReply: true,
+      needsReplyReason: null,
+      needsReplyConfidence: 0.8,
+      sentiment: "neutral",
+      receivedAt: new Date("2026-05-03T00:00:00.000Z"),
+      syncedAt: new Date("2026-05-03T00:00:00.000Z"),
+      createdAt: new Date("2026-05-03T00:00:00.000Z"),
+      updatedAt: new Date("2026-05-03T00:00:00.000Z"),
+    };
+    vi.mocked(prisma.emailMessage.findMany).mockResolvedValueOnce([email]);
+    vi.mocked(prisma.emailMessage.updateMany).mockResolvedValueOnce({ count: 1 });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/email/bulk",
+      headers: auth(),
+      payload: { ids: ["email-1"], action: "mark-read" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ success: true, updatedCount: 1 });
+    expect(prisma.emailMessage.updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", id: { in: ["email-1"] } },
+      data: { isRead: true },
+    });
+    await app.close();
+  });
+
+  it("rejects invalid bulk email priority", async () => {
+    const { prisma } = await import("../db.js");
+    vi.mocked(prisma.emailMessage.findMany).mockResolvedValueOnce([
+      { id: "email-1", gmailId: "g1" },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/email/bulk",
+      headers: auth(),
+      payload: { ids: ["email-1"], action: "set-priority", priority: "NOW" },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("Invalid email priority");
     await app.close();
   });
 

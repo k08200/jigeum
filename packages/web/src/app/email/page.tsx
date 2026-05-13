@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
@@ -80,6 +80,14 @@ interface ThreadListResponse {
   threads: ThreadRow[];
   source: "gmail" | "demo";
   total: number;
+}
+
+type BulkAction = "mark-read" | "mark-unread" | "archive" | "set-priority";
+
+interface BulkActionResponse {
+  success: boolean;
+  updatedCount: number;
+  failed?: Array<{ id: string; error: string }>;
 }
 
 const FILTERS: { key: Filter; label: string; query: string }[] = [
@@ -168,10 +176,13 @@ function EmailView() {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [source, setSource] = useState<"gmail" | "demo" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async (f: Filter, keyword = "") => {
     setLoading(true);
     setError(null);
+    setSelectedIds(new Set());
     try {
       const q = FILTERS.find((x) => x.key === f)?.query || "";
       const params = new URLSearchParams(q);
@@ -236,6 +247,55 @@ function EmailView() {
       setError("첨부파일 분석을 다시 실행하지 못했어요.");
     } finally {
       setReanalyzing(false);
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const visibleIds = emails.map((email) => email.id);
+  const selectedCount = selectedIds.size;
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((emailId) => selectedIds.has(emailId));
+
+  const toggleAllVisible = () => {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) return new Set();
+      const next = new Set(prev);
+      for (const id of visibleIds) next.add(id);
+      return next;
+    });
+  };
+
+  const applyBulkAction = async (
+    action: BulkAction,
+    options: { priority?: EmailRow["priority"] } = {},
+  ) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    setBulkBusy(true);
+    setError(null);
+    try {
+      const data = await apiFetch<BulkActionResponse>("/api/email/bulk", {
+        method: "POST",
+        body: JSON.stringify({ ids, action, priority: options.priority }),
+      });
+      setEmails((prev) => updateEmailsAfterBulk(prev, ids, action, options.priority));
+      setSelectedIds(new Set());
+      if (data.failed && data.failed.length > 0) {
+        setError(`${data.failed.length}개 메일은 처리하지 못했어요. 다시 시도해 주세요.`);
+      }
+    } catch (err) {
+      captureClientError(err, { scope: "email.bulk", action });
+      setError("선택한 메일을 처리하지 못했어요.");
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -369,8 +429,24 @@ function EmailView() {
 
       {!loading && filter !== "threads" && emails.length > 0 && (
         <ul className="mt-3 space-y-2.5">
+          <li>
+            <BulkActionBar
+              allVisibleSelected={allVisibleSelected}
+              busy={bulkBusy}
+              selectedCount={selectedCount}
+              totalVisible={emails.length}
+              onApply={applyBulkAction}
+              onClear={() => setSelectedIds(new Set())}
+              onToggleAll={toggleAllVisible}
+            />
+          </li>
           {emails.map((e) => (
-            <EmailRowItem key={e.id} email={e} />
+            <EmailRowItem
+              key={e.id}
+              email={e}
+              selected={selectedIds.has(e.id)}
+              onToggleSelected={toggleSelected}
+            />
           ))}
         </ul>
       )}
@@ -389,6 +465,116 @@ function EmailView() {
         </ul>
       )}
     </div>
+  );
+}
+
+function updateEmailsAfterBulk(
+  emails: EmailRow[],
+  ids: string[],
+  action: BulkAction,
+  priority?: EmailRow["priority"],
+): EmailRow[] {
+  const selected = new Set(ids);
+  if (action === "archive") return emails.filter((email) => !selected.has(email.id));
+  if (action === "mark-read" || action === "mark-unread") {
+    const isRead = action === "mark-read";
+    return emails.map((email) => (selected.has(email.id) ? { ...email, isRead } : email));
+  }
+  if (action === "set-priority" && priority) {
+    return emails.map((email) => (selected.has(email.id) ? { ...email, priority } : email));
+  }
+  return emails;
+}
+
+function BulkActionBar({
+  allVisibleSelected,
+  busy,
+  selectedCount,
+  totalVisible,
+  onApply,
+  onClear,
+  onToggleAll,
+}: {
+  allVisibleSelected: boolean;
+  busy: boolean;
+  selectedCount: number;
+  totalVisible: number;
+  onApply: (action: BulkAction, options?: { priority?: EmailRow["priority"] }) => void;
+  onClear: () => void;
+  onToggleAll: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-[#0C1116] px-3 py-2 md:flex-row md:items-center md:justify-between">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleAll}
+          className="h-8 rounded-md border border-white/10 bg-[#11161A] px-2.5 text-xs font-medium text-stone-300 transition hover:bg-white/5"
+        >
+          {allVisibleSelected ? "전체 해제" : "현재 화면 선택"}
+        </button>
+        <span className="text-xs text-stone-500">
+          {selectedCount > 0 ? `${selectedCount}개 선택됨` : `현재 화면 ${totalVisible}개`}
+        </span>
+      </div>
+      {selectedCount > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <BulkButton disabled={busy} onClick={() => onApply("mark-read")}>
+            읽음
+          </BulkButton>
+          <BulkButton disabled={busy} onClick={() => onApply("mark-unread")}>
+            안읽음
+          </BulkButton>
+          <BulkButton
+            disabled={busy}
+            onClick={() => onApply("set-priority", { priority: "URGENT" })}
+          >
+            긴급
+          </BulkButton>
+          <BulkButton disabled={busy} onClick={() => onApply("set-priority", { priority: "LOW" })}>
+            낮음
+          </BulkButton>
+          <BulkButton disabled={busy} danger onClick={() => onApply("archive")}>
+            보관
+          </BulkButton>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={busy}
+            className="h-8 rounded-md px-2.5 text-xs text-stone-500 transition hover:bg-white/5 disabled:opacity-50"
+          >
+            취소
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BulkButton({
+  children,
+  danger = false,
+  disabled,
+  onClick,
+}: {
+  children: ReactNode;
+  danger?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`h-8 rounded-md border px-2.5 text-xs font-medium transition disabled:opacity-50 ${
+        danger
+          ? "border-red-500/25 bg-red-500/10 text-red-200 hover:bg-red-500/15"
+          : "border-white/10 bg-[#11161A] text-stone-300 hover:bg-white/5"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -427,38 +613,36 @@ function FilterTabs({ current, onChange }: { current: Filter; onChange: (f: Filt
   );
 }
 
-function EmailRowItem({ email }: { email: EmailRow }) {
+function EmailRowItem({
+  email,
+  selected,
+  onToggleSelected,
+}: {
+  email: EmailRow;
+  selected: boolean;
+  onToggleSelected: (id: string) => void;
+}) {
   const unread = !email.isRead;
   return (
-    <li>
+    <li className="grid grid-cols-[auto_1fr] gap-2">
+      <button
+        type="button"
+        aria-pressed={selected}
+        aria-label={`${email.subject || "제목 없음"} 선택`}
+        onClick={() => onToggleSelected(email.id)}
+        className={`mt-4 h-5 w-5 rounded border transition ${
+          selected
+            ? "border-[#FF6B4A] bg-[#FF6B4A] shadow-[inset_0_0_0_4px_#0C1116]"
+            : "border-white/15 bg-[#11161A] hover:border-white/30"
+        }`}
+      />
       <Link
         href={`/email/${email.id}?markRead=false`}
         className="block rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20 hover:bg-white/5 active:bg-white/10"
       >
         <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <PriorityBadge priority={email.priority} />
-              {email.needsReply && <ReplyNeededBadge />}
-              {(email.attachmentCandidateCount ?? 0) > 0 && <CandidateBadge />}
-              {(email.attachmentCount ?? 0) > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#7DD3FC]/30 bg-[#7DD3FC]/10 text-[#7DD3FC] font-medium shrink-0">
-                  첨부 {email.attachmentCount}
-                </span>
-              )}
-              {(email.attachmentPendingCount ?? 0) > 0 && (
-                <span className="shrink-0 rounded border border-stone-600 bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-stone-400">
-                  분석 대기 {email.attachmentPendingCount}
-                </span>
-              )}
-              {(email.attachmentFallbackCount ?? 0) > 0 && (
-                <span className="shrink-0 rounded border border-[#FF6B4A]/25 bg-[#FF6B4A]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#FF6B4A]">
-                  기본 분석 {email.attachmentFallbackCount}
-                </span>
-              )}
-              {email.category && <CategoryBadge category={email.category} />}
-              {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF6B4A]" />}
-            </div>
+            <EmailBadges email={email} unread={unread} />
             <p
               className={`mt-2 truncate text-sm ${unread ? "font-semibold text-stone-100" : "text-stone-300"}`}
             >
@@ -485,6 +669,33 @@ function EmailRowItem({ email }: { email: EmailRow }) {
         </div>
       </Link>
     </li>
+  );
+}
+
+function EmailBadges({ email, unread }: { email: EmailRow; unread: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <PriorityBadge priority={email.priority} />
+      {email.needsReply && <ReplyNeededBadge />}
+      {(email.attachmentCandidateCount ?? 0) > 0 && <CandidateBadge />}
+      {(email.attachmentCount ?? 0) > 0 && (
+        <span className="shrink-0 rounded border border-[#7DD3FC]/30 bg-[#7DD3FC]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#7DD3FC]">
+          첨부 {email.attachmentCount}
+        </span>
+      )}
+      {(email.attachmentPendingCount ?? 0) > 0 && (
+        <span className="shrink-0 rounded border border-stone-600 bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-stone-400">
+          분석 대기 {email.attachmentPendingCount}
+        </span>
+      )}
+      {(email.attachmentFallbackCount ?? 0) > 0 && (
+        <span className="shrink-0 rounded border border-[#FF6B4A]/25 bg-[#FF6B4A]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#FF6B4A]">
+          기본 분석 {email.attachmentFallbackCount}
+        </span>
+      )}
+      {email.category && <CategoryBadge category={email.category} />}
+      {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF6B4A]" />}
+    </div>
   );
 }
 
