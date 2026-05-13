@@ -325,6 +325,18 @@ function normalizeEmailPriority(value: unknown): EmailPriorityValue | null {
 }
 
 type BulkEmailAction = "mark-read" | "mark-unread" | "archive" | "set-priority";
+type EmailQueueKey =
+  | "all"
+  | "reply-needed"
+  | "urgent"
+  | "unread"
+  | "attachments"
+  | "candidates"
+  | "finance"
+  | "legal"
+  | "sales"
+  | "support"
+  | "automated";
 
 interface BulkEmailBody {
   ids?: unknown;
@@ -352,6 +364,138 @@ function parseBulkEmailIds(value: unknown): string[] {
         .filter(Boolean),
     ),
   );
+}
+
+function normalizeEmailQueue(value: unknown): EmailQueueKey {
+  const queue = typeof value === "string" ? value : "all";
+  if (
+    queue === "reply-needed" ||
+    queue === "urgent" ||
+    queue === "unread" ||
+    queue === "attachments" ||
+    queue === "candidates" ||
+    queue === "finance" ||
+    queue === "legal" ||
+    queue === "sales" ||
+    queue === "support" ||
+    queue === "automated"
+  ) {
+    return queue;
+  }
+  return "all";
+}
+
+function demoEmailMatchesQueue(email: (typeof DEMO_EMAILS)[number], queue: EmailQueueKey): boolean {
+  if (queue === "unread") return !email.isRead;
+  if (queue === "urgent") return email.priority === "URGENT";
+  if (queue === "reply-needed") {
+    return looksReplyNeeded({
+      priority: email.priority,
+      category: email.category,
+      actionItems: email.actionItems,
+      from: email.from,
+    });
+  }
+  if (queue === "finance") return email.category === "billing";
+  if (queue === "sales") return email.category === "business";
+  if (queue === "automated") return email.category === "automated";
+  if (queue === "legal")
+    return /계약|서명|법무|규제|contract|legal|signature|compliance/i.test(
+      `${email.subject} ${email.summary ?? ""} ${email.snippet ?? ""}`,
+    );
+  if (queue === "support")
+    return /support|help|ticket|문의|지원|고객/i.test(
+      `${email.subject} ${email.summary ?? ""} ${email.snippet ?? ""}`,
+    );
+  if (queue === "attachments" || queue === "candidates") return false;
+  return true;
+}
+
+function buildQueueWhere(userId: string, queue: EmailQueueKey): Prisma.EmailMessageWhereInput {
+  const where: Prisma.EmailMessageWhereInput = { userId };
+  if (queue === "unread") where.isRead = false;
+  if (queue === "urgent") where.priority = "URGENT";
+  if (queue === "reply-needed") where.needsReply = true;
+  if (queue === "finance") where.category = "billing";
+  if (queue === "sales") where.category = "business";
+  if (queue === "automated") where.category = "automated";
+  if (queue === "attachments") where.attachments = { some: {} };
+  if (queue === "candidates") {
+    where.attachments = {
+      some: {
+        OR: [
+          { category: { in: ["resume", "profile", "portfolio", "audition"] } },
+          { filename: { contains: "resume", mode: "insensitive" } },
+          { filename: { contains: "cv", mode: "insensitive" } },
+          { filename: { contains: "profile", mode: "insensitive" } },
+          { filename: { contains: "portfolio", mode: "insensitive" } },
+          { filename: { contains: "audition", mode: "insensitive" } },
+          { filename: { contains: "casting", mode: "insensitive" } },
+          { filename: { contains: "showreel", mode: "insensitive" } },
+          { filename: { contains: "reel", mode: "insensitive" } },
+          { filename: { contains: "headshot", mode: "insensitive" } },
+          { filename: { contains: "comp card", mode: "insensitive" } },
+          { filename: { contains: "comp-card", mode: "insensitive" } },
+          { filename: { contains: "self tape", mode: "insensitive" } },
+          { filename: { contains: "self-tape", mode: "insensitive" } },
+          { filename: { contains: "actor", mode: "insensitive" } },
+          { filename: { contains: "model", mode: "insensitive" } },
+          { filename: { contains: "이력서" } },
+          { filename: { contains: "프로필" } },
+          { filename: { contains: "오디션" } },
+          { filename: { contains: "캐스팅" } },
+          { filename: { contains: "포트폴리오" } },
+          { filename: { contains: "배우" } },
+          { filename: { contains: "모델" } },
+          { filename: { contains: "지원서" } },
+          { filename: { contains: "상반신" } },
+          { filename: { contains: "전신" } },
+        ],
+      },
+    };
+  }
+  if (queue === "legal") {
+    where.OR = [
+      { subject: { contains: "contract", mode: "insensitive" } },
+      { subject: { contains: "legal", mode: "insensitive" } },
+      { subject: { contains: "계약" } },
+      { subject: { contains: "법무" } },
+      { summary: { contains: "contract", mode: "insensitive" } },
+      { summary: { contains: "legal", mode: "insensitive" } },
+      { summary: { contains: "계약" } },
+      { summary: { contains: "법무" } },
+    ];
+  }
+  if (queue === "support") {
+    where.OR = [
+      { subject: { contains: "support", mode: "insensitive" } },
+      { subject: { contains: "help", mode: "insensitive" } },
+      { subject: { contains: "ticket", mode: "insensitive" } },
+      { subject: { contains: "문의" } },
+      { summary: { contains: "support", mode: "insensitive" } },
+      { summary: { contains: "문의" } },
+    ];
+  }
+  return where;
+}
+
+function serializeQueueEmail(email: EmailMessage) {
+  const actionItems = parseJsonArray(email.actionItems);
+  return {
+    id: email.id,
+    from: email.from,
+    subject: email.subject,
+    date: email.receivedAt.toISOString(),
+    isRead: email.isRead,
+    priority: email.priority,
+    needsReply: looksReplyNeeded({
+      needsReply: email.needsReply,
+      priority: email.priority,
+      category: email.category,
+      actionItems,
+      from: email.from,
+    }),
+  };
 }
 
 function findBulkEmails(userId: string, ids: string[]): Promise<EmailMessage[]> {
@@ -1626,6 +1770,64 @@ export async function emailRoutes(app: FastifyInstance) {
       }
     },
   );
+
+  // ─── Triage Continuation ──────────────────────────────────────────────
+  // GET /api/email/:id/next?queue=unread
+  app.get("/:id/next", { preHandler: requireAuth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { queue } = request.query as { queue?: string };
+    const queueKey = normalizeEmailQueue(queue);
+    const uid = getUserId(request);
+
+    if (id.startsWith("demo-")) {
+      const currentIndex = DEMO_EMAILS.findIndex((email) => email.id === id);
+      if (currentIndex === -1) return reply.code(404).send({ error: "Email not found" });
+      const next = DEMO_EMAILS.slice(currentIndex + 1).find((email) =>
+        demoEmailMatchesQueue(email, queueKey),
+      );
+      return {
+        queue: queueKey,
+        next: next
+          ? {
+              id: next.id,
+              from: next.from,
+              subject: next.subject,
+              date: next.receivedAt,
+              isRead: next.isRead,
+              priority: next.priority,
+              needsReply: looksReplyNeeded({
+                priority: next.priority,
+                category: next.category,
+                actionItems: next.actionItems,
+                from: next.from,
+              }),
+            }
+          : null,
+      };
+    }
+
+    const current = await prisma.emailMessage.findFirst({
+      where: { userId: uid, OR: [{ id }, { gmailId: id }] },
+    });
+    if (!current) return reply.code(404).send({ error: "Email not found" });
+
+    const next = await prisma.emailMessage.findFirst({
+      where: {
+        AND: [
+          buildQueueWhere(uid, queueKey),
+          {
+            OR: [
+              { receivedAt: { lt: current.receivedAt } },
+              { receivedAt: current.receivedAt, id: { lt: current.id } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+    });
+
+    return { queue: queueKey, next: next ? serializeQueueEmail(next) : null };
+  });
 
   // ─── Single Email Detail ──────────────────────────────────────────────
   // GET /api/email/:id

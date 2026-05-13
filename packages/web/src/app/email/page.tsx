@@ -444,6 +444,7 @@ function EmailView() {
             <EmailRowItem
               key={e.id}
               email={e}
+              queue={filter}
               selected={selectedIds.has(e.id)}
               onToggleSelected={toggleSelected}
             />
@@ -615,14 +616,17 @@ function FilterTabs({ current, onChange }: { current: Filter; onChange: (f: Filt
 
 function EmailRowItem({
   email,
+  queue,
   selected,
   onToggleSelected,
 }: {
   email: EmailRow;
+  queue: Filter;
   selected: boolean;
   onToggleSelected: (id: string) => void;
 }) {
   const unread = !email.isRead;
+  const detailParams = new URLSearchParams({ markRead: "false", queue });
   return (
     <li className="grid grid-cols-[auto_1fr] gap-2">
       <button
@@ -637,7 +641,7 @@ function EmailRowItem({
         }`}
       />
       <Link
-        href={`/email/${email.id}?markRead=false`}
+        href={`/email/${email.id}?${detailParams.toString()}`}
         className="block rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20 hover:bg-white/5 active:bg-white/10"
       >
         <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">

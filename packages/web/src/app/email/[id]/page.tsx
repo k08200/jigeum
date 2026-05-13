@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
+import { useToast } from "../../../components/toast";
 import { API_BASE, apiFetch, authHeaders } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
 
@@ -106,6 +107,47 @@ interface ReplyDraft {
   candidateProfile: AttachmentCandidateProfile | null;
 }
 
+type EmailQueueKey =
+  | "all"
+  | "reply-needed"
+  | "urgent"
+  | "unread"
+  | "attachments"
+  | "candidates"
+  | "finance"
+  | "legal"
+  | "sales"
+  | "support"
+  | "automated";
+
+const EMAIL_QUEUE_KEYS = new Set<EmailQueueKey>([
+  "all",
+  "reply-needed",
+  "urgent",
+  "unread",
+  "attachments",
+  "candidates",
+  "finance",
+  "legal",
+  "sales",
+  "support",
+  "automated",
+]);
+
+function normalizeEmailQueue(value: string | null | undefined): EmailQueueKey {
+  return value && EMAIL_QUEUE_KEYS.has(value as EmailQueueKey) ? (value as EmailQueueKey) : "all";
+}
+
+interface NextEmailSummary {
+  id: string;
+  from: string;
+  subject: string;
+  date: string;
+  isRead: boolean;
+  priority: EmailPriority;
+  needsReply: boolean;
+}
+
 interface LabelFeedback {
   id: string;
   emailId: string;
@@ -183,9 +225,12 @@ function EmailDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const id = params?.id;
   const shouldMarkRead = searchParams?.get("markRead") === "true";
+  const queue = normalizeEmailQueue(searchParams?.get("queue"));
   const [email, setEmail] = useState<EmailDetail | null>(null);
+  const [nextEmail, setNextEmail] = useState<NextEmailSummary | null>(null);
   const [thread, setThread] = useState<ThreadDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
@@ -217,6 +262,14 @@ function EmailDetailView() {
         setEmail(data);
         setSelectedDraftAttachmentIds([]);
         setIncludeBriefAttachment((data.attachments?.length ?? 0) > 0);
+        apiFetch<{ next: NextEmailSummary | null }>(
+          `/api/email/${id}/next?queue=${encodeURIComponent(queue)}`,
+        )
+          .then((nextData) => setNextEmail(nextData.next))
+          .catch((err) => {
+            setNextEmail(null);
+            captureClientError(err, { scope: "email.next.load", id, queue });
+          });
         if (data.threadId) {
           apiFetch<ThreadDetail | { error: string }>(
             `/api/email/thread/${encodeURIComponent(data.threadId)}`,
@@ -233,7 +286,7 @@ function EmailDetailView() {
     } finally {
       setLoading(false);
     }
-  }, [id, shouldMarkRead]);
+  }, [id, queue, shouldMarkRead]);
 
   useEffect(() => {
     load();
@@ -485,13 +538,24 @@ function EmailDetailView() {
     }
   };
 
+  const goToNextOrList = (nextMessage: string, doneMessage = "큐를 모두 처리했어요.") => {
+    if (nextEmail) {
+      toast(nextMessage, "success");
+      const params = new URLSearchParams({ markRead: "false", queue });
+      router.push(`/email/${nextEmail.id}?${params.toString()}`);
+    } else {
+      toast(doneMessage, "success");
+      router.push(`/email?done=${encodeURIComponent(queue)}`);
+    }
+  };
+
   const archiveEmailNow = async () => {
     if (!id || actionBusy) return;
     setActionBusy("archive");
     setError(null);
     try {
       await apiFetch(`/api/email/${id}/archive`, { method: "POST" });
-      router.push("/email");
+      goToNextOrList("보관했어요. 다음 메일로 이동합니다.", "보관했어요. 큐를 모두 처리했습니다.");
     } catch (err) {
       captureClientError(err, { scope: "email.detail.archive", id });
       setError("메일을 보관하지 못했어요.");
@@ -507,7 +571,7 @@ function EmailDetailView() {
     setError(null);
     try {
       await apiFetch(`/api/email/${id}`, { method: "DELETE" });
-      router.push("/email");
+      goToNextOrList("삭제했어요. 다음 메일로 이동합니다.", "삭제했어요. 큐를 모두 처리했습니다.");
     } catch (err) {
       captureClientError(err, { scope: "email.detail.delete", id });
       setError("메일을 삭제하지 못했어요.");
@@ -554,8 +618,10 @@ function EmailDetailView() {
               <EmailActionToolbar
                 busyAction={actionBusy}
                 email={email}
+                nextEmail={nextEmail}
                 onArchive={archiveEmailNow}
                 onDelete={deleteEmailNow}
+                onOpenNext={() => goToNextOrList("다음 메일로 이동합니다.")}
                 onToggleRead={toggleRead}
                 onToggleStar={toggleStar}
               />
@@ -669,15 +735,19 @@ function EmailDetailView() {
 function EmailActionToolbar({
   busyAction,
   email,
+  nextEmail,
   onArchive,
   onDelete,
+  onOpenNext,
   onToggleRead,
   onToggleStar,
 }: {
   busyAction: string | null;
   email: EmailDetail;
+  nextEmail: NextEmailSummary | null;
   onArchive: () => void;
   onDelete: () => void;
+  onOpenNext: () => void;
   onToggleRead: () => void;
   onToggleStar: () => void;
 }) {
@@ -695,6 +765,7 @@ function EmailActionToolbar({
         <span className="truncate">
           {isDemo ? "데모 메일" : email.isRead ? "읽은 메일" : "읽지 않은 메일"}
           {email.isStarred ? " · 별표됨" : ""}
+          {nextEmail ? ` · 다음: ${senderName(nextEmail.from)}` : ""}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -727,6 +798,11 @@ function EmailActionToolbar({
         >
           삭제
         </EmailActionButton>
+        {nextEmail && (
+          <EmailActionButton busy={false} disabled={disabled} onClick={onOpenNext}>
+            다음
+          </EmailActionButton>
+        )}
       </div>
     </div>
   );

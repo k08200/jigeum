@@ -168,6 +168,22 @@ describe("email routes (demo mode)", () => {
     await app.close();
   });
 
+  it("returns the next demo email in the same queue", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/demo-1/next?queue=unread",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      queue: "unread",
+      next: { id: "demo-3", isRead: false },
+    });
+    await app.close();
+  });
+
   it("exports candidate intake CSV", async () => {
     const app = await buildApp();
     const res = await app.inject({
@@ -327,6 +343,60 @@ describe("email routes (demo mode)", () => {
     expect(prisma.emailMessage.update).toHaveBeenCalledWith({
       where: { id: "email-1" },
       data: { isStarred: true },
+    });
+    await app.close();
+  });
+
+  it("returns the next synced email in the same triage queue", async () => {
+    const { prisma } = await import("../db.js");
+    const current = {
+      id: "email-1",
+      gmailId: "gmail-1",
+      userId: "user-1",
+      receivedAt: new Date("2026-05-03T12:00:00.000Z"),
+    };
+    const next = {
+      id: "email-2",
+      gmailId: "gmail-2",
+      userId: "user-1",
+      from: "ops@example.com",
+      subject: "Next unread",
+      receivedAt: new Date("2026-05-03T11:00:00.000Z"),
+      isRead: false,
+      priority: "NORMAL",
+      category: "business",
+      actionItems: JSON.stringify(["follow up"]),
+      needsReply: true,
+    };
+    vi.mocked(prisma.emailMessage.findFirst)
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(next);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/email/email-1/next?queue=unread",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      queue: "unread",
+      next: { id: "email-2", subject: "Next unread", needsReply: true },
+    });
+    expect(prisma.emailMessage.findFirst).toHaveBeenLastCalledWith({
+      where: {
+        AND: [
+          { userId: "user-1", isRead: false },
+          {
+            OR: [
+              { receivedAt: { lt: current.receivedAt } },
+              { receivedAt: current.receivedAt, id: { lt: "email-1" } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
     });
     await app.close();
   });
