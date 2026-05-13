@@ -28,12 +28,23 @@ export interface CandidateIntakeView {
   summary: string;
   confidence: number;
   missingFields: string[];
-  evidenceFiles: Array<{ filename: string; category: string | null; summary: string | null }>;
+  evidenceFiles: Array<{
+    filename: string;
+    category: string | null;
+    summary: string | null;
+    analysisStatus: string | null;
+    needsManualReview: boolean;
+    reviewReason: string | null;
+  }>;
   notes: string | null;
   lastDetectedAt: string;
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  duplicateKey: string | null;
+  duplicateCount: number;
+  duplicateEmailIds: string[];
+  duplicateReasons: string[];
 }
 
 export interface CandidateIntakeListItem extends CandidateIntakeView {
@@ -124,7 +135,7 @@ export async function syncRecentCandidateIntakes(
     WHERE a."userId" = ${userId}
       AND (
         a."category" IN ('resume', 'profile', 'portfolio', 'audition')
-        OR a."filename" ~* '(resume|cv|profile|portfolio|audition|casting|showreel|reel|이력서|프로필|오디션|캐스팅|포트폴리오)'
+        OR a."filename" ~* '(resume|cv|profile|portfolio|audition|casting|showreel|reel|headshot|comp[ _-]?card|self[ _-]?tape|actor|model|performer|이력서|프로필|오디션|캐스팅|포트폴리오|배우|모델|지원서|상반신|전신)'
       )
     GROUP BY a."emailId"
     ORDER BY MAX(e."receivedAt") DESC
@@ -206,7 +217,7 @@ export async function listCandidateIntakes(input: {
   limit?: number;
 }): Promise<CandidateIntakeListItem[]> {
   if (typeof prisma.$queryRaw !== "function") return [];
-  const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 500);
   const rows = await prisma.$queryRaw<CandidateIntakeListRow[]>`
     SELECT
       c."id", c."emailId", c."status", c."name", c."role", c."contact",
@@ -221,17 +232,44 @@ export async function listCandidateIntakes(input: {
     ORDER BY c."updatedAt" DESC
     LIMIT ${limit}
   `;
-  return rows.map((row) => ({
-    ...serializeCandidateIntake(row),
-    email: {
-      id: row.emailId,
-      from: row.from,
-      subject: row.subject,
-      snippet: row.snippet,
-      receivedAt: row.receivedAt.toISOString(),
-      isRead: row.isRead,
-    },
-  }));
+  return attachDuplicateHints(
+    rows.map((row) => ({
+      ...serializeCandidateIntake(row),
+      email: {
+        id: row.emailId,
+        from: row.from,
+        subject: row.subject,
+        snippet: row.snippet,
+        receivedAt: row.receivedAt.toISOString(),
+        isRead: row.isRead,
+      },
+    })),
+  );
+}
+
+export async function updateCandidateIntakes(input: {
+  userId: string;
+  emailIds: string[];
+  status: CandidateIntakeStatus;
+  notes?: string | null;
+}): Promise<CandidateIntakeView[]> {
+  if (input.emailIds.length === 0 || typeof prisma.$queryRaw !== "function") return [];
+  const emailIds = Array.from(new Set(input.emailIds)).slice(0, 100);
+  const rows = await prisma.$queryRaw<CandidateIntakeRow[]>`
+    UPDATE "CandidateIntake"
+    SET
+      "status" = ${input.status},
+      "notes" = CASE WHEN ${input.notes === undefined} THEN "notes" ELSE ${input.notes ?? null} END,
+      "reviewedAt" = NOW(),
+      "updatedAt" = NOW()
+    WHERE "userId" = ${input.userId}
+      AND "emailId" = ANY(${emailIds})
+    RETURNING
+      "id", "emailId", "status", "name", "role", "contact", "emailAddress", "phone",
+      "summary", "confidence", "missingFields", "evidenceFiles", "notes",
+      "lastDetectedAt", "reviewedAt", "createdAt", "updatedAt"
+  `;
+  return rows.map(serializeCandidateIntake);
 }
 
 export async function updateCandidateIntake(input: {
@@ -277,7 +315,77 @@ function serializeCandidateIntake(row: CandidateIntakeRow): CandidateIntakeView 
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    duplicateKey: null,
+    duplicateCount: 1,
+    duplicateEmailIds: [],
+    duplicateReasons: [],
   };
+}
+
+export function attachDuplicateHints<T extends CandidateIntakeView>(rows: T[]): T[] {
+  const groups = new Map<string, T[]>();
+  const reasonsByKey = new Map<string, string[]>();
+
+  for (const row of rows) {
+    const identity = candidateIdentity(row);
+    if (!identity) continue;
+    const group = groups.get(identity.key) ?? [];
+    group.push(row);
+    groups.set(identity.key, group);
+    reasonsByKey.set(identity.key, identity.reasons);
+  }
+
+  return rows.map((row) => {
+    const identity = candidateIdentity(row);
+    if (!identity) return row;
+    const group = groups.get(identity.key) ?? [];
+    if (group.length <= 1) return row;
+    return {
+      ...row,
+      duplicateKey: identity.key,
+      duplicateCount: group.length,
+      duplicateEmailIds: group
+        .map((item) => item.emailId)
+        .filter((emailId) => emailId !== row.emailId),
+      duplicateReasons: reasonsByKey.get(identity.key) ?? identity.reasons,
+    };
+  });
+}
+
+export function candidateIdentity(
+  row: Pick<CandidateIntakeView, "emailAddress" | "phone" | "contact" | "name" | "role">,
+): { key: string; reasons: string[] } | null {
+  const email = normalizeEmail(row.emailAddress) || normalizeEmail(row.contact);
+  if (email) return { key: `email:${email}`, reasons: ["same_email"] };
+
+  const phone = normalizePhone(row.phone) || normalizePhone(row.contact);
+  if (phone && phone.length >= 7) return { key: `phone:${phone}`, reasons: ["same_phone"] };
+
+  const name = normalizeLooseText(row.name);
+  if (!name) return null;
+  const role = normalizeLooseText(row.role);
+  if (role) return { key: `name_role:${name}:${role}`, reasons: ["same_name_and_role"] };
+  return { key: `name:${name}`, reasons: ["same_name"] };
+}
+
+function normalizeEmail(value: string | null | undefined): string | null {
+  const email = value?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+  return email ? email.toLowerCase() : null;
+}
+
+function normalizePhone(value: string | null | undefined): string | null {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  if (digits.length < 7) return null;
+  if (digits.startsWith("82") && digits.length > 9) return `0${digits.slice(2)}`;
+  return digits;
+}
+
+function normalizeLooseText(value: string | null | undefined): string | null {
+  const normalized = value
+    ?.toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+  return normalized && normalized.length >= 2 ? normalized : null;
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -285,9 +393,14 @@ function parseStringArray(value: unknown): string[] {
   return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
 }
 
-function parseEvidenceFiles(
-  value: unknown,
-): Array<{ filename: string; category: string | null; summary: string | null }> {
+function parseEvidenceFiles(value: unknown): Array<{
+  filename: string;
+  category: string | null;
+  summary: string | null;
+  analysisStatus: string | null;
+  needsManualReview: boolean;
+  reviewReason: string | null;
+}> {
   const parsed = typeof value === "string" ? safeJson(value) : value;
   if (!Array.isArray(parsed)) return [];
   return parsed
@@ -298,10 +411,22 @@ function parseEvidenceFiles(
         filename: typeof record.filename === "string" ? record.filename : "attachment",
         category: typeof record.category === "string" ? record.category : null,
         summary: typeof record.summary === "string" ? record.summary : null,
+        analysisStatus: typeof record.analysisStatus === "string" ? record.analysisStatus : null,
+        needsManualReview: record.needsManualReview === true,
+        reviewReason: typeof record.reviewReason === "string" ? record.reviewReason : null,
       };
     })
-    .filter((item): item is { filename: string; category: string | null; summary: string | null } =>
-      Boolean(item),
+    .filter(
+      (
+        item,
+      ): item is {
+        filename: string;
+        category: string | null;
+        summary: string | null;
+        analysisStatus: string | null;
+        needsManualReview: boolean;
+        reviewReason: string | null;
+      } => Boolean(item),
     );
 }
 

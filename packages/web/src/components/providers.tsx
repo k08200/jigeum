@@ -11,6 +11,30 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initSentryClient();
   }, []);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+
+    const removeNextDevTools = () => {
+      document
+        .querySelectorAll(
+          [
+            "#next-logo",
+            "[data-nextjs-dev-tools-button]",
+            'button[aria-label="Open Next.js Dev Tools"]',
+          ].join(","),
+        )
+        .forEach((node) => {
+          node.remove();
+        });
+    };
+
+    removeNextDevTools();
+    const observer = new MutationObserver(removeNextDevTools);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <I18nProvider>
       <ToastProvider>

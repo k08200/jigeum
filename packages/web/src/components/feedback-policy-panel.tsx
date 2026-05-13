@@ -44,25 +44,25 @@ const KIND_COPY: Record<
   { label: string; tone: string; dot: string; summary: string }
 > = {
   ALLOW_AFTER_SUGGESTION: {
-    label: "반복 승인",
-    tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-    dot: "bg-emerald-400",
-    summary: "더 높은 신뢰도로 제안",
+    label: "승인 반복",
+    tone: "border-orange-500/30 bg-orange-500/10 text-[#FFB09C]",
+    dot: "bg-[#FF6B4A]",
+    summary: "더 자신 있게 제안",
   },
   REQUIRE_DRAFT_REVIEW: {
     label: "검토 유지",
-    tone: "border-sky-400/30 bg-sky-400/10 text-sky-200",
-    dot: "bg-sky-400",
-    summary: "실행 전 초안 검토",
+    tone: "border-[#7DD3FC]/30 bg-[#7DD3FC]/10 text-sky-200",
+    dot: "bg-[#7DD3FC]",
+    summary: "초안 검토 후 실행",
   },
   AVOID_SUGGESTION: {
-    label: "반복 거절",
+    label: "거절 반복",
     tone: "border-rose-500/30 bg-rose-500/10 text-rose-200",
     dot: "bg-rose-400",
     summary: "제안 빈도 낮추기",
   },
   LOWER_PRIORITY: {
-    label: "우선순위 낮춤",
+    label: "낮은 우선순위",
     tone: "border-stone-600 bg-stone-900 text-stone-300",
     dot: "bg-stone-400",
     summary: "조용히 관찰",
@@ -82,8 +82,8 @@ export function FeedbackPolicyPanel() {
       const data = await apiFetch<FeedbackPolicyResponse>(
         "/api/feedback/policy-candidates?limit=500&minEvents=3",
       );
-      setSince(data.since ?? null);
-      setCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+      setSince(data.since);
+      setCandidates(data.candidates);
     } catch (err) {
       setError(true);
       setCandidates([]);
@@ -123,27 +123,16 @@ export function FeedbackPolicyPanel() {
         </div>
       ) : error ? (
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/20 px-3 py-2 text-sm text-red-200">
-          운영 신호를 불러오지 못했어요.
+          운영 신호를 불러오지 못했습니다.
         </div>
       ) : candidates.length === 0 ? (
         <div className="mt-4 rounded-lg border border-stone-800 bg-stone-950/45 px-3 py-3 text-sm text-stone-500">
-          아직 안정적으로 반복된 운영 신호가 없어요.
+          아직 안정적인 운영 신호가 없습니다.
         </div>
       ) : (
         <div className="mt-4 space-y-2">
           {candidates.slice(0, 6).map((candidate) => {
             const copy = KIND_COPY[candidate.kind];
-            const support = candidate.support ?? {
-              approved: 0,
-              rejected: 0,
-              edited: 0,
-              ignored: 0,
-              snoozed: 0,
-              dismissed: 0,
-              failed: 0,
-              total: 0,
-              distinctRecipients: 0,
-            };
             return (
               <div
                 key={candidate.id}
@@ -171,17 +160,17 @@ export function FeedbackPolicyPanel() {
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] text-stone-500 sm:grid-cols-6">
-                  <SignalCount label="승인" value={support.approved} />
-                  <SignalCount label="거절" value={support.rejected} />
-                  <SignalCount label="수정" value={support.edited} />
-                  <SignalCount label="실패" value={support.failed} tone="critical" />
-                  <SignalCount label="무시" value={support.ignored} />
-                  <SignalCount label="미룸" value={support.snoozed} />
-                  <SignalCount label="닫힘" value={support.dismissed} />
+                  <SignalCount label="승인" value={candidate.support.approved} />
+                  <SignalCount label="거절" value={candidate.support.rejected} />
+                  <SignalCount label="수정" value={candidate.support.edited} />
+                  <SignalCount label="실패" value={candidate.support.failed} tone="critical" />
+                  <SignalCount label="무시" value={candidate.support.ignored} />
+                  <SignalCount label="미룸" value={candidate.support.snoozed} />
+                  <SignalCount label="닫음" value={candidate.support.dismissed} />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[10px] text-stone-600">
                   <span>신뢰도 {Math.round(candidate.confidence * 100)}%</span>
-                  <span>{support.total}개 이벤트</span>
+                  <span>{candidate.support.total}개 이벤트</span>
                 </div>
               </div>
             );

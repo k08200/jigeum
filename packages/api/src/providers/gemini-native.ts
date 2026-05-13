@@ -29,6 +29,10 @@ interface GeminiChatParams {
 
 interface GeminiPart {
   text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 interface GeminiCandidate {
@@ -48,26 +52,71 @@ interface GeminiResponse {
 /** Convert an OpenAI chat message array into Gemini's `contents` array. */
 function toGeminiContents(messages: GeminiChatParams["messages"]): {
   systemInstruction: { parts: Array<{ text: string }> } | undefined;
-  contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>;
+  contents: Array<{ role: "user" | "model"; parts: GeminiPart[] }>;
 } {
   const systemTexts: string[] = [];
-  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+  const contents: Array<{ role: "user" | "model"; parts: GeminiPart[] }> = [];
 
   for (const m of messages) {
-    const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
     if (m.role === "system") {
-      systemTexts.push(text);
+      systemTexts.push(contentToText(m.content));
       continue;
     }
     // Gemini only understands "user" and "model" roles; collapse assistant/tool into model
     const role: "user" | "model" = m.role === "user" ? "user" : "model";
-    contents.push({ role, parts: [{ text }] });
+    contents.push({ role, parts: contentToGeminiParts(m.content) });
   }
 
   const systemInstruction = systemTexts.length
     ? { parts: [{ text: systemTexts.join("\n\n") }] }
     : undefined;
   return { systemInstruction, contents };
+}
+
+function contentToText(content: string | unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (part && typeof part === "object" && "text" in part) {
+          return String((part as { text?: unknown }).text ?? "");
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return JSON.stringify(content);
+}
+
+function contentToGeminiParts(content: string | unknown): GeminiPart[] {
+  if (typeof content === "string") return [{ text: content }];
+  if (!Array.isArray(content)) return [{ text: JSON.stringify(content) }];
+
+  const parts: GeminiPart[] = [];
+  for (const part of content) {
+    if (!part || typeof part !== "object") continue;
+    const typed = part as {
+      type?: string;
+      text?: unknown;
+      image_url?: { url?: unknown };
+    };
+    if (typed.type === "text" && typeof typed.text === "string") {
+      parts.push({ text: typed.text });
+      continue;
+    }
+    if (typed.type === "image_url" && typeof typed.image_url?.url === "string") {
+      const inline = dataUrlToInlineData(typed.image_url.url);
+      if (inline) parts.push({ inlineData: inline });
+    }
+  }
+  return parts.length > 0 ? parts : [{ text: JSON.stringify(content) }];
+}
+
+function dataUrlToInlineData(url: string): GeminiPart["inlineData"] | null {
+  const match = url.match(/^data:([^;,]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], data: match[2] };
 }
 
 function buildUrl(model: string, apiKey: string, streaming: boolean): string {

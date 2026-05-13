@@ -149,6 +149,51 @@ export async function createCompletion(
   );
 }
 
+export async function createVisionCompletion(
+  params: ChatCompletionCreateParamsNonStreaming,
+  options: CompletionOptions = {},
+): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+  const chain = getProviderChain(options.credentials);
+  if (chain.length === 0) {
+    throw new Error("No LLM providers configured — set OPENROUTER_API_KEY and/or GEMINI_API_KEY");
+  }
+
+  const ordered = [
+    ...chain.filter((provider) => provider.name === "gemini"),
+    ...chain.filter((provider) => provider.name !== "gemini"),
+  ];
+  const visionModel = process.env.VISION_MODEL || "google/gemini-2.5-flash";
+
+  let lastError: unknown;
+  for (const provider of ordered) {
+    if (isProviderUnavailable(provider.quotaKey)) continue;
+    const model =
+      provider.name === "gemini"
+        ? provider.resolveModel(visionModel)
+        : provider.resolveModel(visionModel);
+    try {
+      return (await provider.call(
+        { ...params, stream: false },
+        model,
+      )) as OpenAI.Chat.Completions.ChatCompletion;
+    } catch (err) {
+      lastError = err;
+      if (isKeyLimitError(err) || isCreditError(err) || isProviderUnavailable(provider.quotaKey)) {
+        if (isKeyLimitError(err)) markKeyLimited(provider.quotaKey);
+        if (isCreditError(err)) markCreditExhausted(provider.quotaKey);
+        continue;
+      }
+      continue;
+    }
+  }
+
+  throw new AllProvidersExhaustedError(
+    lastError instanceof Error
+      ? `비전/OCR 분석에 사용할 수 있는 AI provider가 없어요. (원인: ${lastError.message})`
+      : "비전/OCR 분석에 사용할 수 있는 AI provider가 없어요.",
+  );
+}
+
 /**
  * Resolve the chat model for a specific user.
  * Uses user's selected model if set and valid for their plan, otherwise falls back to plan default.

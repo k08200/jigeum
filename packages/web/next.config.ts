@@ -6,6 +6,7 @@ const apiUrl =
   (process.env.NODE_ENV === "production" ? "https://jigeum.onrender.com" : undefined);
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DEV_DIST === "1" ? ".next-dev" : ".next",
   outputFileTracingRoot: path.join(import.meta.dirname, "../../"),
   allowedDevOrigins: [
     "127.0.0.1",

@@ -16,9 +16,12 @@ import { sendPasswordResetEmail, sendVerificationEmail } from "../email.js";
 import {
   getAuthedClient,
   getAuthUrl,
+  getGoogleConnectionStatus,
   getGoogleUserInfo,
   getLoginAuthUrl,
   getOAuth2Client,
+  isGoogleAuthError,
+  markGoogleTokenForReconnect,
 } from "../gmail.js";
 import { localMinuteOfDay, normalizeTimeZone } from "../time-zone.js";
 
@@ -312,10 +315,7 @@ export function authRoutes(app: FastifyInstance) {
       const user = await prisma.user.findUnique({ where: { id: payload.userId } });
       if (!user) return reply.code(404).send({ error: "User not found" });
 
-      // Check Google connection
-      const googleToken = await prisma.userToken.findFirst({
-        where: { userId: user.id, provider: "google" },
-      });
+      const googleStatus = await getGoogleConnectionStatus(user.id);
 
       return reply.send({
         user: {
@@ -324,7 +324,8 @@ export function authRoutes(app: FastifyInstance) {
           name: user.name,
           plan: user.plan,
           role: user.role,
-          googleConnected: !!googleToken?.refreshToken,
+          googleConnected: googleStatus.connected,
+          googleNeedsReconnect: googleStatus.needsReconnect,
         },
       });
     } catch {
@@ -699,34 +700,7 @@ export function authRoutes(app: FastifyInstance) {
   // GET /api/auth/google/status — Check if Gmail is connected and token is valid
   app.get("/google/status", async (request, reply) => {
     const userId = getUserId(request);
-    const token = await prisma.userToken.findFirst({
-      where: { userId, provider: "google" },
-    });
-    if (!token) return reply.send({ connected: false });
-
-    const hasRefreshToken = !!token.refreshToken;
-    const expired = token.expiresAt ? token.expiresAt.getTime() < Date.now() : false;
-
-    // Only truly connected if we have a refresh_token (survives access_token expiry)
-    const needsReconnect = !hasRefreshToken;
-
-    // Gmail Pub/Sub push is enabled when a live watch expiration is stored.
-    // Configured means the server has a Pub/Sub topic — required for the
-    // enable button to do anything.
-    const watchExpiresAt = (token as unknown as { gmailWatchExpiresAt?: Date | null })
-      .gmailWatchExpiresAt;
-    const gmailPushEnabled = !!(watchExpiresAt && watchExpiresAt.getTime() > Date.now());
-    const gmailPushConfigured = !!process.env.GMAIL_PUBSUB_TOPIC;
-
-    return reply.send({
-      connected: hasRefreshToken,
-      hasRefreshToken,
-      expired,
-      needsReconnect,
-      gmailPushConfigured,
-      gmailPushEnabled,
-      gmailPushExpiresAt: watchExpiresAt ?? null,
-    });
+    return reply.send(await getGoogleConnectionStatus(userId));
   });
 
   // POST /api/auth/forgot-password — Request password reset
@@ -953,7 +927,8 @@ export function authRoutes(app: FastifyInstance) {
         });
         results.calendar++;
       }
-    } catch {
+    } catch (err) {
+      if (isGoogleAuthError(err)) await markGoogleTokenForReconnect(userId);
       // Calendar sync failed — continue with other syncs
     }
 
@@ -1007,7 +982,8 @@ export function authRoutes(app: FastifyInstance) {
           }
         }
       }
-    } catch {
+    } catch (err) {
+      if (isGoogleAuthError(err)) await markGoogleTokenForReconnect(userId);
       // Gmail contact sync failed — skip
     }
 

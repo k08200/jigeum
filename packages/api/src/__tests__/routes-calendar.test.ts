@@ -7,6 +7,8 @@ vi.mock("../gmail.js", () => ({
   getAuthUrl: vi.fn(),
   getLoginAuthUrl: vi.fn(),
   getAuthedClient: vi.fn(async () => null),
+  isGoogleAuthError: vi.fn(() => false),
+  markGoogleTokenForReconnect: vi.fn(async () => {}),
   getGoogleUserInfo: vi.fn(),
   getOAuth2Client: vi.fn(),
 }));

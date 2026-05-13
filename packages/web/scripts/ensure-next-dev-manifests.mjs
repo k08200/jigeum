@@ -3,7 +3,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
-const nextDir = path.join(root, ".next");
+const requestedDistDir = process.argv[2] || process.env.NEXT_DIST_DIR || ".next";
+if (path.isAbsolute(requestedDistDir) || requestedDistDir.includes("..")) {
+  throw new Error(`Unsafe Next dist dir: ${requestedDistDir}`);
+}
+const nextDir = path.join(root, requestedDistDir);
 const serverDir = path.join(nextDir, "server");
 
 async function writeJsonIfMissing(filePath, data) {

@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
-import { decodeHtmlEntities } from "../../lib/text";
 
 type Filter =
   | "all"
@@ -14,6 +13,11 @@ type Filter =
   | "unread"
   | "candidates"
   | "attachments"
+  | "finance"
+  | "legal"
+  | "sales"
+  | "support"
+  | "threads"
   | "automated";
 
 interface CandidateProfilePreview {
@@ -48,6 +52,23 @@ interface EmailRow {
   candidateProfilePreview?: CandidateProfilePreview | null;
 }
 
+interface ThreadRow {
+  threadId: string;
+  subject: string;
+  participants: string[];
+  messageCount: number;
+  hasUnread: boolean;
+  latestPriority: "URGENT" | "NORMAL" | "LOW";
+  summary: string | null;
+  lastMessage: {
+    id: string;
+    from: string;
+    snippet: string | null;
+    receivedAt: string;
+    isRead: boolean;
+  };
+}
+
 interface ListResponse {
   emails: EmailRow[];
   source: "gmail" | "demo";
@@ -55,12 +76,77 @@ interface ListResponse {
   unread: number;
 }
 
+interface ThreadListResponse {
+  threads: ThreadRow[];
+  source: "gmail" | "demo";
+  total: number;
+}
+
 const FILTERS: { key: Filter; label: string; query: string }[] = [
   { key: "all", label: "전체 신호", query: "" },
   { key: "reply-needed", label: "답장 필요", query: "filter=reply-needed" },
   { key: "urgent", label: "긴급", query: "filter=urgent" },
   { key: "unread", label: "읽지 않음", query: "filter=unread" },
-  { key: "automated", label: "자동 메일", query: "category=automated" },
+  { key: "attachments", label: "첨부", query: "filter=attachments" },
+  { key: "candidates", label: "후보자", query: "filter=candidates" },
+  { key: "finance", label: "재무", query: "category=billing" },
+  { key: "legal", label: "법무", query: "search=contract" },
+  { key: "sales", label: "세일즈", query: "category=business" },
+  { key: "support", label: "지원", query: "search=support" },
+  { key: "threads", label: "스레드", query: "" },
+  { key: "automated", label: "자동화", query: "category=automated" },
+];
+
+const WORK_QUEUES: Array<{
+  key: Filter;
+  title: string;
+  description: string;
+  count: (emails: EmailRow[]) => number;
+}> = [
+  {
+    key: "finance",
+    title: "재무 문서",
+    description: "청구, 송장, 결제 실패, 계약 금액",
+    count: (emails) =>
+      emails.filter((email) =>
+        `${email.category ?? ""} ${email.subject} ${email.summary ?? ""} ${email.snippet ?? ""}`
+          .toLowerCase()
+          .match(/billing|invoice|payment|receipt|청구|송장|결제|영수증/),
+      ).length,
+  },
+  {
+    key: "legal",
+    title: "법무 검토",
+    description: "계약, 규제, 서명, 리스크",
+    count: (emails) =>
+      emails.filter((email) =>
+        `${email.subject} ${email.summary ?? ""} ${email.snippet ?? ""}`.match(
+          /계약|서명|법무|규제|contract|legal|signature|compliance/i,
+        ),
+      ).length,
+  },
+  {
+    key: "sales",
+    title: "매출/고객",
+    description: "고객 답장, 갱신, 가격, 미팅 후속",
+    count: (emails) =>
+      emails.filter((email) =>
+        `${email.category ?? ""} ${email.subject} ${email.summary ?? ""}`.match(
+          /business|customer|sales|renewal|pricing|고객|가격|갱신|제안/i,
+        ),
+      ).length,
+  },
+  {
+    key: "support",
+    title: "지원/이슈",
+    description: "버그, 장애, 불만, 에스컬레이션",
+    count: (emails) =>
+      emails.filter((email) =>
+        `${email.subject} ${email.summary ?? ""} ${email.snippet ?? ""}`.match(
+          /bug|issue|error|support|blocked|장애|오류|문의|불만|지원/i,
+        ),
+      ).length,
+  },
 ];
 
 export default function EmailPage() {
@@ -73,43 +159,64 @@ export default function EmailPage() {
 
 function EmailView() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [emails, setEmails] = useState<EmailRow[]>([]);
+  const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [reanalyzing, setReanalyzing] = useState(false);
   const [source, setSource] = useState<"gmail" | "demo" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (f: Filter) => {
+  const load = useCallback(async (f: Filter, keyword = "") => {
     setLoading(true);
     setError(null);
     try {
       const q = FILTERS.find((x) => x.key === f)?.query || "";
-      const path = `/api/email${q ? `?${q}` : ""}`;
-      const data = await apiFetch<ListResponse>(path);
-      setEmails(Array.isArray(data.emails) ? data.emails : []);
-      setSource(data.source ?? null);
+      const params = new URLSearchParams(q);
+      if (keyword.trim()) params.set("search", keyword.trim());
+      if (f === "threads") {
+        const data = await apiFetch<ThreadListResponse>(
+          `/api/email/threads${params.toString() ? `?${params.toString()}` : ""}`,
+        );
+        setThreads(data.threads);
+        setEmails([]);
+        setSource(data.source);
+      } else {
+        const data = await apiFetch<ListResponse>(
+          `/api/email${params.toString() ? `?${params.toString()}` : ""}`,
+        );
+        setEmails(data.emails);
+        setThreads([]);
+        setSource(data.source);
+      }
     } catch (err) {
       captureClientError(err, { scope: "email.load", filter: f });
-      setError("메일 신호를 불러오지 못했어요.");
+      setError("메일을 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load(filter);
-  }, [filter, load]);
+    load(filter, appliedSearch);
+  }, [appliedSearch, filter, load]);
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAppliedSearch(search.trim());
+  };
 
   const syncNow = async () => {
     setSyncing(true);
     setError(null);
     try {
       await apiFetch("/api/email/sync", { method: "POST", body: JSON.stringify({}) });
-      await load(filter);
+      await load(filter, appliedSearch);
     } catch (err) {
       captureClientError(err, { scope: "email.sync" });
-      setError("Gmail 동기화를 완료하지 못했어요.");
+      setError("Gmail 동기화에 실패했어요.");
     } finally {
       setSyncing(false);
     }
@@ -123,10 +230,10 @@ function EmailView() {
         method: "POST",
         body: JSON.stringify({ retryFallback: true, limit: 50 }),
       });
-      await load(filter);
+      await load(filter, appliedSearch);
     } catch (err) {
       captureClientError(err, { scope: "email.attachments.analyzeAll" });
-      setError("첨부 분석을 다시 실행하지 못했어요.");
+      setError("첨부파일 분석을 다시 실행하지 못했어요.");
     } finally {
       setReanalyzing(false);
     }
@@ -136,42 +243,112 @@ function EmailView() {
   const urgentCount = emails.filter((email) => email.priority === "URGENT").length;
   const replyCount = emails.filter((email) => email.needsReply).length;
   const candidateCount = emails.filter((email) => (email.attachmentCandidateCount ?? 0) > 0).length;
+  const attachmentCount = emails.filter((email) => (email.attachmentCount ?? 0) > 0).length;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 md:py-10">
-      <header className="mb-5 rounded-lg border border-stone-800 bg-[#111318] p-5 shadow-xl shadow-black/10 md:p-6">
+      <header className="mb-5 rounded-lg border border-white/10 bg-[#11161A] p-5 shadow-xl shadow-black/10 md:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FF8A70]">
               메일
             </p>
             <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
-              지금 처리할 메일을 먼저 봅니다
+              답해야 할 메일만 먼저 보기
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
-              긴급도, 답장 필요 여부, 첨부 맥락 기준으로 정리합니다.
-              {source === "demo" && <span className="ml-2 text-amber-300">데모 데이터</span>}
+              긴급도와 답장 필요 여부를 기준으로 정리합니다.
+              {source === "demo" && <span className="ml-2 text-[#FF6B4A]">데모 데이터</span>}
             </p>
           </div>
           <button
             type="button"
             onClick={syncNow}
             disabled={syncing}
-            className="h-9 w-fit rounded-md border border-stone-700 bg-stone-900 px-3 text-xs font-medium text-stone-300 transition hover:border-stone-600 hover:bg-stone-800 hover:text-stone-100 disabled:opacity-50"
+            className="h-9 w-fit rounded-md border border-white/10 bg-[#090B10] px-3 text-xs font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/5 hover:text-stone-100 disabled:opacity-50"
           >
             {syncing ? "동기화 중..." : "지금 동기화"}
           </button>
+          <button
+            type="button"
+            onClick={reanalyzeAttachments}
+            disabled={reanalyzing}
+            className="h-9 w-fit rounded-md border border-[#7DD3FC]/25 bg-[#7DD3FC]/10 px-3 text-xs font-medium text-sky-100 transition hover:bg-[#7DD3FC]/15 disabled:opacity-50"
+          >
+            {reanalyzing ? "첨부 분석 중..." : "첨부 다시 분석"}
+          </button>
         </div>
-        <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-md border border-stone-800 bg-[#0f1115]">
+        <div className="mt-5 grid grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-[#090B10]">
           <SignalStat label="읽지 않음" value={unreadCount} />
           <SignalStat label="긴급" value={urgentCount} />
           <SignalStat label="답장" value={replyCount} />
+          <SignalStat label="첨부" value={attachmentCount} />
         </div>
       </header>
 
+      <form onSubmit={submitSearch} className="mb-3 flex gap-2">
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="발신자, 본문, 첨부 텍스트, 추출 필드 검색"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-[#090B10] px-3 text-sm text-stone-200 outline-none transition placeholder:text-stone-600 focus:border-[#FF6B4A]/45"
+        />
+        <button
+          type="submit"
+          className="h-10 rounded-lg bg-[#FF6B4A] px-4 text-sm font-medium text-stone-950 transition hover:bg-[#FFB09C]"
+        >
+          검색
+        </button>
+        {appliedSearch && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setAppliedSearch("");
+            }}
+            className="h-10 rounded-lg border border-white/10 bg-[#11161A] px-3 text-xs text-stone-400 transition hover:bg-white/5"
+          >
+            초기화
+          </button>
+        )}
+      </form>
+
       <FilterTabs current={filter} onChange={setFilter} />
 
-      {loading && <p className="px-1 py-3 text-sm text-stone-500">불러오는 중...</p>}
+      <div className="mt-3 grid gap-2 md:grid-cols-4">
+        {WORK_QUEUES.map((queue) => (
+          <button
+            key={queue.key}
+            type="button"
+            onClick={() => setFilter(queue.key)}
+            className={`rounded-lg border p-3 text-left transition ${
+              filter === queue.key
+                ? "border-[#FF6B4A]/45 bg-[#FF6B4A]/10"
+                : "border-white/10 bg-[#11161A] hover:border-white/20 hover:bg-white/5"
+            }`}
+          >
+            <span className="block text-sm font-medium text-stone-100">{queue.title}</span>
+            <span className="mt-1 block text-[11px] leading-4 text-stone-500">
+              {queue.description}
+            </span>
+            <span className="mt-2 block text-xs text-[#FF8A70]">
+              현재 화면 신호 {queue.count(emails)}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {candidateCount > 0 && (
+        <Link
+          href="/email/candidates"
+          className="mt-3 flex items-center justify-between rounded-lg border border-orange-500/20 bg-orange-500/5 px-4 py-3 text-sm text-[#FFB09C] transition hover:bg-orange-500/10"
+        >
+          <span>후보자 접수 큐에서 {candidateCount}개 후보 신호를 검토할 수 있어요.</span>
+          <span className="text-xs">열기</span>
+        </Link>
+      )}
+
+      {loading && <p className="px-1 py-3 text-sm text-stone-500">로딩 중...</p>}
 
       {error && (
         <div className="mt-3 rounded-lg border border-red-900/60 bg-red-950/30 px-4 py-3 text-sm text-red-300">
@@ -179,21 +356,35 @@ function EmailView() {
         </div>
       )}
 
-      {!loading && !error && emails.length === 0 && (
-        <div className="mt-4 rounded-lg border border-stone-800 bg-[#111318] p-6 text-center">
+      {!loading && !error && filter !== "threads" && emails.length === 0 && (
+        <div className="mt-4 rounded-lg border border-white/10 bg-[#11161A] p-6 text-center">
           <p className="text-sm text-stone-300">
-            {filter === "all" ? "아직 메일 신호가 없어요." : "이 필터에 맞는 신호가 없어요."}
+            {filter === "all" ? "아직 들어온 메일 신호가 없어요." : "조건에 맞는 신호가 없어요."}
           </p>
           <p className="mt-1 text-xs text-stone-600">
-            동기화가 끝나면 주의가 필요한 메일이 위로 올라옵니다.
+            동기화가 끝나면 실행이 필요한 메일만 먼저 떠오릅니다.
           </p>
         </div>
       )}
 
-      {!loading && emails.length > 0 && (
+      {!loading && filter !== "threads" && emails.length > 0 && (
         <ul className="mt-3 space-y-2.5">
           {emails.map((e) => (
             <EmailRowItem key={e.id} email={e} />
+          ))}
+        </ul>
+      )}
+
+      {!loading && filter === "threads" && threads.length === 0 && !error && (
+        <div className="mt-4 rounded-lg border border-white/10 bg-[#11161A] p-6 text-center">
+          <p className="text-sm text-stone-300">조건에 맞는 스레드가 없어요.</p>
+        </div>
+      )}
+
+      {!loading && filter === "threads" && threads.length > 0 && (
+        <ul className="mt-3 space-y-2.5">
+          {threads.map((thread) => (
+            <ThreadRowItem key={thread.threadId} thread={thread} />
           ))}
         </ul>
       )}
@@ -224,8 +415,8 @@ function FilterTabs({ current, onChange }: { current: Filter; onChange: (f: Filt
             onClick={() => onChange(f.key)}
             className={`min-h-[32px] shrink-0 rounded-full px-3 py-1.5 text-xs transition ${
               active
-                ? "bg-stone-100 text-stone-950"
-                : "border border-stone-700 bg-[#111318] text-stone-400 hover:bg-stone-800 hover:text-stone-200"
+                ? "bg-[#FF6B4A] text-[#190B07]"
+                : "border border-white/10 bg-[#11161A] text-stone-400 hover:bg-white/6 hover:text-stone-200"
             }`}
           >
             {f.label}
@@ -238,15 +429,11 @@ function FilterTabs({ current, onChange }: { current: Filter; onChange: (f: Filt
 
 function EmailRowItem({ email }: { email: EmailRow }) {
   const unread = !email.isRead;
-  const from = decodeHtmlEntities(email.from);
-  const subject = decodeHtmlEntities(email.subject);
-  const summary = decodeHtmlEntities(email.summary);
-  const snippet = decodeHtmlEntities(email.snippet);
   return (
     <li>
       <Link
-        href={`/email/${email.id}`}
-        className="block rounded-lg border border-stone-800 bg-[#111318] transition hover:border-stone-700 hover:bg-[#151821] active:bg-stone-900/70"
+        href={`/email/${email.id}?markRead=false`}
+        className="block rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20 hover:bg-white/5 active:bg-white/10"
       >
         <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">
           <div className="min-w-0 flex-1">
@@ -255,36 +442,38 @@ function EmailRowItem({ email }: { email: EmailRow }) {
               {email.needsReply && <ReplyNeededBadge />}
               {(email.attachmentCandidateCount ?? 0) > 0 && <CandidateBadge />}
               {(email.attachmentCount ?? 0) > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded border border-sky-400/30 bg-sky-400/10 text-sky-300 font-medium shrink-0">
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#7DD3FC]/30 bg-[#7DD3FC]/10 text-[#7DD3FC] font-medium shrink-0">
                   첨부 {email.attachmentCount}
                 </span>
               )}
               {(email.attachmentPendingCount ?? 0) > 0 && (
                 <span className="shrink-0 rounded border border-stone-600 bg-stone-900/70 px-1.5 py-0.5 text-[10px] font-medium text-stone-400">
-                  대기 {email.attachmentPendingCount}
+                  분석 대기 {email.attachmentPendingCount}
                 </span>
               )}
               {(email.attachmentFallbackCount ?? 0) > 0 && (
-                <span className="shrink-0 rounded border border-amber-400/25 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                <span className="shrink-0 rounded border border-[#FF6B4A]/25 bg-[#FF6B4A]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#FF6B4A]">
                   기본 분석 {email.attachmentFallbackCount}
                 </span>
               )}
               {email.category && <CategoryBadge category={email.category} />}
-              {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />}
+              {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF6B4A]" />}
             </div>
             <p
               className={`mt-2 truncate text-sm ${unread ? "font-semibold text-stone-100" : "text-stone-300"}`}
             >
-              {senderName(from)}
+              {senderName(email.from)}
             </p>
-            <p className="mt-1 truncate text-[13px] text-stone-400">{subject || "제목 없음"}</p>
-            {summary ? (
+            <p className="mt-1 truncate text-[13px] text-stone-400">
+              {email.subject || "제목 없음"}
+            </p>
+            {email.summary ? (
               <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-400">
                 <span className="mr-1 text-stone-500">요약:</span>
-                {summary}
+                {email.summary}
               </p>
-            ) : snippet ? (
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">{snippet}</p>
+            ) : email.snippet ? (
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">{email.snippet}</p>
             ) : null}
             {email.candidateProfilePreview && (
               <CandidatePreview profile={email.candidateProfilePreview} />
@@ -299,17 +488,60 @@ function EmailRowItem({ email }: { email: EmailRow }) {
   );
 }
 
+function ThreadRowItem({ thread }: { thread: ThreadRow }) {
+  return (
+    <li>
+      <Link
+        href={`/email/${thread.lastMessage.id}?markRead=false`}
+        className="block rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20 hover:bg-white/5 active:bg-white/10"
+      >
+        <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <PriorityBadge priority={thread.latestPriority} />
+              {thread.hasUnread && (
+                <span className="rounded border border-[#FF6B4A]/30 bg-[#FF6B4A]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#FF6B4A]">
+                  읽지 않음
+                </span>
+              )}
+              <span className="rounded border border-stone-700 bg-stone-900/60 px-1.5 py-0.5 text-[10px] text-stone-400">
+                {thread.messageCount}개 메일
+              </span>
+            </div>
+            <p className="mt-2 truncate text-sm font-semibold text-stone-100">
+              {thread.subject || "제목 없음"}
+            </p>
+            <p className="mt-1 truncate text-[12px] text-stone-500">
+              {thread.participants.map(senderName).join(", ")}
+            </p>
+            {thread.summary ? (
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-400">{thread.summary}</p>
+            ) : thread.lastMessage.snippet ? (
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">
+                {thread.lastMessage.snippet}
+              </p>
+            ) : null}
+          </div>
+          <time className="shrink-0 text-[11px] tabular-nums text-stone-500 md:pt-1">
+            {formatRelative(thread.lastMessage.receivedAt)}
+          </time>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
 function CandidatePreview({ profile }: { profile: CandidateProfilePreview }) {
   const title = [profile.name || "이름 미확인", profile.role].filter(Boolean).join(" · ");
   const missing =
-    (profile.missingFields?.length ?? 0) > 0
-      ? `필요: ${profile.missingFields.map(candidateMissingLabel).join(", ")}`
+    profile.missingFields.length > 0
+      ? `추가 확인: ${profile.missingFields.map(candidateMissingLabel).join(", ")}`
       : null;
   return (
-    <div className="mt-2 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2">
+    <div className="mt-2 rounded-lg border border-orange-500/15 bg-orange-500/5 px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[11px] font-medium text-emerald-200">{title}</p>
-        <span className="shrink-0 text-[10px] tabular-nums text-emerald-300/80">
+        <p className="truncate text-[11px] font-medium text-[#FFB09C]">{title}</p>
+        <span className="shrink-0 text-[10px] tabular-nums text-[#FF8A70]/80">
           {Math.round(profile.confidence * 100)}%
         </span>
       </div>
@@ -317,8 +549,8 @@ function CandidatePreview({ profile }: { profile: CandidateProfilePreview }) {
       <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-stone-500">
         {profile.contact && <span className="truncate">연락처 {profile.contact}</span>}
         {profile.intakeStatus && <span>{candidateIntakeLabel(profile.intakeStatus)}</span>}
-        <span>파일 {profile.evidenceCount}</span>
-        {missing && <span className="text-amber-300/80">{missing}</span>}
+        <span>파일 {profile.evidenceCount}개</span>
+        {missing && <span className="text-[#FF6B4A]/80">{missing}</span>}
       </div>
     </div>
   );
@@ -327,13 +559,13 @@ function CandidatePreview({ profile }: { profile: CandidateProfilePreview }) {
 function candidateIntakeLabel(status: string): string {
   const labels: Record<string, string> = {
     NEEDS_ANALYSIS: "분석 필요",
-    NEEDS_INFO: "정보 필요",
-    READY_TO_REVIEW: "검토 준비",
+    NEEDS_INFO: "정보 확인",
+    READY_TO_REVIEW: "검토 대기",
     REVIEWING: "검토 중",
     CONTACTED: "연락 완료",
-    SHORTLISTED: "후보군",
-    REJECTED: "거절됨",
-    ARCHIVED: "보관됨",
+    SHORTLISTED: "보류/후보",
+    REJECTED: "거절",
+    ARCHIVED: "보관",
   };
   return labels[status] || status;
 }
@@ -349,7 +581,7 @@ function candidateMissingLabel(field: string): string {
 }
 function ReplyNeededBadge() {
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-300 font-medium shrink-0">
+    <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#FF6B4A]/30 bg-[#FF6B4A]/10 text-[#FF6B4A] font-medium shrink-0">
       답장 필요
     </span>
   );
@@ -357,8 +589,8 @@ function ReplyNeededBadge() {
 
 function CandidateBadge() {
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 font-medium shrink-0">
-      후보
+    <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#FF6B4A]/30 bg-[#FF6B4A]/10 text-[#FF8A70] font-medium shrink-0">
+      후보자
     </span>
   );
 }
@@ -369,7 +601,7 @@ function PriorityBadge({ priority }: { priority: EmailRow["priority"] }) {
     NORMAL: "bg-stone-800 text-stone-400 border-stone-700",
     LOW: "bg-stone-900 text-stone-500 border-stone-800",
   } as const;
-  const labels = { URGENT: "긴급", NORMAL: "보통", LOW: "낮음" } as const;
+  const labels = { URGENT: "긴급", NORMAL: "일반", LOW: "낮음" } as const;
   if (priority === "NORMAL") return null;
   return (
     <span
@@ -384,10 +616,10 @@ function CategoryBadge({ category }: { category: string }) {
   const labelMap: Record<string, string> = {
     business: "비즈니스",
     engineering: "엔지니어링",
-    automated: "자동 메일",
+    automated: "자동화",
     newsletter: "뉴스레터",
-    meeting: "회의",
-    billing: "결제",
+    meeting: "미팅",
+    billing: "청구",
     conversation: "대화",
     other: "기타",
   };
@@ -407,7 +639,6 @@ function senderName(raw: string): string {
 
 function formatRelative(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "방금";
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMin = Math.floor(diffMs / 60_000);
@@ -416,7 +647,7 @@ function formatRelative(iso: string): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `${diffHr}시간 전`;
   const sameYear = d.getFullYear() === now.getFullYear();
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString("ko-KR", {
     month: "short",
     day: "numeric",
     ...(sameYear ? {} : { year: "2-digit" }),

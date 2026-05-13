@@ -14,6 +14,22 @@ export interface GmailDraftAttachment {
   content: Buffer;
 }
 
+export interface GoogleConnectionStatus {
+  connected: boolean;
+  hasRefreshToken: boolean;
+  expired: boolean;
+  needsReconnect: boolean;
+  reason:
+    | "not_connected"
+    | "missing_refresh_token"
+    | "token_decryption_failed"
+    | "provider_auth_failed"
+    | null;
+  gmailPushConfigured: boolean;
+  gmailPushEnabled: boolean;
+  gmailPushExpiresAt: Date | null;
+}
+
 export function getOAuth2Client(): InstanceType<typeof google.auth.OAuth2> {
   return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 }
@@ -63,6 +79,110 @@ export async function getGoogleUserInfo(
   return res.json() as Promise<{ email: string; name: string; picture: string }>;
 }
 
+async function invalidateGoogleToken(
+  token: { id: string; userId: string },
+  reason: GoogleConnectionStatus["reason"],
+): Promise<void> {
+  await prisma.userToken
+    .update({
+      where: { id: token.id },
+      data: {
+        accessToken: "",
+        refreshToken: null,
+        expiresAt: new Date(0),
+        gmailWatchExpiresAt: null,
+      },
+    })
+    .catch(() => null);
+  console.warn(`[GOOGLE] Token for user ${token.userId} marked for reconnect: ${reason}`);
+}
+
+export function isGoogleAuthError(err: unknown): boolean {
+  const gaxiosErr = err as {
+    response?: {
+      status?: number;
+      data?: { error?: string | { message?: string; status?: string } };
+    };
+    code?: string | number;
+    message?: string;
+  };
+  const status = gaxiosErr.response?.status;
+  const rawError = gaxiosErr.response?.data?.error;
+  const errorCode =
+    typeof rawError === "string" ? rawError : rawError?.status || String(gaxiosErr.code ?? "");
+  const message =
+    (typeof rawError === "object" ? rawError?.message : "") || gaxiosErr.message || "";
+  return (
+    status === 401 ||
+    /invalid[_ ]grant|invalid[_ ]token|unauthorized|expired|revoked/i.test(errorCode) ||
+    /invalid[_ ]grant|invalid[_ ]token|unauthorized|expired|revoked/i.test(message)
+  );
+}
+
+export async function markGoogleTokenForReconnect(
+  userId: string,
+  reason: GoogleConnectionStatus["reason"] = "provider_auth_failed",
+): Promise<void> {
+  const token = await prisma.userToken.findFirst({
+    where: { userId, provider: "google" },
+    select: { id: true, userId: true },
+  });
+  if (token) await invalidateGoogleToken(token, reason);
+}
+
+export async function getGoogleConnectionStatus(userId: string): Promise<GoogleConnectionStatus> {
+  const token = await prisma.userToken.findFirst({
+    where: { userId, provider: "google" },
+  });
+  const gmailPushConfigured = !!process.env.GMAIL_PUBSUB_TOPIC;
+  if (!token) {
+    return {
+      connected: false,
+      hasRefreshToken: false,
+      expired: false,
+      needsReconnect: false,
+      reason: "not_connected",
+      gmailPushConfigured,
+      gmailPushEnabled: false,
+      gmailPushExpiresAt: null,
+    };
+  }
+
+  try {
+    if (token.accessToken) decryptToken(token.accessToken);
+    if (token.refreshToken) decryptOptional(token.refreshToken);
+  } catch {
+    await invalidateGoogleToken(token, "token_decryption_failed");
+    return {
+      connected: false,
+      hasRefreshToken: false,
+      expired: true,
+      needsReconnect: true,
+      reason: "token_decryption_failed",
+      gmailPushConfigured,
+      gmailPushEnabled: false,
+      gmailPushExpiresAt: null,
+    };
+  }
+
+  const hasRefreshToken = !!token.refreshToken;
+  const expired = token.expiresAt ? token.expiresAt.getTime() < Date.now() : false;
+  const watchExpiresAt = (token as unknown as { gmailWatchExpiresAt?: Date | null })
+    .gmailWatchExpiresAt;
+  const gmailPushEnabled = !!(watchExpiresAt && watchExpiresAt.getTime() > Date.now());
+
+  return {
+    connected: hasRefreshToken,
+    hasRefreshToken,
+    expired,
+    needsReconnect: !hasRefreshToken,
+    reason: hasRefreshToken ? null : "missing_refresh_token",
+    gmailPushConfigured,
+    gmailPushEnabled,
+    gmailPushExpiresAt: watchExpiresAt ?? null,
+  };
+}
+
 export async function getAuthedClient(
   userId: string,
 ): Promise<InstanceType<typeof google.auth.OAuth2> | null> {
@@ -72,8 +192,15 @@ export async function getAuthedClient(
 
   if (!token) return null;
 
-  const accessTokenPlain = token.accessToken ? decryptToken(token.accessToken) : "";
-  const refreshTokenPlain = decryptOptional(token.refreshToken);
+  let accessTokenPlain = "";
+  let refreshTokenPlain: string | null = null;
+  try {
+    accessTokenPlain = token.accessToken ? decryptToken(token.accessToken) : "";
+    refreshTokenPlain = decryptOptional(token.refreshToken);
+  } catch {
+    await invalidateGoogleToken(token, "token_decryption_failed");
+    return null;
+  }
 
   // Must have a refresh_token to maintain long-lived connection
   if (!refreshTokenPlain) {
@@ -349,10 +476,19 @@ export async function sendEmail(userId: string, to: string, subject: string, bod
 
   const raw = buildPlainTextRawEmail(to, subject, body);
 
-  const res = await gmail.users.messages.send({
-    userId: "me",
-    requestBody: { raw },
-  });
+  let res: { data: { id?: string | null } };
+  try {
+    res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: { raw },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   return { success: true, messageId: res.data.id };
 }
@@ -381,15 +517,24 @@ export async function createEmailDraft(
 
   const gmail = google.gmail({ version: "v1", auth });
   const raw = buildPlainTextRawEmail(to, subject, body, attachments);
-  const res = await gmail.users.drafts.create({
-    userId: "me",
-    requestBody: {
-      message: {
-        raw,
-        ...(threadId ? { threadId } : {}),
+  let res: { data: { id?: string | null; message?: { id?: string | null } | null } };
+  try {
+    res = await gmail.users.drafts.create({
+      userId: "me",
+      requestBody: {
+        message: {
+          raw,
+          ...(threadId ? { threadId } : {}),
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   return {
     success: true,
@@ -405,11 +550,19 @@ export async function markAsRead(userId: string, gmailMessageId: string) {
   if (!auth) return { error: "Gmail not connected." };
 
   const gmail = google.gmail({ version: "v1", auth });
-  await gmail.users.messages.modify({
-    userId: "me",
-    id: gmailMessageId,
-    requestBody: { removeLabelIds: ["UNREAD"] },
-  });
+  try {
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: gmailMessageId,
+      requestBody: { removeLabelIds: ["UNREAD"] },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   // Also update local DB
   await prisma.emailMessage.updateMany({
@@ -426,7 +579,15 @@ export async function trashEmail(userId: string, gmailMessageId: string) {
   if (!auth) return { error: "Gmail not connected." };
 
   const gmail = google.gmail({ version: "v1", auth });
-  await gmail.users.messages.trash({ userId: "me", id: gmailMessageId });
+  try {
+    await gmail.users.messages.trash({ userId: "me", id: gmailMessageId });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   await prisma.emailMessage.deleteMany({
     where: { userId, gmailId: gmailMessageId },
@@ -441,11 +602,19 @@ export async function archiveEmail(userId: string, gmailMessageId: string) {
   if (!auth) return { error: "Gmail not connected." };
 
   const gmail = google.gmail({ version: "v1", auth });
-  await gmail.users.messages.modify({
-    userId: "me",
-    id: gmailMessageId,
-    requestBody: { removeLabelIds: ["INBOX"] },
-  });
+  try {
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: gmailMessageId,
+      requestBody: { removeLabelIds: ["INBOX"] },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   await prisma.emailMessage.deleteMany({
     where: { userId, gmailId: gmailMessageId },
@@ -460,11 +629,19 @@ export async function toggleStarGmail(userId: string, gmailMessageId: string, st
   if (!auth) return { error: "Gmail not connected." };
 
   const gmail = google.gmail({ version: "v1", auth });
-  await gmail.users.messages.modify({
-    userId: "me",
-    id: gmailMessageId,
-    requestBody: starred ? { addLabelIds: ["STARRED"] } : { removeLabelIds: ["STARRED"] },
-  });
+  try {
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: gmailMessageId,
+      requestBody: starred ? { addLabelIds: ["STARRED"] } : { removeLabelIds: ["STARRED"] },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   await prisma.emailMessage.updateMany({
     where: { userId, gmailId: gmailMessageId },
@@ -480,11 +657,19 @@ export async function toggleReadGmail(userId: string, gmailMessageId: string, is
   if (!auth) return { error: "Gmail not connected." };
 
   const gmail = google.gmail({ version: "v1", auth });
-  await gmail.users.messages.modify({
-    userId: "me",
-    id: gmailMessageId,
-    requestBody: isRead ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] },
-  });
+  try {
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: gmailMessageId,
+      requestBody: isRead ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
 
   await prisma.emailMessage.updateMany({
     where: { userId, gmailId: gmailMessageId },

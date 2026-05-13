@@ -32,6 +32,75 @@ describe("email attachment text extraction", () => {
     expect(result.text).toContain("특기");
   });
 
+  it("extracts text from xlsx shared strings", () => {
+    const xlsx = makeZip({
+      "xl/sharedStrings.xml":
+        "<sst><si><t>김하나</t></si><si><t>배우</t></si><si><t>010-1234-5678</t></si></sst>",
+      "xl/worksheets/sheet1.xml":
+        '<worksheet><sheetData><row><c t="s"><v>0</v></c><c t="s"><v>1</v></c></row></sheetData></worksheet>',
+    });
+
+    const result = extractAttachmentContent(
+      xlsx,
+      "candidate-list.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+
+    expect(result.status).toBe("readable");
+    expect(result.text).toContain("김하나");
+    expect(result.text).toContain("010-1234-5678");
+  });
+
+  it("extracts text from pptx slides", () => {
+    const pptx = makeZip({
+      "ppt/slides/slide1.xml":
+        "<p:sld><p:cSld><a:t>오디션 프로필</a:t><a:t>무용, 영어 가능</a:t></p:cSld></p:sld>",
+    });
+
+    const result = extractAttachmentContent(
+      pptx,
+      "audition-profile.pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    );
+
+    expect(result.status).toBe("readable");
+    expect(result.text).toContain("오디션 프로필");
+    expect(result.text).toContain("무용");
+  });
+
+  it("extracts text from hwpx sections", () => {
+    const hwpx = makeZip({
+      "Contents/section0.xml":
+        "<hp:sec><hp:p><hp:run><hp:t>이지윤</hp:t></hp:run></hp:p><hp:p><hp:run><hp:t>키 165cm / 특기 현대무용</hp:t></hp:run></hp:p></hp:sec>",
+    });
+
+    const result = extractAttachmentContent(hwpx, "actor-profile.hwpx", "application/haansofthwpx");
+
+    expect(isReadableEmailAttachment("actor-profile.hwpx", "application/haansofthwpx", 1024)).toBe(
+      true,
+    );
+    expect(result.status).toBe("readable");
+    expect(result.text).toContain("이지윤");
+    expect(result.text).toContain("현대무용");
+  });
+
+  it("recovers readable text from legacy hwp binary payloads", () => {
+    const hwp = Buffer.concat([
+      Buffer.from("HWP Document File V5\0"),
+      Buffer.alloc(32),
+      Buffer.from("이름: 박서연\n역할: 배우\n연락처: 010-2222-3333", "utf16le"),
+    ]);
+
+    const result = extractAttachmentContent(hwp, "actor-profile.hwp", "application/haansofthwp");
+
+    expect(isReadableEmailAttachment("actor-profile.hwp", "application/haansofthwp", 1024)).toBe(
+      true,
+    );
+    expect(result.status).toBe("readable");
+    expect(result.text).toContain("박서연");
+    expect(result.text).toContain("010-2222-3333");
+  });
+
   it("keeps image attachments as metadata for later OCR", () => {
     expect(isReadableEmailAttachment("headshot.jpg", "image/jpeg", 1024)).toBe(true);
 

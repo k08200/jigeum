@@ -1,0 +1,874 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import AuthGuard from "../../components/auth-guard";
+import { API_BASE, authHeaders } from "../../lib/api";
+import { captureClientError } from "../../lib/sentry";
+
+type FileConversionTarget =
+  | "txt"
+  | "md"
+  | "json"
+  | "yaml"
+  | "csv"
+  | "html"
+  | "xml"
+  | "svg"
+  | "rtf"
+  | "pdf"
+  | "docx"
+  | "xlsx"
+  | "png"
+  | "jpg"
+  | "webp"
+  | "dwg"
+  | "dxf";
+
+const TARGETS: Array<{ value: FileConversionTarget; label: string; hint: string }> = [
+  { value: "pdf", label: "PDF", hint: "문서 출력" },
+  { value: "docx", label: "DOCX", hint: "워드 문서" },
+  { value: "xlsx", label: "XLSX", hint: "표 형식" },
+  { value: "png", label: "PNG", hint: "이미지" },
+  { value: "jpg", label: "JPG", hint: "이미지" },
+  { value: "webp", label: "WEBP", hint: "이미지" },
+  { value: "dwg", label: "DWG", hint: "PDF 도면용" },
+  { value: "dxf", label: "DXF", hint: "CAD 교환" },
+  { value: "txt", label: "TXT", hint: "추출 텍스트" },
+  { value: "md", label: "MD", hint: "요약 문서" },
+  { value: "json", label: "JSON", hint: "구조화 데이터" },
+  { value: "yaml", label: "YAML", hint: "설정/교환" },
+  { value: "csv", label: "CSV", hint: "필드 표" },
+  { value: "html", label: "HTML", hint: "웹 문서" },
+  { value: "xml", label: "XML", hint: "교환 문서" },
+  { value: "svg", label: "SVG", hint: "요약 이미지" },
+  { value: "rtf", label: "RTF", hint: "리치 텍스트" },
+];
+
+interface ConversionCapability {
+  target: FileConversionTarget;
+  label: string;
+  mode: "builtin" | "external";
+  available: boolean;
+  description: string;
+}
+
+interface FilePreview {
+  filename: string;
+  mimeType: string;
+  size: number;
+  status: "readable" | "metadata" | "unsupported";
+  quality: "readable" | "metadata" | "unsupported";
+  preview: string | null;
+  recommendations?: Array<{
+    target: FileConversionTarget;
+    reason: string;
+    priority: number;
+  }>;
+}
+
+interface ConversionEngineStatus {
+  id: string;
+  label: string;
+  category: "layout" | "image" | "cad";
+  available: boolean;
+  source: "env" | "auto" | "missing";
+  executable: string | null;
+  targets: FileConversionTarget[];
+  targetStatuses: Array<{ target: FileConversionTarget; available: boolean }>;
+  detail: string;
+  setupHint: string;
+}
+
+interface QualityScenarioResult {
+  id: string;
+  label: string;
+  category: "builtin" | "layout" | "image" | "cad";
+  status: "pass" | "warn" | "blocked" | "fail";
+  detail: string;
+  durationMs: number;
+  outputBytes?: number;
+}
+
+interface QualityReport {
+  id?: string;
+  score: number;
+  generatedAt: string;
+  createdAt?: string;
+  passed: number;
+  warned: number;
+  blocked: number;
+  failed: number;
+  scenarios: QualityScenarioResult[];
+}
+
+interface ConversionAlternative {
+  target: FileConversionTarget;
+  reason: string;
+}
+
+interface ConversionHistoryItem {
+  id: string;
+  resultId: string;
+  filename: string;
+  target: FileConversionTarget;
+  fileCount: number;
+  createdAt: string;
+  expiresAt?: string;
+  size?: number;
+}
+
+interface StoredConversionResult {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  target: string | null;
+  fileCount: number;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export default function FilesPage() {
+  return (
+    <AuthGuard>
+      <FileConverter />
+    </AuthGuard>
+  );
+}
+
+function FileConverter() {
+  const [files, setFiles] = useState<File[]>([]);
+  const [target, setTarget] = useState<FileConversionTarget>("pdf");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<ConversionCapability[]>([]);
+  const [engines, setEngines] = useState<ConversionEngineStatus[]>([]);
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [qualityHistory, setQualityHistory] = useState<QualityReport[]>([]);
+  const [qualityRunning, setQualityRunning] = useState(false);
+  const [conversionAlternatives, setConversionAlternatives] = useState<ConversionAlternative[]>([]);
+  const [previews, setPreviews] = useState<FilePreview[]>([]);
+  const [previewing, setPreviewing] = useState(false);
+  const [history, setHistory] = useState<ConversionHistoryItem[]>([]);
+
+  const loadHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/results`, { headers: authHeaders() });
+      if (!res.ok) {
+        setHistory(readConversionHistory());
+        return;
+      }
+      const data = (await res.json()) as { results?: StoredConversionResult[] };
+      const items = (data.results ?? []).map(storedResultToHistoryItem);
+      setHistory(items);
+      writeConversionHistory(items);
+    } catch (err) {
+      captureClientError(err, { scope: "files.history" });
+      setHistory(readConversionHistory());
+    }
+  };
+
+  const loadQualityHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/quality-tests`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = (await res.json()) as { reports?: QualityReport[] };
+      const reports = data.reports ?? [];
+      setQualityHistory(reports);
+      setQualityReport(reports[0] ?? null);
+    } catch (err) {
+      captureClientError(err, { scope: "files.quality-history" });
+    }
+  };
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/files/conversions`, { headers: authHeaders() })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          data: {
+            capabilities?: ConversionCapability[];
+            engines?: ConversionEngineStatus[];
+          } | null,
+        ) => {
+          setCapabilities(data?.capabilities ?? []);
+          setEngines(data?.engines ?? []);
+        },
+      )
+      .catch((err) => captureClientError(err, { scope: "files.conversions" }));
+    loadHistory();
+    loadQualityHistory();
+  }, []);
+
+  const runQualityTests = async () => {
+    if (qualityRunning) return;
+    setQualityRunning(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/files/quality-tests/run`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || `품질 테스트 실패: ${res.status}`);
+      }
+      const report = (await res.json()) as QualityReport;
+      setQualityReport(report);
+      setQualityHistory((prev) =>
+        [report, ...prev.filter((item) => item.id !== report.id)].slice(0, 6),
+      );
+    } catch (err) {
+      captureClientError(err, { scope: "files.quality-tests" });
+      setMessage(err instanceof Error ? err.message : "품질 테스트를 실행하지 못했어요.");
+    } finally {
+      setQualityRunning(false);
+    }
+  };
+
+  const convert = async () => {
+    if (files.length === 0 || busy) return;
+    setBusy(true);
+    setMessage(null);
+    setConversionAlternatives([]);
+    try {
+      if (files.length > 1) {
+        const payloadFiles = await Promise.all(
+          files.map(async (file) => ({
+            filename: file.name,
+            mimeType: file.type || "application/octet-stream",
+            contentBase64: await readFileAsDataUrl(file),
+          })),
+        );
+        const res = await fetch(`${API_BASE}/api/files/convert-batch`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ files: payloadFiles, targetFormat: target }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: string;
+            alternatives?: ConversionAlternative[];
+          } | null;
+          setConversionAlternatives(validAlternatives(body?.alternatives));
+          throw new Error(body?.error || `ZIP 변환 실패: ${res.status}`);
+        }
+        const filename =
+          filenameFromContentDisposition(res.headers.get("Content-Disposition")) ||
+          `eve-converted-${target}.zip`;
+        await downloadResponseBlob(res, filename);
+        rememberConversionResult({
+          resultId: res.headers.get("X-Eve-Conversion-Id"),
+          filename,
+          target,
+          fileCount: files.length,
+        });
+        await loadHistory();
+        setMessage(`${files.length}개 파일 변환 결과를 ZIP으로 생성했어요.`);
+        return;
+      }
+
+      const file = files[0];
+      const contentBase64 = await readFileAsDataUrl(file);
+      const res = await fetch(`${API_BASE}/api/files/convert`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          contentBase64,
+          targetFormat: target,
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+          alternatives?: ConversionAlternative[];
+        } | null;
+        setConversionAlternatives(validAlternatives(body?.alternatives));
+        throw new Error(`${file.name}: ${body?.error || `변환 실패: ${res.status}`}`);
+      }
+      const filename =
+        filenameFromContentDisposition(res.headers.get("Content-Disposition")) ||
+        convertedFilename(file.name, target);
+      await downloadResponseBlob(res, filename);
+      rememberConversionResult({
+        resultId: res.headers.get("X-Eve-Conversion-Id"),
+        filename,
+        target,
+        fileCount: 1,
+      });
+      await loadHistory();
+      setMessage(`${file.name} 파일을 ${target.toUpperCase()} 형식으로 변환했어요.`);
+    } catch (err) {
+      captureClientError(err, {
+        scope: "files.convert",
+        target,
+        filenames: files.map((file) => file.name),
+      });
+      setMessage(err instanceof Error ? err.message : "파일 변환에 실패했어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rememberConversionResult = (input: {
+    resultId: string | null;
+    filename: string;
+    target: FileConversionTarget;
+    fileCount: number;
+  }) => {
+    if (!input.resultId) return;
+    const nextItem: ConversionHistoryItem = {
+      id: `${input.resultId}-${Date.now()}`,
+      resultId: input.resultId,
+      filename: input.filename,
+      target: input.target,
+      fileCount: input.fileCount,
+      createdAt: new Date().toISOString(),
+    };
+    setHistory((prev) => {
+      const next = [nextItem, ...prev].slice(0, 8);
+      writeConversionHistory(next);
+      return next;
+    });
+  };
+
+  const downloadHistoryItem = async (item: ConversionHistoryItem) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/results/${item.resultId}/download`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error("변환 결과가 만료됐어요. 다시 변환해 주세요.");
+      }
+      await downloadResponseBlob(res, item.filename);
+    } catch (err) {
+      captureClientError(err, { scope: "files.history.download", resultId: item.resultId });
+      setMessage(err instanceof Error ? err.message : "이전 변환 결과를 내려받지 못했어요.");
+    }
+  };
+
+  const loadPreviews = async (nextFiles: File[]) => {
+    setPreviewing(true);
+    setPreviews([]);
+    try {
+      const previewItems = await Promise.all(
+        nextFiles.slice(0, 8).map(async (file) => {
+          const contentBase64 = await readFileAsDataUrl(file);
+          const res = await fetch(`${API_BASE}/api/files/preview`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type || "application/octet-stream",
+              contentBase64,
+            }),
+          });
+          if (!res.ok) {
+            return {
+              filename: file.name,
+              mimeType: file.type || "application/octet-stream",
+              size: file.size,
+              status: "unsupported" as const,
+              quality: "unsupported" as const,
+              preview: "미리보기를 생성하지 못했어요.",
+            };
+          }
+          return (await res.json()) as FilePreview;
+        }),
+      );
+      setPreviews(previewItems);
+    } catch (err) {
+      captureClientError(err, { scope: "files.preview" });
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const selectedCapability = capabilities.find((item) => item.target === target);
+  const selectedTargetUnavailable =
+    selectedCapability?.mode === "external" && selectedCapability.available === false;
+  const selectedFileNames = files.map((file) => file.name).join(", ");
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 text-stone-100">
+      <div className="mb-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#FF8A70]">
+          파일 도구
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">파일 변환</h1>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
+          파일을 선택하고 필요한 출력 형식만 고르면 됩니다.
+        </p>
+      </div>
+
+      <section className="mb-4 rounded-lg border border-white/10 bg-[#11161A] p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              변환 엔진 상태
+            </h2>
+            <p className="mt-1 text-xs text-stone-600">
+              실제 변환 엔진 연결과 원본 보존 가능 범위를 확인합니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={runQualityTests}
+            disabled={qualityRunning}
+            className="rounded-md border border-white/10 bg-[#090B10] px-3 py-2 text-xs text-stone-300 transition hover:border-[#FF6B4A]/30 hover:text-[#FFE2D7] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {qualityRunning ? "테스트 중..." : "품질 테스트 실행"}
+          </button>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {engines.map((engine) => (
+            <div
+              key={engine.id}
+              className="rounded-md border border-white/10 bg-[#090B10] px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-stone-200">{engine.label}</span>
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-[10px] ${engineStatusClass(engine)}`}
+                >
+                  {engineStatusLabel(engine)}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-5 text-stone-500">{engine.detail}</p>
+              <p className="mt-1 truncate text-[10px] text-stone-700">
+                {engine.executable || engine.setupHint}
+              </p>
+            </div>
+          ))}
+          {engines.length === 0 && (
+            <p className="text-xs text-stone-600">엔진 상태를 불러오는 중입니다.</p>
+          )}
+        </div>
+        {qualityReport && (
+          <div className="mt-4 rounded-lg border border-white/10 bg-[#090B10] p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-medium text-stone-200">
+                품질 점수 {qualityReport.score}점
+              </p>
+              <p className="text-[10px] text-stone-600">
+                통과 {qualityReport.passed} · 보류 {qualityReport.blocked} · 실패{" "}
+                {qualityReport.failed}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {qualityReport.scenarios.map((scenario) => (
+                <div
+                  key={scenario.id}
+                  className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-800/60 pt-1.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] text-stone-300">{scenario.label}</p>
+                    <p className="truncate text-[10px] text-stone-600">{scenario.detail}</p>
+                  </div>
+                  <span
+                    className={`rounded border px-1.5 py-0.5 text-[10px] ${qualityStatusClass(scenario.status)}`}
+                  >
+                    {qualityStatusLabel(scenario.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {qualityHistory.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {qualityHistory.slice(0, 6).map((report) => (
+              <button
+                key={report.id ?? report.generatedAt}
+                type="button"
+                onClick={() => setQualityReport(report)}
+                className={`rounded border px-2 py-1 text-[10px] transition ${
+                  (qualityReport?.id ?? qualityReport?.generatedAt) ===
+                  (report.id ?? report.generatedAt)
+                    ? "border-[#FF6B4A]/40 bg-[#FF6B4A]/10 text-[#FFE2D7]"
+                    : "border-white/10 bg-[#090B10] text-stone-500 hover:border-[#FF6B4A]/30 hover:text-[#FFB09C]"
+                }`}
+              >
+                {report.score}점 ·{" "}
+                {new Date(report.createdAt ?? report.generatedAt).toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-white/10 bg-[#11161A] p-4 shadow-2xl shadow-black/10">
+        <label className="block rounded-lg border border-dashed border-white/15 bg-[#090B10] px-4 py-8 text-center transition hover:border-[#FF6B4A]/35">
+          <input
+            type="file"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              const nextFiles = Array.from(event.target.files ?? []);
+              setFiles(nextFiles);
+              setConversionAlternatives([]);
+              if (nextFiles.length === 1) {
+                setTarget(recommendedTargetForFile(nextFiles[0]));
+              } else if (nextFiles.some((file) => file.name.toLowerCase().endsWith(".pdf"))) {
+                setTarget("pdf");
+              }
+              setMessage(null);
+              loadPreviews(nextFiles);
+            }}
+          />
+          <span className="block text-sm font-medium text-stone-200">
+            {files.length > 0 ? `${files.length}개 파일 선택됨` : "변환할 파일 선택"}
+          </span>
+          <span className="mt-1 block text-xs text-stone-500">
+            PDF, 문서, 텍스트, 표, 이미지, 도면 파일을 필요한 형식으로 변환합니다.
+          </span>
+          {selectedFileNames && (
+            <span className="mx-auto mt-2 block max-w-2xl truncate text-[11px] text-stone-600">
+              {selectedFileNames}
+            </span>
+          )}
+        </label>
+
+        {(previewing || previews.length > 0) && (
+          <div className="mt-4 rounded-lg border border-white/10 bg-[#090B10] p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                미리보기
+              </h2>
+              {previewing && <span className="text-[11px] text-[#7DD3FC]">추출 중...</span>}
+            </div>
+            <div className="space-y-2">
+              {previews.map((preview) => (
+                <div
+                  key={preview.filename}
+                  className="rounded border border-white/10 bg-[#11161A] px-3 py-2"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="max-w-full truncate text-xs font-medium text-stone-200">
+                      {preview.filename}
+                    </span>
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] ${qualityClass(preview.quality)}`}
+                    >
+                      {qualityLabel(preview.quality)}
+                    </span>
+                    <span className="text-[10px] text-stone-600">
+                      {preview.mimeType} · {formatBytes(preview.size)}
+                    </span>
+                  </div>
+                  {preview.preview && (
+                    <pre className="mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap break-words font-sans text-[11px] leading-5 text-stone-500">
+                      {preview.preview}
+                    </pre>
+                  )}
+                  {preview.recommendations && preview.recommendations.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {preview.recommendations.slice(0, 4).map((item) => (
+                        <button
+                          key={`${preview.filename}-${item.target}`}
+                          type="button"
+                          onClick={() => setTarget(item.target)}
+                          className={`rounded border px-2 py-1 text-[10px] transition ${
+                            target === item.target
+                              ? "border-[#FF6B4A]/45 bg-[#FF6B4A]/15 text-[#FFE2D7]"
+                              : "border-white/10 bg-[#090B10] text-stone-400 hover:border-[#FF6B4A]/30 hover:text-[#FFE2D7]"
+                          }`}
+                          title={item.reason}
+                        >
+                          추천 {item.target.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          {TARGETS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setTarget(option.value)}
+              className={`rounded-lg border px-3 py-2 text-left transition ${
+                target === option.value
+                  ? "border-[#FF6B4A]/45 bg-[#FF6B4A]/15 text-[#FFE2D7]"
+                  : "border-white/10 bg-[#090B10] text-stone-400 hover:border-[#FF6B4A]/30 hover:text-[#FFE2D7]"
+              }`}
+            >
+              <span className="block text-xs font-semibold">{option.label}</span>
+              <span className="mt-0.5 block text-[10px] text-stone-500">{option.hint}</span>
+              {capabilityBadge(capabilities.find((item) => item.target === option.value))}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs leading-5 text-stone-500">
+            {selectedTargetUnavailable
+              ? `${selectedCapability.description} 현재 서버 변환 엔진 연결이 필요합니다.`
+              : selectedCapability
+                ? selectedCapability.description
+                : "파일 형식에 맞는 변환 대상을 선택해 주세요."}
+          </p>
+          <button
+            type="button"
+            onClick={convert}
+            disabled={files.length === 0 || busy || selectedTargetUnavailable}
+            className="rounded-md bg-[#FF6B4A] px-4 py-2 text-sm font-medium text-[#190B07] transition hover:bg-[#FF8A70] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {selectedTargetUnavailable
+              ? "엔진 연결 필요"
+              : busy
+                ? "변환 중..."
+                : files.length > 1
+                  ? "ZIP으로 변환"
+                  : "변환하기"}
+          </button>
+        </div>
+        {message && (
+          <p className="mt-3 rounded-lg border border-white/10 bg-[#090B10] px-3 py-2 text-xs leading-5 text-stone-300">
+            {message}
+          </p>
+        )}
+        {conversionAlternatives.length > 0 && (
+          <div className="mt-3 rounded-lg border border-[#FF6B4A]/20 bg-[#FF6B4A]/5 px-3 py-2">
+            <p className="text-[11px] font-medium text-[#FFE2D7]">대체 변환 추천</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {conversionAlternatives.map((item) => (
+                <button
+                  key={item.target}
+                  type="button"
+                  onClick={() => {
+                    setTarget(item.target);
+                    setMessage(`${item.target.toUpperCase()} 형식으로 다시 시도할 수 있어요.`);
+                    setConversionAlternatives([]);
+                  }}
+                  className="rounded border border-[#FF6B4A]/25 bg-black/20 px-2 py-1 text-[10px] text-[#FFE2D7] transition hover:border-[#FFB09C]/50"
+                  title={item.reason}
+                >
+                  {item.target.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {history.length > 0 && (
+        <section className="mt-5 rounded-xl border border-stone-700/45 bg-stone-950/35 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+              최근 변환
+            </h2>
+            <span className="text-[10px] text-stone-600">서버에 저장된 변환 결과</span>
+          </div>
+          <div className="space-y-2">
+            {history.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-stone-800/70 bg-black/15 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-stone-200">{item.filename}</p>
+                  <p className="mt-0.5 text-[10px] text-stone-600">
+                    {item.target.toUpperCase()} · {item.fileCount}개 ·{" "}
+                    {new Date(item.createdAt).toLocaleTimeString("ko-KR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {item.size ? ` · ${formatBytes(item.size)}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => downloadHistoryItem(item)}
+                  className="rounded border border-stone-700/70 bg-stone-950/45 px-2 py-1 text-[10px] text-stone-400 transition hover:border-[#7DD3FC]/30 hover:text-sky-200"
+                >
+                  다시 받기
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("파일을 읽지 못했어요."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function downloadResponseBlob(res: Response, fallbackFilename: string) {
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    filenameFromContentDisposition(res.headers.get("Content-Disposition")) || fallbackFilename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function capabilityBadge(capability: ConversionCapability | undefined) {
+  if (!capability) return null;
+  const label =
+    capability.mode === "builtin" ? "내장" : capability.available ? "엔진 연결" : "엔진 필요";
+  return (
+    <span
+      className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[9px] ${
+        capability.mode === "builtin" || capability.available
+          ? "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]"
+          : "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function engineStatusLabel(engine: ConversionEngineStatus): string {
+  if (!engine.available) return "연결 필요";
+  if (engine.source === "env") return "설정 연결";
+  return "자동 감지";
+}
+
+function engineStatusClass(engine: ConversionEngineStatus): string {
+  if (!engine.available) return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  if (engine.source === "env") return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  return "border-[#7DD3FC]/25 bg-[#7DD3FC]/10 text-sky-200";
+}
+
+function qualityStatusLabel(status: QualityScenarioResult["status"]): string {
+  if (status === "pass") return "통과";
+  if (status === "warn") return "주의";
+  if (status === "blocked") return "보류";
+  return "실패";
+}
+
+function qualityStatusClass(status: QualityScenarioResult["status"]): string {
+  if (status === "pass") return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  if (status === "warn") return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  if (status === "blocked") return "border-stone-600/60 bg-stone-900/70 text-stone-400";
+  return "border-rose-400/25 bg-rose-400/10 text-rose-200";
+}
+
+function qualityLabel(quality: FilePreview["quality"]): string {
+  if (quality === "readable") return "본문 추출";
+  if (quality === "metadata") return "메타데이터";
+  return "추출 제한";
+}
+
+function qualityClass(quality: FilePreview["quality"]): string {
+  if (quality === "readable") return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  if (quality === "metadata") return "border-[#FF6B4A]/25 bg-[#FF6B4A]/10 text-[#FFB09C]";
+  return "border-rose-400/25 bg-rose-400/10 text-rose-200";
+}
+
+function recommendedTargetForFile(file: File): FileConversionTarget {
+  const name = file.name.toLowerCase();
+  const mime = file.type.toLowerCase();
+  if (mime.startsWith("image/")) {
+    if (mime.includes("jpeg") || name.endsWith(".jpg") || name.endsWith(".jpeg")) return "jpg";
+    if (mime.includes("webp") || name.endsWith(".webp")) return "webp";
+    return "png";
+  }
+  if (mime.includes("spreadsheet") || /\.(xlsx|xls|csv|tsv)$/.test(name)) return "xlsx";
+  if (mime.includes("pdf") || name.endsWith(".pdf")) return "pdf";
+  if (mime.includes("word") || /\.(docx|doc|hwp|hwpx|rtf)$/.test(name)) return "docx";
+  return "md";
+}
+
+function storedResultToHistoryItem(result: StoredConversionResult): ConversionHistoryItem {
+  return {
+    id: result.id,
+    resultId: result.id,
+    filename: result.filename,
+    target: isConversionTarget(result.target) ? result.target : targetFromFilename(result.filename),
+    fileCount: result.fileCount,
+    createdAt: result.createdAt,
+    expiresAt: result.expiresAt,
+    size: result.size,
+  };
+}
+
+function isConversionTarget(value: string | null): value is FileConversionTarget {
+  return TARGETS.some((target) => target.value === value);
+}
+
+function targetFromFilename(filename: string): FileConversionTarget {
+  const ext = filename.toLowerCase().split(".").pop();
+  const candidate = ext ?? null;
+  return isConversionTarget(candidate) ? candidate : "pdf";
+}
+
+function validAlternatives(value: ConversionAlternative[] | undefined): ConversionAlternative[] {
+  return Array.isArray(value)
+    ? value
+        .filter((item) => item && isConversionTarget(item.target))
+        .map((item) => ({ target: item.target, reason: String(item.reason || "") }))
+        .slice(0, 3)
+    : [];
+}
+
+const CONVERSION_HISTORY_KEY = "eve-file-conversion-history";
+
+function readConversionHistory(): ConversionHistoryItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CONVERSION_HISTORY_KEY) || "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (item): item is ConversionHistoryItem =>
+            item &&
+            typeof item.id === "string" &&
+            typeof item.resultId === "string" &&
+            typeof item.filename === "string" &&
+            typeof item.target === "string" &&
+            typeof item.fileCount === "number" &&
+            typeof item.createdAt === "string",
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeConversionHistory(items: ConversionHistoryItem[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CONVERSION_HISTORY_KEY, JSON.stringify(items));
+}
+
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "-";
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function convertedFilename(filename: string, target: FileConversionTarget): string {
+  const clean = filename.replace(/[\\/:*?"<>|]+/g, "_") || "file";
+  const base = clean.includes(".") ? clean.slice(0, clean.lastIndexOf(".")) : clean;
+  return `${base || "file"}.${target}`;
+}
+
+function filenameFromContentDisposition(value: string | null): string | null {
+  if (!value) return null;
+  const match = value.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? null;
+}
