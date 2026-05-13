@@ -620,7 +620,8 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({ alwaysAllowedTools: next }),
       });
-      if (Array.isArray(updated.alwaysAllowedTools)) setAlwaysAllowedTools(updated.alwaysAllowedTools);
+      if (Array.isArray(updated.alwaysAllowedTools))
+        setAlwaysAllowedTools(updated.alwaysAllowedTools);
     } catch (err) {
       setAlwaysAllowedTools(previous);
       toast(`업데이트 실패: ${err instanceof Error ? err.message : "오류"}`, "error");
@@ -871,9 +872,7 @@ export default function SettingsPage() {
     <AuthGuard>
       <main className="mx-auto max-w-4xl px-4 pb-28 pt-6 sm:px-6 md:py-10">
         <header className="mb-6 rounded-2xl border border-stone-700/45 bg-stone-950/35 p-5 shadow-sm shadow-black/20">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">
-            제어판
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">제어판</p>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
             Jigeum의 실행 경계와 접근 권한
           </h1>
@@ -1228,9 +1227,14 @@ export default function SettingsPage() {
                 <select
                   id="agent-model"
                   value={modelSettings?.currentAgentModel || ""}
-                  disabled={!modelSettings || modelSaving || !(modelSettings.agentModels ?? []).length}
+                  disabled={
+                    !modelSettings || modelSaving || !(modelSettings.agentModels ?? []).length
+                  }
                   onChange={(e) =>
-                    patchModelSettings({ agentModel: e.target.value || null }, "에이전트 모델을 저장했어요.")
+                    patchModelSettings(
+                      { agentModel: e.target.value || null },
+                      "에이전트 모델을 저장했어요.",
+                    )
                   }
                   className="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-300 transition disabled:opacity-50"
                 >
@@ -1393,7 +1397,8 @@ export default function SettingsPage() {
                   )}
                   {agentMode === "AUTO" && (
                     <p className="text-[10px] text-emerald-200/75 mt-2">
-                      낮은 리스크의 내부 작업은 자동 실행할 수 있습니다. 답장, 캘린더 변경, 파괴적 작업은 여전히 명시 승인이 필요합니다.
+                      낮은 리스크의 내부 작업은 자동 실행할 수 있습니다. 답장, 캘린더 변경, 파괴적
+                      작업은 여전히 명시 승인이 필요합니다.
                     </p>
                   )}
                 </div>
@@ -1401,9 +1406,7 @@ export default function SettingsPage() {
                 {/* Pre-approved tools — skip approval for specific MEDIUM-risk tools */}
                 {agentMode === "AUTO" && preApprovableTools.length > 0 && (
                   <div>
-                    <label className="block text-sm text-stone-400 mb-2">
-                      항상 허용할 도구
-                    </label>
+                    <label className="block text-sm text-stone-400 mb-2">항상 허용할 도구</label>
                     <div className="space-y-2">
                       {preApprovableTools.map((tool) => {
                         const enabled = alwaysAllowedTools.includes(tool);
@@ -1427,7 +1430,8 @@ export default function SettingsPage() {
                       })}
                     </div>
                     <p className="text-[10px] text-stone-500 mt-2">
-                      켜둔 도구도 정책 안에서만 실행됩니다. 메일 답장과 파괴적 작업은 여기서 사전 승인할 수 없습니다.
+                      켜둔 도구도 정책 안에서만 실행됩니다. 메일 답장과 파괴적 작업은 여기서 사전
+                      승인할 수 없습니다.
                     </p>
                   </div>
                 )}
@@ -1468,7 +1472,8 @@ export default function SettingsPage() {
                     </span>
                   </button>
                   <p className="text-[10px] text-stone-500 mt-1">
-                    자동 모드에서 메일 답장을 보낸 뒤 원본 Gmail 스레드를 읽음 처리할 수 있습니다. 읽지 않은 메일을 백업함으로 유지하도록 기본값은 꺼짐입니다.
+                    자동 모드에서 메일 답장을 보낸 뒤 원본 Gmail 스레드를 읽음 처리할 수 있습니다.
+                    읽지 않은 메일을 백업함으로 유지하도록 기본값은 꺼짐입니다.
                   </p>
                 </div>
 
@@ -1750,9 +1755,7 @@ export default function SettingsPage() {
                     : `교정 ${emailFeedbackCount}개`}
                 </p>
               </div>
-              <span className="ml-4 shrink-0 text-sm font-medium text-stone-400">
-                검토 {"->"}
-              </span>
+              <span className="ml-4 shrink-0 text-sm font-medium text-stone-400">검토 {"->"}</span>
             </Link>
             <div className="bg-stone-950/35 border border-stone-700/45 rounded-xl p-4 flex items-center justify-between">
               <div>

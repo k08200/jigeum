@@ -108,9 +108,7 @@ function CandidateIntakeView() {
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300/80">
               후보자 접수
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-50">
-              후보자 접수함
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-50">후보자 접수함</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">
               메일 첨부에서 감지한 이력서, 프로필, 포트폴리오, 오디션 자료를 검토합니다.
             </p>
@@ -241,9 +239,7 @@ function CandidateCard({ candidate }: { candidate: CandidateIntake }) {
       </div>
       <div className="mt-3 rounded-lg border border-stone-800/60 bg-black/15 px-3 py-2">
         <p className="truncate text-xs text-stone-300">{email.subject || "제목 없음"}</p>
-        <p className="mt-1 truncate text-[11px] text-stone-600">
-          {senderName(email.from)}
-        </p>
+        <p className="mt-1 truncate text-[11px] text-stone-600">{senderName(email.from)}</p>
       </div>
       {candidate.notes && (
         <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-stone-500">

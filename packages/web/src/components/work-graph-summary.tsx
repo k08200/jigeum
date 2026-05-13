@@ -55,7 +55,8 @@ export default function WorkGraphSummaryCard() {
               진행 중인 업무 맥락
             </h2>
             <p className="mt-2 max-w-xl text-xs leading-5 text-stone-500">
-              Jigeum이 메일, 결정 스레드, 약속을 같은 업무 맥락으로 묶어 리스크를 더 쉽게 보이게 합니다.
+              Jigeum이 메일, 결정 스레드, 약속을 같은 업무 맥락으로 묶어 리스크를 더 쉽게 보이게
+              합니다.
             </p>
           </div>
 
@@ -92,9 +93,7 @@ function ContextCard({ context }: { context: WorkGraphContext }) {
           <div className="flex flex-wrap items-center gap-2">
             <RiskBadge risk={context.risk} />
             <span className="text-[11px] text-stone-500">{kindLabel(context.kind)}</span>
-            <span className="text-[11px] text-stone-600">
-              {formatRelative(lastActivityAt)}
-            </span>
+            <span className="text-[11px] text-stone-600">{formatRelative(lastActivityAt)}</span>
           </div>
           <p className="mt-2 break-words text-sm font-semibold text-stone-100">
             {displayText(context.title)}

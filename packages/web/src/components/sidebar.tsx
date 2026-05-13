@@ -478,9 +478,7 @@ export default function Sidebar({
                       : "text-stone-400 hover:bg-stone-800/70 hover:text-stone-100"
                   }`}
                 >
-                  <span className="truncate flex-1 text-[13px]">
-                    {conv.title || "결정 카드"}
-                  </span>
+                  <span className="truncate flex-1 text-[13px]">{conv.title || "결정 카드"}</span>
                   {(conv.pendingActionCount || 0) > 0 && (
                     <span className="shrink-0 rounded-full bg-stone-900 px-1.5 py-0.5 text-[10px] text-stone-300">
                       대기 {conv.pendingActionCount}

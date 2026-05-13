@@ -103,9 +103,7 @@ export function FeedbackPolicyPanel() {
         <div>
           <h3 className="font-medium">학습된 운영 신호</h3>
           <p className="mt-0.5 text-xs text-stone-500">
-            {since
-              ? `${new Date(since).toLocaleDateString("ko-KR")} 이후`
-              : "최근 피드백 패턴"}
+            {since ? `${new Date(since).toLocaleDateString("ko-KR")} 이후` : "최근 피드백 패턴"}
           </p>
         </div>
         <button

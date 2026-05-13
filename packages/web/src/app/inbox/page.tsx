@@ -464,12 +464,12 @@ function ActionCard({
           {emailPreview && (
             <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-medium text-amber-300">
-                  보내기 전 승인 필요
-                </span>
+                <span className="text-[11px] font-medium text-amber-300">보내기 전 승인 필요</span>
                 <span className="text-[11px] text-stone-500">send_email</span>
               </div>
-              <p className="mt-2 text-xs text-stone-300 break-words">받는 사람: {emailPreview.to}</p>
+              <p className="mt-2 text-xs text-stone-300 break-words">
+                받는 사람: {emailPreview.to}
+              </p>
               <p className="mt-1 text-xs text-stone-400 break-words">
                 제목: {emailPreview.subject}
               </p>

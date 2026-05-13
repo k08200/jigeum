@@ -134,7 +134,8 @@ export default function BetaLearningCard() {
 
       {syncFailed && (
         <p className="mt-3 text-xs text-amber-300">
-          초기 분석에서 일시 문제가 있었어요. 잠시 뒤 새로고침하거나 다시 열면 Jigeum이 재시도합니다.
+          초기 분석에서 일시 문제가 있었어요. 잠시 뒤 새로고침하거나 다시 열면 Jigeum이
+          재시도합니다.
         </p>
       )}
     </section>

@@ -98,9 +98,7 @@ export default function OperatingLoopCard() {
     try {
       const next = await apiFetch<OperatingPlan | { plan?: Partial<OperatingPlan> | null }>(
         "/api/inbox/operating-plan",
-      ).catch(
-        () => EMPTY_PLAN,
-      );
+      ).catch(() => EMPTY_PLAN);
       setPlan(normalizePlan(next));
     } finally {
       setLoading(false);

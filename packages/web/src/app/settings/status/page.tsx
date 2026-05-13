@@ -233,10 +233,7 @@ export default function SettingsStatusPage() {
                   <div className="mb-4 grid gap-3 sm:grid-cols-3">
                     <Metric label="푸시 구독" value={String(diagnostics.subscriptions)} />
                     <Metric label="최근 리마인더" value={String(diagnostics.reminders.length)} />
-                    <Metric
-                      label="푸시 전송"
-                      value={String(diagnostics.pushDeliveries.length)}
-                    />
+                    <Metric label="푸시 전송" value={String(diagnostics.pushDeliveries.length)} />
                   </div>
                   <div className="grid gap-4 lg:grid-cols-3">
                     <DiagnosticsList
@@ -356,9 +353,7 @@ function readinessCheckMessage(check: ReadinessCheck): string {
     case "push": {
       const subscriptions = detailNumber(check, "subscriptions") ?? 0;
       if (check.status === "error") return "VAPID 키가 필요해요";
-      return subscriptions > 0
-        ? `푸시 구독 ${subscriptions}개 등록됨`
-        : "푸시 구독이 없어요";
+      return subscriptions > 0 ? `푸시 구독 ${subscriptions}개 등록됨` : "푸시 구독이 없어요";
     }
     case "google":
       return check.status === "ok" ? "연결됨" : "연결 안 됨";

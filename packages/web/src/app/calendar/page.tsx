@@ -104,7 +104,8 @@ function CalendarView() {
   };
 
   const groups = groupByDay(events);
-  const todayCount = groups.find((group) => group.key === dayKeyFor(new Date()))?.events.length ?? 0;
+  const todayCount =
+    groups.find((group) => group.key === dayKeyFor(new Date()))?.events.length ?? 0;
   const nextEvent = events
     .map((event) => ({ event, start: new Date(event.startTime) }))
     .filter(({ start }) => start.getTime() >= Date.now())
