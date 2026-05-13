@@ -78,7 +78,7 @@ function InboxView() {
       setCommitments(Array.isArray(commitmentData.commitments) ? commitmentData.commitments : []);
     } catch (err) {
       captureClientError(err, { scope: "inbox.load" });
-      setError("결정함을 불러오지 못했어요.");
+      setError("결정 큐를 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -155,13 +155,13 @@ function InboxView() {
           <div className="grid gap-5 lg:grid-cols-[1fr_300px] lg:items-stretch">
             <div className="max-w-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-                결정함
+                결정 큐
               </p>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight text-stone-50 md:text-3xl">
-                흩어진 업무 신호를 바로 승인할 수 있는 결정으로 바꿉니다.
+                흩어진 신호를 승인 가능한 결정으로 정리합니다.
               </h1>
               <p className="mt-3 text-sm leading-6 text-stone-400">
-                실행 전에 Jigeum이 무엇을 찾았고, 왜 중요한지, 어떤 행동이 준비됐는지 확인하세요.
+                실행 전에 무엇을 봤고, 왜 중요한지, 어떤 행동이 준비됐는지 명확하게 확인하세요.
               </p>
             </div>
             <div className="relative min-h-40 overflow-hidden rounded-lg border border-stone-800 bg-black/20">
@@ -171,7 +171,7 @@ function InboxView() {
                 onClick={() => load(filter)}
                 disabled={loading}
                 className="absolute right-3 top-3 h-9 rounded-md border border-stone-700 bg-stone-950/70 px-3 text-xs text-stone-300 backdrop-blur transition hover:bg-stone-800 disabled:opacity-50"
-                aria-label="결정함 새로고침"
+                aria-label="결정 큐 새로고침"
               >
                 {loading ? "..." : "새로고침"}
               </button>
@@ -216,14 +216,14 @@ function InboxView() {
       {!loading && !error && actions.length === 0 && commitments.length === 0 && (
         <div className="rounded-lg border border-stone-800 bg-stone-900/40 p-8 text-center">
           <p className="text-sm text-stone-300 mb-1">
-            {filter === "pending" ? "기다리는 항목이 없어요." : "아직 결정함 항목이 없어요."}
+            {filter === "pending" ? "기다리는 항목이 없어요." : "아직 결정 큐 항목이 없어요."}
           </p>
           <p className="text-xs text-stone-500">새 Jigeum 제안이 여기에 나타납니다.</p>
         </div>
       )}
 
       {actions.length > 0 && (
-        <section className="mb-6" aria-label="결정함">
+        <section className="mb-6" aria-label="결정 큐">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-stone-100">결정 카드</h2>
             <span className="text-[11px] text-stone-500">{actions.length}</span>

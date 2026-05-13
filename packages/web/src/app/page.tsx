@@ -276,28 +276,27 @@ export default function LandingPage() {
           <div className="max-w-3xl">
             <p className="mb-5 inline-flex items-center gap-2 border-b border-[#d8a45d]/50 pb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#d8a45d]">
               <Icon type="compass" className="h-4 w-4" />
-              Operating layer for work
+              Decision queue for work
             </p>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.04] tracking-tight text-white sm:text-5xl md:text-7xl md:leading-[0.98] lg:text-8xl">
-              Know what needs a decision.
+              중요한 일만 남기고, 바로 판단하세요.
             </h1>
             <p className="mt-7 max-w-xl text-base leading-7 text-stone-300 md:text-xl md:leading-8">
-              Jigeum turns mail, calendar, tasks, and memory into a focused queue of evidence-backed
-              next moves.
+              Jigeum은 메일, 일정, 작업의 신호를 한 큐로 정리하고 실행 전 필요한 근거를 보여줍니다.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/early-access"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#d8a45d] px-6 text-sm font-semibold text-[#11100d] transition hover:bg-[#f0c982]"
               >
-                Request early access
+                얼리 액세스 신청
                 <Icon type="arrow" className="h-4 w-4" />
               </Link>
               <Link
                 href="/login"
                 className="inline-flex h-12 items-center justify-center rounded-md border border-white/[0.18] px-6 text-sm font-medium text-stone-200 transition hover:border-white/[0.35] hover:bg-white/[0.08]"
               >
-                Open workspace
+                커맨드 센터 열기
               </Link>
             </div>
           </div>

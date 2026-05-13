@@ -73,9 +73,9 @@ function groupByDate(convs: Conversation[]): DateGroup[] {
 }
 
 const NAV_ITEMS = [
-  { href: "/inbox", label: "결정함", icon: "check" },
+  { href: "/inbox", label: "결정 큐", icon: "check" },
   { href: "/email", label: "메일", icon: "mail" },
-  { href: "/calendar", label: "캘린더", icon: "calendar" },
+  { href: "/calendar", label: "일정", icon: "calendar" },
   { href: "/briefing", label: "브리핑", icon: "bell" },
 ];
 
@@ -378,11 +378,11 @@ export default function Sidebar({
           className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm font-semibold text-stone-100 transition hover:text-white"
           onClick={onMobileClose}
         >
-          <img src="/brand/mark.svg" alt="" className="h-7 w-7" />
+          <img src="/brand/mark.svg?v=flow-3" alt="" className="h-7 w-7" />
           <span>
             <span className="block leading-none">Jigeum</span>
             <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.16em] text-stone-500">
-              지금 중요한 것
+              Decision Queue
             </span>
           </span>
         </Link>
@@ -457,8 +457,8 @@ export default function Sidebar({
               onClick={onMobileClose}
               className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium text-stone-400 transition hover:bg-stone-800 hover:text-stone-100"
             >
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              결정함
+              <span className="h-2 w-2 rounded-full bg-[#FF8A70]" />
+              결정 큐
               {totalPending > 0 && (
                 <span className="ml-auto rounded-full bg-stone-800 px-1.5 py-0.5 text-[10px] font-semibold text-stone-300">
                   {totalPending}
