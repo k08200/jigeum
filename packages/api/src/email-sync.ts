@@ -103,6 +103,74 @@ async function extractAttachmentsFromPayload(
   return attachments;
 }
 
+async function parseGmailMessageDetail(
+  gmail: gmail_v1.Gmail,
+  messageId: string,
+  detail: gmail_v1.Schema$Message,
+): Promise<GmailRawEmail> {
+  const headers = detail.payload?.headers || [];
+  const getHeader = (name: string) =>
+    headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
+
+  let body = "";
+  let htmlBody = "";
+  const payload = detail.payload;
+  const decodePartBody = (data: string): string => decodeBase64Url(data).toString("utf-8");
+  const attachments: RawEmailAttachment[] = [];
+
+  if (payload?.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/plain" && part.body?.data) {
+        body = decodePartBody(part.body.data);
+      }
+      if (part.mimeType === "text/html" && part.body?.data) {
+        htmlBody = decodePartBody(part.body.data);
+      }
+      if (part.parts) {
+        for (const sub of part.parts) {
+          if (sub.mimeType === "text/plain" && sub.body?.data && !body) {
+            body = decodePartBody(sub.body.data);
+          }
+          if (sub.mimeType === "text/html" && sub.body?.data && !htmlBody) {
+            htmlBody = decodePartBody(sub.body.data);
+          }
+        }
+      }
+    }
+  } else if (payload?.body?.data) {
+    const decoded = decodePartBody(payload.body.data);
+    if (payload.mimeType === "text/html") {
+      htmlBody = decoded;
+    } else {
+      body = decoded;
+    }
+  }
+
+  if (payload) {
+    attachments.push(...(await extractAttachmentsFromPayload(gmail, messageId, payload)));
+  }
+
+  const labelIds = detail.labelIds || [];
+  const dateStr = getHeader("Date");
+
+  return {
+    gmailId: messageId,
+    threadId: detail.threadId || messageId,
+    from: getHeader("From"),
+    to: getHeader("To"),
+    cc: getHeader("Cc"),
+    subject: getHeader("Subject"),
+    snippet: detail.snippet || "",
+    body,
+    htmlBody,
+    labels: labelIds,
+    isRead: !labelIds.includes("UNREAD"),
+    isStarred: labelIds.includes("STARRED"),
+    receivedAt: dateStr ? new Date(dateStr) : new Date(),
+    attachments,
+  };
+}
+
 /**
  * Fetch emails from Gmail API and return raw data.
  * Handles pagination and full body extraction.
@@ -148,70 +216,7 @@ async function fetchGmailEmails(
         format: "full",
       });
 
-      const headers = detail.data.payload?.headers || [];
-      const getHeader = (name: string) =>
-        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
-
-      // Extract body (Gmail API returns base64url-encoded UTF-8 by default)
-      let body = "";
-      let htmlBody = "";
-      const payload = detail.data.payload;
-
-      const decodePartBody = (data: string): string => decodeBase64Url(data).toString("utf-8");
-      const attachments: RawEmailAttachment[] = [];
-
-      if (payload?.parts) {
-        for (const part of payload.parts) {
-          if (part.mimeType === "text/plain" && part.body?.data) {
-            body = decodePartBody(part.body.data);
-          }
-          if (part.mimeType === "text/html" && part.body?.data) {
-            htmlBody = decodePartBody(part.body.data);
-          }
-          // Handle nested multipart
-          if (part.parts) {
-            for (const sub of part.parts) {
-              if (sub.mimeType === "text/plain" && sub.body?.data && !body) {
-                body = decodePartBody(sub.body.data);
-              }
-              if (sub.mimeType === "text/html" && sub.body?.data && !htmlBody) {
-                htmlBody = decodePartBody(sub.body.data);
-              }
-            }
-          }
-        }
-      } else if (payload?.body?.data) {
-        const decoded = decodePartBody(payload.body.data);
-        if (payload.mimeType === "text/html") {
-          htmlBody = decoded;
-        } else {
-          body = decoded;
-        }
-      }
-
-      if (payload) {
-        attachments.push(...(await extractAttachmentsFromPayload(gmail, msg.id, payload)));
-      }
-
-      const labelIds = detail.data.labelIds || [];
-      const dateStr = getHeader("Date");
-
-      emails.push({
-        gmailId: msg.id,
-        threadId: detail.data.threadId || msg.id,
-        from: getHeader("From"),
-        to: getHeader("To"),
-        cc: getHeader("Cc"),
-        subject: getHeader("Subject"),
-        snippet: detail.data.snippet || "",
-        body,
-        htmlBody,
-        labels: labelIds,
-        isRead: !labelIds.includes("UNREAD"),
-        isStarred: labelIds.includes("STARRED"),
-        receivedAt: dateStr ? new Date(dateStr) : new Date(),
-        attachments,
-      });
+      emails.push(await parseGmailMessageDetail(gmail, msg.id, detail.data));
     }
 
     return emails;
@@ -222,6 +227,135 @@ async function fetchGmailEmails(
     }
     throw err;
   }
+}
+
+async function fetchGmailEmailById(userId: string, gmailId: string): Promise<GmailRawEmail | null> {
+  const auth = await getAuthedClient(userId);
+  if (!auth) return null;
+
+  const gmail = google.gmail({ version: "v1", auth });
+
+  try {
+    const detail = await gmail.users.messages.get({
+      userId: "me",
+      id: gmailId,
+      format: "full",
+    });
+    return parseGmailMessageDetail(gmail, gmailId, detail.data);
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return null;
+    }
+    throw err;
+  }
+}
+
+async function persistGmailEmail(
+  userId: string,
+  email: GmailRawEmail,
+): Promise<{ emailId: string; isNew: boolean }> {
+  const existing = await prisma.emailMessage.findUnique({
+    where: { userId_gmailId: { userId, gmailId: email.gmailId } },
+  });
+
+  if (existing) {
+    await prisma.emailMessage.update({
+      where: { id: existing.id },
+      data: {
+        isRead: email.isRead,
+        isStarred: email.isStarred,
+        labels: email.labels,
+      },
+    });
+    if (email.attachments.length > 0) {
+      await upsertEmailAttachments({
+        userId,
+        emailId: existing.id,
+        attachments: email.attachments,
+      });
+    }
+    return { emailId: existing.id, isNew: false };
+  }
+
+  const priority = classifyPriority(email.from, email.subject, email.labels);
+  const replyNeeded = classifyNeedsReplyFromSignals({
+    from: email.from,
+    subject: email.subject,
+    labels: email.labels,
+    priority,
+  });
+
+  const createdEmail = await prisma.emailMessage.create({
+    data: {
+      userId,
+      gmailId: email.gmailId,
+      threadId: email.threadId,
+      from: email.from,
+      to: email.to,
+      cc: email.cc || null,
+      subject: email.subject,
+      snippet: email.snippet,
+      body: email.body || null,
+      htmlBody: email.htmlBody || null,
+      labels: email.labels,
+      isRead: email.isRead,
+      isStarred: email.isStarred,
+      priority,
+      needsReply: replyNeeded.needsReply,
+      needsReplyReason: replyNeeded.reason,
+      needsReplyConfidence: replyNeeded.confidence,
+      receivedAt: email.receivedAt,
+    },
+  });
+  if (email.attachments.length > 0) {
+    await upsertEmailAttachments({
+      userId,
+      emailId: createdEmail.id,
+      attachments: email.attachments,
+    });
+    analyzePendingEmailAttachments(userId, email.attachments.length).catch((err) => {
+      captureError(err, {
+        tags: { scope: "email_attachment.analysis" },
+        extra: { userId, emailId: createdEmail.id, gmailId: email.gmailId },
+      });
+    });
+  }
+  const commitmentText = [email.subject, email.body || email.snippet].filter(Boolean).join("\n\n");
+  if (commitmentText.trim()) {
+    extractAndUpsertCommitmentsFromText({
+      userId,
+      sourceType: "EMAIL",
+      sourceId: createdEmail.id,
+      threadId: email.threadId,
+      text: commitmentText,
+      contextTitle: email.subject,
+      referenceDate: email.receivedAt,
+    }).catch((err) => {
+      captureError(err, {
+        tags: { scope: "commitment.email_ingestion" },
+        extra: { userId, emailId: createdEmail.id, gmailId: email.gmailId },
+      });
+    });
+  }
+
+  return { emailId: createdEmail.id, isNew: true };
+}
+
+export async function syncEmailByGmailId(
+  userId: string,
+  gmailId: string,
+): Promise<{ synced: number; newCount: number; emailId: string; source: "gmail" }> {
+  const rawEmail = await fetchGmailEmailById(userId, gmailId);
+  if (!rawEmail) throw new Error("Gmail not connected");
+
+  const persisted = await persistGmailEmail(userId, rawEmail);
+  return {
+    synced: 1,
+    newCount: persisted.isNew ? 1 : 0,
+    emailId: persisted.emailId,
+    source: "gmail",
+  };
 }
 
 /**
@@ -239,93 +373,8 @@ export async function syncEmails(
   let newCount = 0;
 
   for (const email of rawEmails) {
-    const existing = await prisma.emailMessage.findUnique({
-      where: { userId_gmailId: { userId, gmailId: email.gmailId } },
-    });
-
-    if (existing) {
-      // Update read/star/labels status
-      await prisma.emailMessage.update({
-        where: { id: existing.id },
-        data: {
-          isRead: email.isRead,
-          isStarred: email.isStarred,
-          labels: email.labels,
-        },
-      });
-      if (email.attachments.length > 0) {
-        await upsertEmailAttachments({
-          userId,
-          emailId: existing.id,
-          attachments: email.attachments,
-        });
-      }
-    } else {
-      // Classify priority using keyword heuristics first (fast)
-      const priority = classifyPriority(email.from, email.subject, email.labels);
-      const replyNeeded = classifyNeedsReplyFromSignals({
-        from: email.from,
-        subject: email.subject,
-        labels: email.labels,
-        priority,
-      });
-
-      const createdEmail = await prisma.emailMessage.create({
-        data: {
-          userId,
-          gmailId: email.gmailId,
-          threadId: email.threadId,
-          from: email.from,
-          to: email.to,
-          cc: email.cc || null,
-          subject: email.subject,
-          snippet: email.snippet,
-          body: email.body || null,
-          htmlBody: email.htmlBody || null,
-          labels: email.labels,
-          isRead: email.isRead,
-          isStarred: email.isStarred,
-          priority,
-          needsReply: replyNeeded.needsReply,
-          needsReplyReason: replyNeeded.reason,
-          needsReplyConfidence: replyNeeded.confidence,
-          receivedAt: email.receivedAt,
-        },
-      });
-      if (email.attachments.length > 0) {
-        await upsertEmailAttachments({
-          userId,
-          emailId: createdEmail.id,
-          attachments: email.attachments,
-        });
-        analyzePendingEmailAttachments(userId, email.attachments.length).catch((err) => {
-          captureError(err, {
-            tags: { scope: "email_attachment.analysis" },
-            extra: { userId, emailId: createdEmail.id, gmailId: email.gmailId },
-          });
-        });
-      }
-      const commitmentText = [email.subject, email.body || email.snippet]
-        .filter(Boolean)
-        .join("\n\n");
-      if (commitmentText.trim()) {
-        extractAndUpsertCommitmentsFromText({
-          userId,
-          sourceType: "EMAIL",
-          sourceId: createdEmail.id,
-          threadId: email.threadId,
-          text: commitmentText,
-          contextTitle: email.subject,
-          referenceDate: email.receivedAt,
-        }).catch((err) => {
-          captureError(err, {
-            tags: { scope: "commitment.email_ingestion" },
-            extra: { userId, emailId: createdEmail.id, gmailId: email.gmailId },
-          });
-        });
-      }
-      newCount++;
-    }
+    const persisted = await persistGmailEmail(userId, email);
+    if (persisted.isNew) newCount++;
   }
 
   return { synced: rawEmails.length, newCount, source: "gmail" };

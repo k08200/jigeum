@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
+import { useToast } from "../../components/toast";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
@@ -90,6 +92,31 @@ interface BulkActionResponse {
   failed?: Array<{ id: string; error: string }>;
 }
 
+type UndoableEmailAction = "archive" | "delete";
+
+interface UndoNotice {
+  action: UndoableEmailAction;
+  gmailId: string;
+  subject: string | null;
+}
+
+interface UndoActionResponse {
+  success: boolean;
+  gmailId: string;
+  emailId: string;
+}
+
+function parseUndoNotice(searchParams: ReturnType<typeof useSearchParams>): UndoNotice | null {
+  const action = searchParams?.get("undoAction");
+  const gmailId = searchParams?.get("undoGmailId")?.trim();
+  if ((action !== "archive" && action !== "delete") || !gmailId) return null;
+  return {
+    action,
+    gmailId,
+    subject: searchParams?.get("undoSubject") || null,
+  };
+}
+
 const FILTERS: { key: Filter; label: string; query: string }[] = [
   { key: "all", label: "All signals", query: "" },
   { key: "reply-needed", label: "Needs reply", query: "filter=reply-needed" },
@@ -166,6 +193,10 @@ export default function EmailPage() {
 }
 
 function EmailView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const undoNotice = parseUndoNotice(searchParams);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -178,6 +209,7 @@ function EmailView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
 
   const load = useCallback(async (f: Filter, keyword = "") => {
     setLoading(true);
@@ -299,6 +331,32 @@ function EmailView() {
     }
   };
 
+  const dismissUndoNotice = () => {
+    router.replace("/email");
+  };
+
+  const undoLastAction = async () => {
+    if (!undoNotice || undoBusy) return;
+    setUndoBusy(true);
+    setError(null);
+    try {
+      const data = await apiFetch<UndoActionResponse>(
+        `/api/email/${encodeURIComponent(undoNotice.gmailId)}/${undoNotice.action}/undo`,
+        {
+          method: "POST",
+          body: JSON.stringify({ gmailId: undoNotice.gmailId }),
+        },
+      );
+      toast("Restored to inbox.", "success");
+      router.replace(`/email/${data.emailId}?markRead=false`);
+    } catch (err) {
+      captureClientError(err, { scope: "email.list.undo", action: undoNotice.action });
+      setError("Could not restore that email. Check Gmail connection and try again.");
+    } finally {
+      setUndoBusy(false);
+    }
+  };
+
   const unreadCount = emails.filter((email) => !email.isRead).length;
   const urgentCount = emails.filter((email) => email.priority === "URGENT").length;
   const replyCount = emails.filter((email) => email.needsReply).length;
@@ -345,6 +403,15 @@ function EmailView() {
           <SignalStat label="Files" value={attachmentCount} />
         </div>
       </header>
+
+      {undoNotice && (
+        <UndoActionBanner
+          notice={undoNotice}
+          busy={undoBusy}
+          onDismiss={dismissUndoNotice}
+          onUndo={undoLastAction}
+        />
+      )}
 
       <form onSubmit={submitSearch} className="mb-3 flex gap-2">
         <input
@@ -503,6 +570,48 @@ function updateEmailsAfterBulk(
     return emails.map((email) => (selected.has(email.id) ? { ...email, priority } : email));
   }
   return emails;
+}
+
+function UndoActionBanner({
+  notice,
+  busy,
+  onDismiss,
+  onUndo,
+}: {
+  notice: UndoNotice;
+  busy: boolean;
+  onDismiss: () => void;
+  onUndo: () => void;
+}) {
+  const actionLabel = notice.action === "archive" ? "archived" : "moved to trash";
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#FF8A70]/30 bg-[#2A1510] px-4 py-3 text-sm text-stone-200 shadow-lg shadow-black/10 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="font-medium">Email {actionLabel}.</p>
+        {notice.subject && (
+          <p className="mt-0.5 truncate text-xs text-stone-400">{notice.subject}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={busy}
+          className="min-h-10 rounded-md bg-[#FF8A70] px-3 text-xs font-semibold text-stone-950 transition hover:bg-[#FFB09C] disabled:opacity-50"
+        >
+          {busy ? "Restoring..." : "Undo"}
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          disabled={busy}
+          className="min-h-10 rounded-md border border-white/10 px-3 text-xs text-stone-300 transition hover:bg-white/5 disabled:opacity-50"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function BulkActionBar({

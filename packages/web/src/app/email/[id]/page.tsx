@@ -108,6 +108,20 @@ interface ReplyDraft {
   candidateProfile: AttachmentCandidateProfile | null;
 }
 
+type UndoableEmailAction = "archive" | "delete";
+
+interface UndoNotice {
+  action: UndoableEmailAction;
+  gmailId: string;
+  subject: string | null;
+}
+
+interface UndoActionResponse {
+  success: boolean;
+  gmailId: string;
+  emailId: string;
+}
+
 type EmailQueueKey =
   | "all"
   | "reply-needed"
@@ -137,6 +151,28 @@ const EMAIL_QUEUE_KEYS = new Set<EmailQueueKey>([
 
 function normalizeEmailQueue(value: string | null | undefined): EmailQueueKey {
   return value && EMAIL_QUEUE_KEYS.has(value as EmailQueueKey) ? (value as EmailQueueKey) : "all";
+}
+
+function parseUndoNotice(searchParams: ReturnType<typeof useSearchParams>): UndoNotice | null {
+  const action = searchParams?.get("undoAction");
+  const gmailId = searchParams?.get("undoGmailId")?.trim();
+  if ((action !== "archive" && action !== "delete") || !gmailId) return null;
+  return {
+    action,
+    gmailId,
+    subject: searchParams?.get("undoSubject") || null,
+  };
+}
+
+function appendUndoParams(
+  params: URLSearchParams,
+  action: UndoableEmailAction,
+  email: EmailDetail | null,
+) {
+  if (!email?.gmailId) return;
+  params.set("undoAction", action);
+  params.set("undoGmailId", email.gmailId);
+  if (email.subject) params.set("undoSubject", email.subject);
 }
 
 interface NextEmailSummary {
@@ -231,6 +267,7 @@ function EmailDetailView() {
   const id = params?.id;
   const shouldMarkRead = searchParams?.get("markRead") === "true";
   const queue = normalizeEmailQueue(searchParams?.get("queue"));
+  const undoNotice = parseUndoNotice(searchParams);
   const [email, setEmail] = useState<EmailDetail | null>(null);
   const [nextEmail, setNextEmail] = useState<NextEmailSummary | null>(null);
   const [thread, setThread] = useState<ThreadDetail | null>(null);
@@ -540,14 +577,53 @@ function EmailDetailView() {
     }
   };
 
-  const goToNextOrList = (nextMessage: string, doneMessage = "Queue complete.") => {
+  const goToNextOrList = (
+    nextMessage: string,
+    doneMessage = "Queue complete.",
+    undoAction?: UndoableEmailAction,
+  ) => {
     if (nextEmail) {
       toast(nextMessage, "success");
       const params = new URLSearchParams({ markRead: "false", queue });
+      if (undoAction) appendUndoParams(params, undoAction, email);
       router.push(`/email/${nextEmail.id}?${params.toString()}`);
     } else {
       toast(doneMessage, "success");
-      router.push(`/email?done=${encodeURIComponent(queue)}`);
+      const params = new URLSearchParams({ done: queue });
+      if (undoAction) appendUndoParams(params, undoAction, email);
+      router.push(`/email?${params.toString()}`);
+    }
+  };
+
+  const dismissUndoNotice = () => {
+    if (!id) return;
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    params.delete("undoAction");
+    params.delete("undoGmailId");
+    params.delete("undoSubject");
+    const query = params.toString();
+    router.replace(`/email/${id}${query ? `?${query}` : ""}`);
+  };
+
+  const undoLastAction = async () => {
+    if (!undoNotice || actionBusy) return;
+    setActionBusy("undo");
+    setError(null);
+    try {
+      const data = await apiFetch<UndoActionResponse>(
+        `/api/email/${encodeURIComponent(undoNotice.gmailId)}/${undoNotice.action}/undo`,
+        {
+          method: "POST",
+          body: JSON.stringify({ gmailId: undoNotice.gmailId }),
+        },
+      );
+      toast("Restored to inbox.", "success");
+      const params = new URLSearchParams({ markRead: "false", queue });
+      router.replace(`/email/${data.emailId}?${params.toString()}`);
+    } catch (err) {
+      captureClientError(err, { scope: "email.detail.undo", action: undoNotice.action });
+      setError("Could not restore that email. Check Gmail connection and try again.");
+      setActionBusy(null);
     }
   };
 
@@ -557,7 +633,7 @@ function EmailDetailView() {
     setError(null);
     try {
       await apiFetch(`/api/email/${id}/archive`, { method: "POST" });
-      goToNextOrList("Archived. Moving to the next email.", "Archived. Queue complete.");
+      goToNextOrList("Archived. Moving to the next email.", "Archived. Queue complete.", "archive");
     } catch (err) {
       captureClientError(err, { scope: "email.detail.archive", id });
       setError("Could not archive this email.");
@@ -578,7 +654,7 @@ function EmailDetailView() {
     setError(null);
     try {
       await apiFetch(`/api/email/${id}`, { method: "DELETE" });
-      goToNextOrList("Deleted. Moving to the next email.", "Deleted. Queue complete.");
+      goToNextOrList("Deleted. Moving to the next email.", "Deleted. Queue complete.", "delete");
     } catch (err) {
       captureClientError(err, { scope: "email.detail.delete", id });
       setError("Could not delete this email.");
@@ -608,6 +684,15 @@ function EmailDetailView() {
         </svg>
         Mail list
       </Link>
+
+      {undoNotice && (
+        <UndoActionBanner
+          notice={undoNotice}
+          busy={actionBusy === "undo"}
+          onDismiss={dismissUndoNotice}
+          onUndo={undoLastAction}
+        />
+      )}
 
       {loading && <p className="text-sm text-stone-500">Loading...</p>}
 
@@ -735,6 +820,48 @@ function EmailDetailView() {
           </div>
         </article>
       )}
+    </div>
+  );
+}
+
+function UndoActionBanner({
+  notice,
+  busy,
+  onDismiss,
+  onUndo,
+}: {
+  notice: UndoNotice;
+  busy: boolean;
+  onDismiss: () => void;
+  onUndo: () => void;
+}) {
+  const actionLabel = notice.action === "archive" ? "archived" : "moved to trash";
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#FF8A70]/30 bg-[#2A1510] px-4 py-3 text-sm text-stone-200 shadow-lg shadow-black/10 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="font-medium">Email {actionLabel}.</p>
+        {notice.subject && (
+          <p className="mt-0.5 truncate text-xs text-stone-400">{notice.subject}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={busy}
+          className="min-h-10 rounded-md bg-[#FF8A70] px-3 text-xs font-semibold text-stone-950 transition hover:bg-[#FFB09C] disabled:opacity-50"
+        >
+          {busy ? "Restoring..." : "Undo"}
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          disabled={busy}
+          className="min-h-10 rounded-md border border-white/10 px-3 text-xs text-stone-300 transition hover:bg-white/5 disabled:opacity-50"
+        >
+          Dismiss
+        </button>
+      </div>
     </div>
   );
 }

@@ -44,6 +44,7 @@ import {
   getEmailThreads,
   reconcileEmails,
   summarizeUnsummarizedEmails,
+  syncEmailByGmailId,
   syncEmails,
 } from "../email-sync.js";
 import { recordFeedback as recordLedgerFeedback } from "../feedback.js";
@@ -64,6 +65,8 @@ import {
   toggleReadGmail,
   toggleStarGmail,
   trashEmail,
+  unarchiveEmail,
+  untrashEmail,
 } from "../gmail.js";
 import { getUserLlmCredentials } from "../llm-credentials.js";
 import { senderName } from "../notification-format.js";
@@ -344,6 +347,10 @@ interface BulkEmailBody {
   priority?: unknown;
 }
 
+interface EmailUndoBody {
+  gmailId?: unknown;
+}
+
 interface BulkEmailActionResult {
   statusCode?: number;
   payload: {
@@ -383,6 +390,14 @@ function normalizeEmailQueue(value: unknown): EmailQueueKey {
     return queue;
   }
   return "all";
+}
+
+function resolveUndoGmailId(pathId: string, body: unknown): string {
+  const parsedBody = (body || {}) as EmailUndoBody;
+  if (typeof parsedBody.gmailId === "string" && parsedBody.gmailId.trim()) {
+    return parsedBody.gmailId.trim();
+  }
+  return pathId;
 }
 
 function demoEmailMatchesQueue(email: (typeof DEMO_EMAILS)[number], queue: EmailQueueKey): boolean {
@@ -2435,6 +2450,25 @@ export async function emailRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
+  // POST /api/email/:id/delete/undo — restore from Gmail trash and resync locally.
+  app.post("/:id/delete/undo", { preHandler: requireAuth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const uid = getUserId(request);
+    const gmailId = resolveUndoGmailId(id, request.body);
+
+    try {
+      const result = await untrashEmail(uid, gmailId);
+      if (result && "error" in result) {
+        return reply.code(409).send({ error: result.error });
+      }
+      const synced = await syncEmailByGmailId(uid, gmailId);
+      return { success: true, gmailId, emailId: synced.emailId };
+    } catch (err) {
+      const gErr = err as { message?: string };
+      return reply.code(502).send({ error: `Gmail undo failed: ${gErr.message || "unknown"}` });
+    }
+  });
+
   // ─── Archive (remove from inbox in Gmail + remove from DB) ────────────
   // POST /api/email/:id/archive
   app.post("/:id/archive", { preHandler: requireAuth }, async (request, reply) => {
@@ -2459,6 +2493,25 @@ export async function emailRoutes(app: FastifyInstance) {
     }
 
     return { success: true };
+  });
+
+  // POST /api/email/:id/archive/undo — move back to inbox and resync locally.
+  app.post("/:id/archive/undo", { preHandler: requireAuth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const uid = getUserId(request);
+    const gmailId = resolveUndoGmailId(id, request.body);
+
+    try {
+      const result = await unarchiveEmail(uid, gmailId);
+      if (result && "error" in result) {
+        return reply.code(409).send({ error: result.error });
+      }
+      const synced = await syncEmailByGmailId(uid, gmailId);
+      return { success: true, gmailId, emailId: synced.emailId };
+    } catch (err) {
+      const gErr = err as { message?: string };
+      return reply.code(502).send({ error: `Gmail undo failed: ${gErr.message || "unknown"}` });
+    }
   });
 
   // ─── Label Feedback ───────────────────────────────────────────────────
