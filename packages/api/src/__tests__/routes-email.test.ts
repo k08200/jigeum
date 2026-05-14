@@ -15,9 +15,17 @@ vi.mock("../gmail.js", () => ({
   toggleStarGmail: vi.fn(async () => {}),
   trashEmail: vi.fn(async () => ({ success: true })),
   archiveEmail: vi.fn(async () => ({ success: true })),
+  unarchiveEmail: vi.fn(async () => ({ success: true })),
+  untrashEmail: vi.fn(async () => ({ success: true })),
 }));
 vi.mock("../email-sync.js", () => ({
   syncEmails: vi.fn(async () => ({ synced: 0, newCount: 0, source: "gmail" })),
+  syncEmailByGmailId: vi.fn(async () => ({
+    synced: 1,
+    newCount: 1,
+    emailId: "email-1",
+    source: "gmail",
+  })),
   reconcileEmails: vi.fn(async () => ({ removed: 0, updated: 0 })),
   summarizeUnsummarizedEmails: vi.fn(async () => 0),
   generateSmartReply: vi.fn(async () => "Reply"),
@@ -428,6 +436,47 @@ describe("email routes (demo mode)", () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.json().error).toBe("Email not found");
+    await app.close();
+  });
+
+  it("restores an archived Gmail email and resyncs it locally", async () => {
+    const gmail = await import("../gmail.js");
+    const emailSync = await import("../email-sync.js");
+    vi.mocked(gmail.unarchiveEmail).mockClear();
+    vi.mocked(emailSync.syncEmailByGmailId).mockClear();
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/email/email-1/archive/undo",
+      headers: auth(),
+      payload: { gmailId: "gmail-1" },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ success: true, gmailId: "gmail-1", emailId: "email-1" });
+    expect(gmail.unarchiveEmail).toHaveBeenCalledWith("user-1", "gmail-1");
+    expect(emailSync.syncEmailByGmailId).toHaveBeenCalledWith("user-1", "gmail-1");
+    await app.close();
+  });
+
+  it("restores a trashed Gmail email and resyncs it locally", async () => {
+    const gmail = await import("../gmail.js");
+    const emailSync = await import("../email-sync.js");
+    vi.mocked(gmail.untrashEmail).mockClear();
+    vi.mocked(emailSync.syncEmailByGmailId).mockClear();
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/email/gmail-2/delete/undo",
+      headers: auth(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ success: true, gmailId: "gmail-2", emailId: "email-1" });
+    expect(gmail.untrashEmail).toHaveBeenCalledWith("user-1", "gmail-2");
+    expect(emailSync.syncEmailByGmailId).toHaveBeenCalledWith("user-1", "gmail-2");
     await app.close();
   });
 

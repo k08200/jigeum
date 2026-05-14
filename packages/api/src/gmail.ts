@@ -623,6 +623,48 @@ export async function archiveEmail(userId: string, gmailMessageId: string) {
   return { success: true };
 }
 
+/** Restore a Gmail message to the inbox */
+export async function unarchiveEmail(userId: string, gmailMessageId: string) {
+  const auth = await getAuthedClient(userId);
+  if (!auth) return { error: "Gmail not connected." };
+
+  const gmail = google.gmail({ version: "v1", auth });
+  try {
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: gmailMessageId,
+      requestBody: { addLabelIds: ["INBOX"] },
+    });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
+
+  return { success: true };
+}
+
+/** Restore a Gmail message from trash */
+export async function untrashEmail(userId: string, gmailMessageId: string) {
+  const auth = await getAuthedClient(userId);
+  if (!auth) return { error: "Gmail not connected." };
+
+  const gmail = google.gmail({ version: "v1", auth });
+  try {
+    await gmail.users.messages.untrash({ userId: "me", id: gmailMessageId });
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      await markGoogleTokenForReconnect(userId);
+      return { error: "Gmail not connected. Please reconnect your Google account." };
+    }
+    throw err;
+  }
+
+  return { success: true };
+}
+
 /** Toggle star on Gmail (add/remove STARRED label) */
 export async function toggleStarGmail(userId: string, gmailMessageId: string, starred: boolean) {
   const auth = await getAuthedClient(userId);
