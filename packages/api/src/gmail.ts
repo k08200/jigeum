@@ -460,12 +460,12 @@ function buildPlainTextRawEmail(
 export async function sendEmail(userId: string, to: string, subject: string, body: string) {
   if (!looksLikeEmailAddress(to)) {
     return {
-      error: `올바른 이메일 주소가 아니에요: "${to}". 도메인(accounts.google.com 등)이 아닌 전체 주소(local@domain)가 필요해요.`,
+      error: `Invalid email address: "${to}". Use a full address like local@domain, not a domain such as accounts.google.com.`,
     };
   }
   if (isNoReplyAddress(to)) {
     return {
-      error: `이 주소(${to})는 답장을 받지 않는 시스템 발신자예요 (보안 알림·공지 등). 답장을 보내지 않습니다.`,
+      error: `This address (${to}) is a no-reply system sender, so Jigeum will not send a reply.`,
     };
   }
 
@@ -503,12 +503,12 @@ export async function createEmailDraft(
 ) {
   if (!looksLikeEmailAddress(to)) {
     return {
-      error: `올바른 이메일 주소가 아니에요: "${to}". 도메인(accounts.google.com 등)이 아닌 전체 주소(local@domain)가 필요해요.`,
+      error: `Invalid email address: "${to}". Use a full address like local@domain, not a domain such as accounts.google.com.`,
     };
   }
   if (isNoReplyAddress(to)) {
     return {
-      error: `이 주소(${to})는 답장을 받지 않는 시스템 발신자예요. Gmail 초안을 만들지 않습니다.`,
+      error: `This address (${to}) is a no-reply system sender. Jigeum will not create a Gmail draft.`,
     };
   }
 

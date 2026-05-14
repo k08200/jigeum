@@ -145,7 +145,7 @@ async function notifyCandidateEmails(userId: string): Promise<void> {
       where: {
         userId,
         type: "email",
-        title: "후보자 자료 도착",
+        OR: [{ title: "Candidate materials received" }, { title: "후보자 자료 도착" }],
         sourceEmailId: email.id,
       },
       select: { id: true },
@@ -157,7 +157,7 @@ async function notifyCandidateEmails(userId: string): Promise<void> {
       data: {
         userId,
         type: "email",
-        title: "후보자 자료 도착",
+        title: "Candidate materials received",
         message,
         link: `/email/${email.id}`,
         sourceEmailId: email.id,
@@ -167,7 +167,7 @@ async function notifyCandidateEmails(userId: string): Promise<void> {
     pushNotification(userId, {
       id: notification.id,
       type: "email",
-      title: "후보자 자료 도착",
+      title: "Candidate materials received",
       message,
       link: `/email/${email.id}`,
       createdAt: notification.createdAt.toISOString(),
@@ -175,7 +175,7 @@ async function notifyCandidateEmails(userId: string): Promise<void> {
     sendPushNotification(
       userId,
       {
-        title: "후보자 자료 도착",
+        title: "Candidate materials received",
         body: message,
         url: `/email/${email.id}`,
         notificationId: notification.id,
@@ -373,7 +373,10 @@ async function runAutomations() {
               where: {
                 userId: config.userId,
                 type: "calendar",
-                title: { contains: "Google 연결 끊김" },
+                OR: [
+                  { title: { contains: "Google disconnected" } },
+                  { title: { contains: "Google 연결 끊김" } },
+                ],
                 createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
               },
             });
@@ -382,17 +385,16 @@ async function runAutomations() {
                 data: {
                   userId: config.userId,
                   type: "calendar",
-                  title: "Google 연결 끊김",
-                  message:
-                    "Google 캘린더 동기화가 중단되었습니다. 설정에서 Google 계정을 다시 연결해주세요.",
+                  title: "Google disconnected",
+                  message: "Calendar sync stopped. Reconnect your Google account in settings.",
                   link: "/settings",
                 },
               });
               pushNotification(config.userId, {
                 id: crypto.randomUUID(),
                 type: "calendar",
-                title: "Google 연결 끊김",
-                message: "설정에서 Google 계정을 다시 연결해주세요.",
+                title: "Google disconnected",
+                message: "Reconnect your Google account in settings.",
                 link: "/settings",
               });
             }
@@ -514,7 +516,7 @@ async function runAutomations() {
                 where: {
                   userId: config.userId,
                   type: "email",
-                  title: "긴급 이메일",
+                  OR: [{ title: "Urgent email" }, { title: "긴급 이메일" }],
                   createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
                 },
                 select: { message: true },
@@ -542,7 +544,7 @@ async function runAutomations() {
                   data: {
                     userId: config.userId,
                     type: "email",
-                    title: "긴급 이메일",
+                    title: "Urgent email",
                     message: dbMessage,
                   },
                 });
@@ -550,7 +552,7 @@ async function runAutomations() {
                 pushNotification(config.userId, {
                   id: notification.id,
                   type: "email",
-                  title: "긴급 이메일",
+                  title: "Urgent email",
                   message: userBody,
                   createdAt: notification.createdAt.toISOString(),
                 });
@@ -558,7 +560,7 @@ async function runAutomations() {
                 sendPushNotification(
                   config.userId,
                   {
-                    title: "긴급 메일",
+                    title: "Urgent mail",
                     body: userBody,
                     url: "/briefing",
                   },

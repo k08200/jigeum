@@ -27,11 +27,16 @@ const TYPE_LABELS: Record<string, string> = {
   insight: "Insight",
 };
 
-const AGENT_PREFIX = "[Eve]";
+const AGENT_PREFIX = "[Jigeum]";
+const EVE_AGENT_PREFIX = "[Eve]";
 const LEGACY_AGENT_PREFIX = "[EV" + "E]";
 
 export function isAgentNotification(title: string): boolean {
-  return title.startsWith(AGENT_PREFIX) || title.startsWith(LEGACY_AGENT_PREFIX);
+  return (
+    title.startsWith(AGENT_PREFIX) ||
+    title.startsWith(EVE_AGENT_PREFIX) ||
+    title.startsWith(LEGACY_AGENT_PREFIX)
+  );
 }
 
 export function getTypeLabel(type: string): string {

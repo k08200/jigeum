@@ -24,13 +24,13 @@ interface ToolArgs {
 
 /** Strip "Display Name <a@b.com>" → "Display Name", or just trim email. */
 export function senderName(raw: string | null | undefined): string {
-  if (!raw) return "발신자 불명";
+  if (!raw) return "Unknown sender";
   const match = raw.match(/^([^<]+?)\s*</);
   if (match?.[1]) return match[1].trim().slice(0, 30);
   return raw.replace(/[<>]/g, "").trim().slice(0, 30);
 }
 
-/** Map autonomous-agent tool calls to a human Korean summary. */
+/** Map autonomous-agent tool calls to a clear user-facing summary. */
 export function humanizeAutoExec(
   fnName: string,
   args: ToolArgs,
@@ -38,13 +38,13 @@ export function humanizeAutoExec(
   const summary = TOOL_SUMMARIES[fnName];
   if (summary) {
     const built = summary(args);
-    return { autoTitle: `[Eve] ${built.title}`, autoMessage: built.body };
+    return { autoTitle: `[Jigeum] ${built.title}`, autoMessage: built.body };
   }
   // Unknown tool — at least drop the JSON dump.
   const friendly = fnName.replace(/_/g, " ");
   return {
-    autoTitle: "[Eve] 작업 완료",
-    autoMessage: `${friendly} 처리했습니다.`,
+    autoTitle: "[Jigeum] Action complete",
+    autoMessage: `${friendly} finished.`,
   };
 }
 
@@ -52,46 +52,46 @@ type Summary = (args: ToolArgs) => { title: string; body: string };
 
 const TOOL_SUMMARIES: Record<string, Summary> = {
   send_email: (a) => ({
-    title: "메일 발송 완료",
-    body: `${senderName(a.to || a.recipient)}에게 "${truncate(a.subject, 40)}" 보냈어요.`,
+    title: "Email sent",
+    body: `Sent "${truncate(a.subject, 40)}" to ${senderName(a.to || a.recipient)}.`,
   }),
   draft_email: (a) => ({
-    title: "답장 초안 준비",
-    body: `${senderName(a.to || a.recipient)}에게 보낼 초안을 준비했어요. 검토해주세요.`,
+    title: "Draft ready",
+    body: `Prepared a draft for ${senderName(a.to || a.recipient)}. Review it before sending.`,
   }),
   classify_emails: () => ({
-    title: "메일 분류 완료",
-    body: "받은 편지함의 우선순위를 정리했어요.",
+    title: "Mail prioritized",
+    body: "Inbox priority has been refreshed.",
   }),
   trash_email: (a) => ({
-    title: "메일 정리",
-    body: `광고/뉴스레터 ${a.subject ? `"${truncate(a.subject, 30)}" ` : ""}휴지통으로 옮겼어요.`,
+    title: "Mail cleaned up",
+    body: `Moved ${a.subject ? `"${truncate(a.subject, 30)}" ` : "a low-priority message "}to trash.`,
   }),
   create_task: (a) => ({
-    title: "할 일 추가",
-    body: `"${truncate(a.title, 50)}" 태스크에 담았어요.`,
+    title: "Task added",
+    body: `Added "${truncate(a.title, 50)}" to tasks.`,
   }),
-  update_task: () => ({ title: "할 일 업데이트", body: "태스크 상태를 갱신했어요." }),
+  update_task: () => ({ title: "Task updated", body: "Task status was updated." }),
   complete_task: (a) => ({
-    title: "할 일 완료",
-    body: a.title ? `"${truncate(a.title, 50)}" 끝냈어요.` : "태스크 하나 완료했어요.",
+    title: "Task complete",
+    body: a.title ? `Completed "${truncate(a.title, 50)}".` : "Completed a task.",
   }),
   create_reminder: (a) => ({
-    title: "리마인더 등록",
-    body: `"${truncate(a.title, 50)}" 잊지 않게 알려드릴게요.`,
+    title: "Reminder set",
+    body: `A reminder is set for "${truncate(a.title, 50)}".`,
   }),
   create_event: (a) => ({
-    title: "캘린더 등록",
-    body: `"${truncate(a.title, 50)}" 일정 추가했어요.`,
+    title: "Calendar event added",
+    body: `Added "${truncate(a.title, 50)}" to the calendar.`,
   }),
   create_note: (a) => ({
-    title: "노트 작성",
-    body: `"${truncate(a.title, 50)}" 노트 저장했어요.`,
+    title: "Note saved",
+    body: `Saved note "${truncate(a.title, 50)}".`,
   }),
-  update_note: () => ({ title: "노트 업데이트", body: "노트를 갱신했어요." }),
+  update_note: () => ({ title: "Note updated", body: "The note was updated." }),
   search_web: (a) => ({
-    title: "웹 검색",
-    body: a.query ? `"${truncate(a.query, 60)}" 검색했어요.` : "웹 검색을 마쳤어요.",
+    title: "Web search complete",
+    body: a.query ? `Searched "${truncate(a.query, 60)}".` : "Web search is complete.",
   }),
 };
 
@@ -102,9 +102,9 @@ export function formatUrgentEmailBody(
   if (emails.length === 0) return "";
   const top = emails[0];
   const who = senderName(top.from);
-  const what = truncate(top.summary || top.subject || "새 메일", 60);
+  const what = truncate(top.summary || top.subject || "New mail", 60);
   if (emails.length === 1) return `${who}: ${what}`;
-  return `긴급 메일 ${emails.length}건. 최신: ${who} — ${what}`;
+  return `${emails.length} urgent emails. Latest: ${who} - ${what}`;
 }
 
 function truncate(value: string | undefined | null, max: number): string {

@@ -549,6 +549,15 @@ export default function SettingsPage() {
   }, []);
 
   const updateAutoMarkRead = async (value: boolean) => {
+    if (value) {
+      const ok = await confirm({
+        title: "Auto-mark Gmail as read?",
+        message:
+          "After Jigeum sends an approved auto-mode reply, the original Gmail thread can be marked as read. Keep this off if unread mail is part of your fallback workflow.",
+        confirmLabel: "Turn on",
+      });
+      if (!ok) return;
+    }
     setAutoMarkReadEnabled(value);
     try {
       await apiFetch("/api/automations", {
@@ -602,6 +611,15 @@ export default function SettingsPage() {
   };
 
   const toggleAlwaysAllowedTool = async (tool: string) => {
+    const isEnabling = !alwaysAllowedTools.includes(tool);
+    if (isEnabling) {
+      const ok = await confirm({
+        title: "Allow this tool to run automatically?",
+        message: `${tool} can run without a separate approval when Auto mode decides it is within policy. Mail replies and destructive actions still require approval.`,
+        confirmLabel: "Allow tool",
+      });
+      if (!ok) return;
+    }
     const next = alwaysAllowedTools.includes(tool)
       ? alwaysAllowedTools.filter((t) => t !== tool)
       : [...alwaysAllowedTools, tool];
@@ -679,6 +697,15 @@ export default function SettingsPage() {
   };
 
   const toggleAgentMode = async (mode: AgentMode) => {
+    if (mode === "AUTO" && agentMode !== "AUTO") {
+      const ok = await confirm({
+        title: "Switch to Auto mode?",
+        message:
+          "Jigeum can run low-risk internal actions automatically. External replies, calendar changes, destructive work, and anything outside policy still require approval.",
+        confirmLabel: "Use Auto mode",
+      });
+      if (!ok) return;
+    }
     const previousMode = agentMode;
     setAgentMode(mode);
     try {
@@ -1046,13 +1073,15 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => updateDailyBriefing(!dailyBriefingEnabled)}
-                className={`relative h-6 w-12 shrink-0 rounded-full transition-colors ${
+                className={`relative inline-flex min-h-11 min-w-14 shrink-0 items-center rounded-full transition-colors ${
                   dailyBriefingEnabled ? "bg-amber-300" : "bg-stone-700"
                 }`}
-                aria-pressed={dailyBriefingEnabled}
+                role="switch"
+                aria-checked={dailyBriefingEnabled}
+                aria-label="Toggle morning briefing"
               >
                 <span
-                  className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                  className={`absolute left-1 h-6 w-6 rounded-full bg-white transition-transform ${
                     dailyBriefingEnabled ? "translate-x-6" : ""
                   }`}
                 />
@@ -1068,7 +1097,7 @@ export default function SettingsPage() {
                 value={briefingTime}
                 disabled={!dailyBriefingEnabled}
                 onChange={(e) => updateBriefingTime(e.target.value)}
-                className="bg-stone-900 border border-stone-700 rounded px-2 py-1 text-sm text-stone-200 disabled:opacity-50"
+                className="min-h-11 rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-200 disabled:opacity-50"
               />
               <span className="text-xs text-stone-500">Default is 06:00.</span>
             </div>
@@ -1094,7 +1123,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={disablePush}
-                className="text-sm text-stone-400 hover:text-red-400 bg-stone-900 hover:bg-stone-700 px-4 py-2 rounded-lg font-medium transition border border-stone-700"
+                className="min-h-11 rounded-lg border border-stone-700 bg-stone-900 px-4 py-2 text-sm font-medium text-stone-400 transition hover:bg-stone-700 hover:text-red-400"
               >
                 Turn off
               </button>
@@ -1102,7 +1131,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={enablePush}
-                className="bg-amber-300 hover:bg-amber-200 text-stone-950 px-4 py-2 rounded-lg text-sm font-medium transition"
+                className="min-h-11 rounded-lg bg-amber-300 px-4 py-2 text-sm font-medium text-stone-950 transition hover:bg-amber-200"
               >
                 Turn on
               </button>
@@ -1347,12 +1376,15 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => toggleAgent(!agentEnabled)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
+                className={`relative inline-flex min-h-11 min-w-14 items-center rounded-full transition-colors ${
                   agentEnabled ? "bg-amber-300" : "bg-stone-700"
                 }`}
+                role="switch"
+                aria-checked={agentEnabled}
+                aria-label="Toggle execution boundary"
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  className={`absolute left-1 h-6 w-6 rounded-full bg-white transition-transform ${
                     agentEnabled ? "translate-x-6" : ""
                   }`}
                 />
@@ -1370,10 +1402,11 @@ export default function SettingsPage() {
                         key={option.mode}
                         type="button"
                         onClick={() => toggleAgentMode(option.mode)}
-                        className={`min-w-0 px-3 py-2.5 rounded-lg border text-sm transition ${agentModeClasses(
+                        className={`min-h-16 min-w-0 rounded-lg border px-3 py-2.5 text-sm transition ${agentModeClasses(
                           option.mode,
                           agentMode === option.mode,
                         )}`}
+                        aria-pressed={agentMode === option.mode}
                       >
                         <div className="font-medium truncate">{agentModeLabel(option)}</div>
                         <div className="text-[10px] mt-0.5 opacity-70 truncate">
@@ -1409,11 +1442,12 @@ export default function SettingsPage() {
                             key={tool}
                             type="button"
                             onClick={() => toggleAlwaysAllowedTool(tool)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition ${
+                            className={`flex min-h-11 w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
                               enabled
                                 ? "bg-amber-600/15 border-amber-500/40 text-amber-200"
                                 : "bg-stone-900 border-stone-700 text-stone-400 hover:border-stone-600"
                             }`}
+                            aria-pressed={enabled}
                           >
                             <span className="font-mono text-xs">{tool}</span>
                             <span className="text-[10px] opacity-80">
@@ -1439,7 +1473,7 @@ export default function SettingsPage() {
                     id="agent-interval"
                     value={agentInterval}
                     onChange={(e) => updateAgentInterval(Number(e.target.value))}
-                    className="bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-amber-300 transition"
+                    className="min-h-11 rounded-lg border border-stone-700 bg-stone-900 px-4 py-2 text-sm transition focus:border-amber-300 focus:outline-none"
                   >
                     <option value={3}>Every 3 min</option>
                     <option value={5}>Every 5 min (default)</option>
@@ -1454,11 +1488,12 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => updateAutoMarkRead(!autoMarkReadEnabled)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition ${
+                    className={`flex min-h-11 w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
                       autoMarkReadEnabled
                         ? "bg-emerald-500/15 border-emerald-400/40 text-emerald-200"
                         : "bg-stone-900 border-stone-700 text-stone-400 hover:border-stone-600"
                     }`}
+                    aria-pressed={autoMarkReadEnabled}
                   >
                     <span>Auto-mark Gmail as read</span>
                     <span className="text-[10px] opacity-80">
@@ -1479,7 +1514,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={runAgentNow}
                     disabled={runningAgent}
-                    className="bg-amber-300 hover:bg-amber-200 disabled:opacity-50 text-stone-950 px-4 py-2 rounded-lg text-sm font-medium transition"
+                    className="min-h-11 rounded-lg bg-amber-300 px-4 py-2 text-sm font-medium text-stone-950 transition hover:bg-amber-200 disabled:opacity-50"
                   >
                     {runningAgent ? "Running..." : "Run agent now"}
                   </button>
@@ -1495,7 +1530,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={loadAgentLogs}
-                className="text-sm text-amber-300 hover:text-amber-200 transition"
+                className="inline-flex min-h-11 items-center text-sm text-amber-300 transition hover:text-amber-200"
               >
                 {agentLogsLoading ? "Loading..." : "View recent activity"}
               </button>

@@ -93,26 +93,35 @@ export default function PwaPrompts() {
     <>
       {/* Offline indicator */}
       {offline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-stone-950 text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]">
+        <div
+          className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-stone-950 text-center py-1.5 text-xs font-medium pt-[calc(env(safe-area-inset-top)+0.375rem)]"
+          role="status"
+          aria-live="polite"
+        >
           You are offline. Saved screens still work, but live signals may pause.
         </div>
       )}
 
       {/* Update available banner */}
       {updateAvailable && (
-        <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up">
+        <div
+          className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-stone-700 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up"
+          role="region"
+          aria-label="App update available"
+        >
           <div className="text-sm text-stone-200">A new Jigeum build is ready.</div>
           <button
             type="button"
             onClick={handleUpdate}
-            className="px-3 py-1 text-xs font-medium bg-amber-300 hover:bg-amber-200 text-stone-950 rounded-lg transition whitespace-nowrap"
+            className="min-h-10 px-3 py-1 text-xs font-medium bg-amber-300 hover:bg-amber-200 text-stone-950 rounded-lg transition whitespace-nowrap"
           >
             Refresh
           </button>
           <button
             type="button"
             onClick={() => setUpdateAvailable(false)}
-            className="text-stone-500 hover:text-stone-300 transition text-sm"
+            className="min-h-10 px-2 text-stone-500 hover:text-stone-300 transition text-sm"
+            aria-label="Dismiss update prompt"
           >
             Later
           </button>
@@ -121,7 +130,11 @@ export default function PwaPrompts() {
 
       {/* Install prompt */}
       {showInstall && (
-        <div className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/20 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up sm:max-w-md">
+        <div
+          className="fixed bottom-20 left-1/2 z-[100] flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/20 bg-stone-950 px-4 py-3 shadow-2xl shadow-black/60 animate-slide-up sm:max-w-md"
+          role="region"
+          aria-label="Install Jigeum"
+        >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#f5f0e8]">
             <Image
               src="/brand/mark.svg?v=flow-5"
@@ -138,14 +151,15 @@ export default function PwaPrompts() {
           <button
             type="button"
             onClick={handleInstall}
-            className="px-3 py-1.5 text-xs font-medium bg-white text-stone-950 hover:bg-stone-200 rounded-lg transition whitespace-nowrap"
+            className="min-h-10 px-3 py-1.5 text-xs font-medium bg-white text-stone-950 hover:bg-stone-200 rounded-lg transition whitespace-nowrap"
           >
             Install
           </button>
           <button
             type="button"
             onClick={dismissInstall}
-            className="text-stone-500 hover:text-stone-300 transition text-lg leading-none"
+            className="min-h-10 min-w-10 text-stone-500 hover:text-stone-300 transition text-lg leading-none"
+            aria-label="Dismiss install prompt"
           >
             x
           </button>

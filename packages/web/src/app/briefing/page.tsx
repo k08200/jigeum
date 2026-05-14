@@ -100,6 +100,7 @@ function BriefingView() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const loadFeedback = useCallback(async (id: string) => {
     try {
@@ -120,12 +121,23 @@ function BriefingView() {
   const loadToday = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setStatusError(null);
     try {
-      const [data, statusData] = await Promise.all([
+      const [briefingResult, statusResult] = await Promise.allSettled([
         apiFetch<BriefingResponse>("/api/briefing/today"),
         apiFetch<BriefingStatus>("/api/briefing/status"),
       ]);
-      setStatus(statusData);
+      if (statusResult.status === "fulfilled") {
+        setStatus(statusResult.value);
+      } else {
+        captureClientError(statusResult.reason, { scope: "briefing.status.load" });
+        setStatus(null);
+        setStatusError("Delivery status is unavailable. The briefing can still load.");
+      }
+      if (briefingResult.status === "rejected") {
+        throw briefingResult.reason;
+      }
+      const data = briefingResult.value;
       if (data.briefing) {
         setNoteId(data.briefing.id);
         setContent(data.briefing.content);
@@ -157,11 +169,15 @@ function BriefingView() {
         method: "POST",
         body: JSON.stringify({}),
       });
-      const statusData = await apiFetch<BriefingStatus>("/api/briefing/status");
+      const statusResult = await apiFetch<BriefingStatus>("/api/briefing/status").catch((err) => {
+        captureClientError(err, { scope: "briefing.status.after-generate" });
+        setStatusError("Generated, but delivery status is unavailable.");
+        return null;
+      });
       setContent(data.briefing);
       setNoteId(data.note?.id ?? null);
       setCreatedAt(data.note?.createdAt ?? new Date().toISOString());
-      setStatus(statusData);
+      setStatus(statusResult);
       setFeedback({});
     } catch (err) {
       captureClientError(err, { scope: "briefing.generate" });
@@ -228,7 +244,7 @@ function BriefingView() {
               type="button"
               onClick={regenerate}
               disabled={generating}
-              className="absolute right-3 top-3 rounded-md border border-stone-700 bg-stone-950/75 px-3 py-1.5 text-xs text-stone-300 backdrop-blur transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
+              className="absolute right-3 top-3 inline-flex min-h-11 items-center rounded-md border border-stone-700 bg-stone-950/75 px-3 py-1.5 text-xs text-stone-300 backdrop-blur transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:opacity-50"
             >
               {generating ? "Generating..." : content ? "Regenerate" : "Generate now"}
             </button>
@@ -242,6 +258,11 @@ function BriefingView() {
       </header>
 
       {status && <BriefingDeliveryStatus status={status} />}
+      {statusError && (
+        <div className="mb-4 rounded-lg border border-amber-900/50 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+          {statusError}
+        </div>
+      )}
 
       {loading && <p className="text-sm text-stone-500">Loading...</p>}
 

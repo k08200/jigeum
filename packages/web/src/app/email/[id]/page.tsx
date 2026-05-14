@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
+import { useConfirm } from "../../../components/confirm-dialog";
 import { useToast } from "../../../components/toast";
 import { API_BASE, apiFetch, authHeaders } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
@@ -226,6 +227,7 @@ function EmailDetailView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const id = params?.id;
   const shouldMarkRead = searchParams?.get("markRead") === "true";
   const queue = normalizeEmailQueue(searchParams?.get("queue"));
@@ -565,7 +567,12 @@ function EmailDetailView() {
 
   const deleteEmailNow = async () => {
     if (!id || actionBusy) return;
-    const confirmed = window.confirm("Move this email to trash?");
+    const confirmed = await confirm({
+      title: "Move email to trash?",
+      message: `This moves "${email?.subject || "Untitled"}" out of your queue. You can still recover it from Gmail trash.`,
+      confirmLabel: "Move to trash",
+      danger: true,
+    });
     if (!confirmed) return;
     setActionBusy("delete");
     setError(null);

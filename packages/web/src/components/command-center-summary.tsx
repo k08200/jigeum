@@ -260,6 +260,7 @@ function dueLabel(item: Extract<AttentionItem, { kind: "commitment" }>): string 
 
 function stripEvePrefix(title: string): string {
   const legacyPrefix = "[EV" + "E]";
+  if (title.startsWith("[Jigeum]")) return title.slice(8).trim();
   if (title.startsWith("[Eve]")) return title.slice(5).trim();
   if (title.startsWith(legacyPrefix)) return title.slice(5).trim();
   return displayText(title);

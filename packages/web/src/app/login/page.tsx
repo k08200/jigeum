@@ -82,14 +82,6 @@ function LoginForm() {
     setLoading(false);
   };
 
-  if (authLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#10100d]">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-300 border-t-transparent" />
-      </main>
-    );
-  }
-
   return (
     <AuthScreen
       eyebrow={mode === "login" ? "Welcome back" : "Create account"}

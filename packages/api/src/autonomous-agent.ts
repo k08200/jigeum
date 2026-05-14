@@ -90,7 +90,8 @@ const lastRunTime = new Map<string, number>();
 const NOTIFY_DEDUP_HOURS = 2; // Don't repeat same notification within 2 hours
 const PROPOSAL_DEDUP_HOURS = 24; // Don't re-propose the same underlying issue within a day
 const CONTEXT_SUPPRESSION_HOURS = 24; // Hide recently-proposed topics before the LLM sees context
-const AGENT_NOTIFICATION_PREFIX = "[Eve]";
+const AGENT_NOTIFICATION_PREFIX = "[Jigeum]";
+const EVE_AGENT_NOTIFICATION_PREFIX = "[Eve]";
 const LEGACY_AGENT_NOTIFICATION_PREFIX = "[EV" + "E]";
 const EXECUTABLE_TOOL_NAMES = new Set(
   ALL_TOOLS.map((tool) => (tool as { function?: { name?: string } }).function?.name).filter(
@@ -105,19 +106,21 @@ async function hasRecentNotification(userId: string, titleKey: string): Promise<
       userId,
       OR: [
         { title: { startsWith: AGENT_NOTIFICATION_PREFIX } },
+        { title: { startsWith: EVE_AGENT_NOTIFICATION_PREFIX } },
         { title: { startsWith: LEGACY_AGENT_NOTIFICATION_PREFIX } },
       ],
       createdAt: { gte: since },
     },
     orderBy: { createdAt: "desc" },
   });
-  // Check recent Eve notifications for similar title
+  // Check recent Jigeum notifications for similar title.
   if (!existing) return false;
   const recentNotifs = await prisma.notification.findMany({
     where: {
       userId,
       OR: [
         { title: { startsWith: AGENT_NOTIFICATION_PREFIX } },
+        { title: { startsWith: EVE_AGENT_NOTIFICATION_PREFIX } },
         { title: { startsWith: LEGACY_AGENT_NOTIFICATION_PREFIX } },
       ],
       createdAt: { gte: since },
@@ -787,7 +790,7 @@ async function gatherUserContext(userId: string): Promise<string> {
         return `- (${timeLabel}) "${m.content.slice(0, 120)}${m.content.length > 120 ? "..." : ""}"`;
       },
     );
-    sections.push(`## What User Recently Asked Eve (last 24h)\n${chatLines.join("\n")}`);
+    sections.push(`## What User Recently Asked Jigeum (last 24h)\n${chatLines.join("\n")}`);
   }
 
   // Previous agent decisions — continuity across cycles (prevent repeating, evolve reasoning)
@@ -1124,7 +1127,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
 ### Reply tone:
 - Korean 존댓말, professional but friendly
 - Concise: 2-4 sentences max
-- Sign off as the user (NOT as Eve)
+- Sign off as the user (NOT as Jigeum)
 - Mirror the language of the incoming email (Korean → Korean, English → English)
 
 ### CRITICAL rules:
@@ -1380,7 +1383,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
                 // Also create a notification so user sees it in notification bell.
                 // pendingActionId + conversationId are persisted so the drawer can render
                 // inline approve/reject buttons even after a page reload.
-                const notifTitle = `[Eve] ${args.message.slice(0, 50)}${args.message.length > 50 ? "..." : ""}`;
+                const notifTitle = `${AGENT_NOTIFICATION_PREFIX} ${args.message.slice(0, 50)}${args.message.length > 50 ? "..." : ""}`;
                 const notification = await (prisma.notification.create as Function)({
                   data: {
                     userId,
@@ -1408,7 +1411,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
                 sendPushNotification(
                   userId,
                   {
-                    title: "[Eve] 확인이 필요해요",
+                    title: `${AGENT_NOTIFICATION_PREFIX} Review needed`,
                     body: args.message.slice(0, 100),
                     url: proposalLink,
                   },
@@ -1501,7 +1504,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
               await logAgentAction(userId, "skip", `Dedup: "${args.title}" already sent`);
             } else {
               // Mark as agent-generated notification
-              const agentTitle = `[Eve] ${args.title}`;
+              const agentTitle = `${AGENT_NOTIFICATION_PREFIX} ${args.title}`;
 
               // /tasks was removed in week 1; /email and /calendar are back.
               // Everything else taps back into /briefing (the primary surface).
@@ -1673,7 +1676,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
               });
 
               // Notification with links to pending action for inline approve/reject
-              const notifTitle = `[Eve] ${riskLabel}: ${fnName}`;
+              const notifTitle = `${AGENT_NOTIFICATION_PREFIX} ${riskLabel}: ${fnName}`;
               const riskLink = `/chat/${agentConvo.id}`;
               const notification = await (prisma.notification.create as Function)({
                 data: {

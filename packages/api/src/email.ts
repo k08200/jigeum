@@ -131,13 +131,13 @@ export async function sendBetaInviteEmail(to: string, name?: string | null): Pro
             ${greeting}
           </p>
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-            You're approved for early access. Create your account with the email you signed up with, and Eve will start connecting your Gmail and Calendar into a decision queue — surfacing the context, risk, and next move before anything runs.
+            You're approved for early access. Create your account with the email you signed up with, and Jigeum will start connecting your Gmail and Calendar into a decision queue — surfacing the context, risk, and next move before anything runs.
           </p>
           <a href="${loginUrl}" style="display: inline-block; background: #d8a45d; color: #10100d; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0;">
             Create your account
           </a>
           <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-            Heads-up: the first few days Eve is still learning your decision patterns. Tell it "less" or "more" and it adjusts.
+            Heads-up: the first few days Jigeum is still learning your decision patterns. Tell it "less" or "more" and it adjusts.
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
           <p style="color: #9ca3af; font-size: 12px;">

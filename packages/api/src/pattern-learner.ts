@@ -17,7 +17,8 @@ import { planHasFeature } from "./stripe.js";
 
 const PATTERN_ANALYSIS_HOURS = 168; // 7 days of data for pattern detection
 const MIN_OCCURRENCES = 3; // Need at least 3 instances to detect a pattern
-const AGENT_NOTIFICATION_PREFIX = "[Eve]";
+const AGENT_NOTIFICATION_PREFIX = "[Jigeum]";
+const EVE_AGENT_NOTIFICATION_PREFIX = "[Eve]";
 const LEGACY_AGENT_NOTIFICATION_PREFIX = "[EV" + "E]";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -323,6 +324,7 @@ async function analyzeNotificationPatterns(userId: string): Promise<LearnedPatte
       userId,
       OR: [
         { title: { startsWith: AGENT_NOTIFICATION_PREFIX } },
+        { title: { startsWith: EVE_AGENT_NOTIFICATION_PREFIX } },
         { title: { startsWith: LEGACY_AGENT_NOTIFICATION_PREFIX } },
       ],
       createdAt: { gte: since },

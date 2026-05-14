@@ -175,12 +175,12 @@ async function checkUpcomingMeetings() {
             notifiedIds.add(key);
 
             const msg = meeting.meetingLink
-              ? `참가 링크: ${meeting.meetingLink} [${meeting.id}]`
-              : `${meeting.summary} 곧 시작합니다 [${meeting.id}]`;
+              ? `Join link: ${meeting.meetingLink} [${meeting.id}]`
+              : `${meeting.summary} starts soon [${meeting.id}]`;
 
             await addNotification(userId, {
               type: "meeting",
-              title: `${Math.ceil(minutesUntil)}분 후 회의: ${meeting.summary}`,
+              title: `Meeting in ${Math.ceil(minutesUntil)} min: ${meeting.summary}`,
               message: msg,
               link: meeting.meetingLink || "/briefing",
             });
@@ -189,7 +189,7 @@ async function checkUpcomingMeetings() {
             try {
               const { sendPushNotification } = await import("./push.js");
               sendPushNotification(userId, {
-                title: `${Math.ceil(minutesUntil)}분 후 회의`,
+                title: `Meeting in ${Math.ceil(minutesUntil)} min`,
                 body: meeting.summary,
                 url: meeting.meetingLink || "/briefing",
               });
