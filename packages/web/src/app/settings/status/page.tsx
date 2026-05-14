@@ -71,16 +71,21 @@ export default function SettingsStatusPage() {
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [diagnostics, setDiagnostics] = useState<ReminderDiagnostics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
   const [delivering, setDelivering] = useState(false);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [nextReadiness, nextDiagnostics] = await Promise.all([
-        apiFetch<ReadinessResponse>("/api/ops/readiness"),
-        apiFetch<ReminderDiagnostics>("/api/reminders/diagnostics"),
-      ]);
+    setReadinessError(null);
+    setDiagnosticsError(null);
+    const [readinessResult, diagnosticsResult] = await Promise.allSettled([
+      apiFetch<ReadinessResponse>("/api/ops/readiness"),
+      apiFetch<ReminderDiagnostics>("/api/reminders/diagnostics"),
+    ]);
+    if (readinessResult.status === "fulfilled") {
+      const nextReadiness = readinessResult.value;
       setReadiness({
         status: nextReadiness.status ?? "warning",
         generatedAt: nextReadiness.generatedAt ?? new Date().toISOString(),
@@ -92,6 +97,13 @@ export default function SettingsStatusPage() {
         },
         checks: Array.isArray(nextReadiness.checks) ? nextReadiness.checks : [],
       });
+    } else {
+      captureClientError(readinessResult.reason, { scope: "settings.status.readiness" });
+      setReadiness(null);
+      setReadinessError("Could not load readiness checks.");
+    }
+    if (diagnosticsResult.status === "fulfilled") {
+      const nextDiagnostics = diagnosticsResult.value;
       setDiagnostics({
         now: nextDiagnostics.now ?? new Date().toISOString(),
         subscriptions: nextDiagnostics.subscriptions ?? 0,
@@ -103,11 +115,12 @@ export default function SettingsStatusPage() {
           ? nextDiagnostics.pushDeliveries
           : [],
       });
-    } catch (err) {
-      captureClientError(err, { scope: "settings.status.load" });
-    } finally {
-      setLoading(false);
+    } else {
+      captureClientError(diagnosticsResult.reason, { scope: "settings.status.diagnostics" });
+      setDiagnostics(null);
+      setDiagnosticsError("Could not load reminder diagnostics.");
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -161,7 +174,7 @@ export default function SettingsStatusPage() {
               <button
                 type="button"
                 onClick={load}
-                className="absolute right-3 top-3 rounded-md border border-stone-700 bg-stone-950/75 px-3 py-2 text-sm text-stone-300 backdrop-blur transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100"
+                className="absolute right-3 top-3 inline-flex min-h-11 items-center rounded-md border border-stone-700 bg-stone-950/75 px-3 py-2 text-sm text-stone-300 backdrop-blur transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100"
               >
                 Refresh
               </button>
@@ -169,53 +182,62 @@ export default function SettingsStatusPage() {
           </div>
         </header>
 
-        {loading && !readiness ? (
+        {loading && !readiness && !diagnostics ? (
           <div className="py-20 text-center text-sm text-stone-500">Checking status...</div>
-        ) : readiness ? (
+        ) : readiness || diagnostics ? (
           <>
-            <section className="mb-6 grid gap-3 sm:grid-cols-3">
-              <SummaryTile
-                label="Overall"
-                value={STATUS_LABELS[readiness.status]}
-                status={readiness.status}
+            {readiness ? (
+              <section className="mb-6 grid gap-3 sm:grid-cols-3">
+                <SummaryTile
+                  label="Overall"
+                  value={STATUS_LABELS[readiness.status]}
+                  status={readiness.status}
+                />
+                <SummaryTile
+                  label="API commit"
+                  value={readiness.system.commit ? readiness.system.commit.slice(0, 8) : "Unknown"}
+                  status={readiness.system.commit ? "ok" : "warning"}
+                />
+                <SummaryTile
+                  label="Uptime"
+                  value={formatDuration(readiness.system.uptime)}
+                  status="ok"
+                />
+              </section>
+            ) : (
+              <InlineError
+                message={readinessError ?? "Readiness checks are unavailable."}
+                onRetry={load}
               />
-              <SummaryTile
-                label="API commit"
-                value={readiness.system.commit ? readiness.system.commit.slice(0, 8) : "Unknown"}
-                status={readiness.system.commit ? "ok" : "warning"}
-              />
-              <SummaryTile
-                label="Uptime"
-                value={formatDuration(readiness.system.uptime)}
-                status="ok"
-              />
-            </section>
+            )}
 
-            <section className="mb-8">
-              <h2 className="mb-3 text-sm font-semibold text-stone-300">Readiness checks</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {readiness.checks.map((check) => (
-                  <div
-                    key={check.key}
-                    className="relative overflow-hidden rounded-lg border border-stone-700/45 bg-stone-950/35 p-4 pl-5"
-                  >
-                    <div className="absolute bottom-0 left-0 top-0 w-1 bg-gradient-to-b from-emerald-300 via-amber-300 to-stone-700" />
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-medium text-stone-100">
-                        {readinessCheckLabel(check)}
-                      </h3>
-                      <StatusPill status={check.status} />
+            {readiness && (
+              <section className="mb-8">
+                <h2 className="mb-3 text-sm font-semibold text-stone-300">Readiness checks</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {readiness.checks.map((check) => (
+                    <div
+                      key={check.key}
+                      className="relative overflow-hidden rounded-lg border border-stone-700/45 bg-stone-950/35 p-4 pl-5"
+                    >
+                      <div className="absolute bottom-0 left-0 top-0 w-1 bg-gradient-to-b from-emerald-300 via-amber-300 to-stone-700" />
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-medium text-stone-100">
+                          {readinessCheckLabel(check)}
+                        </h3>
+                        <StatusPill status={check.status} />
+                      </div>
+                      <p className="text-sm text-stone-400">{readinessCheckMessage(check)}</p>
+                      {check.detail ? (
+                        <pre className="mt-3 max-h-32 overflow-auto rounded-md bg-black/20 p-3 text-[11px] leading-relaxed text-stone-500">
+                          {JSON.stringify(check.detail, null, 2)}
+                        </pre>
+                      ) : null}
                     </div>
-                    <p className="text-sm text-stone-400">{readinessCheckMessage(check)}</p>
-                    {check.detail ? (
-                      <pre className="mt-3 max-h-32 overflow-auto rounded-md bg-black/20 p-3 text-[11px] leading-relaxed text-stone-500">
-                        {JSON.stringify(check.detail, null, 2)}
-                      </pre>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="mb-8">
               <div className="mb-3 flex items-center justify-between gap-4">
@@ -224,7 +246,7 @@ export default function SettingsStatusPage() {
                   type="button"
                   onClick={deliverDue}
                   disabled={delivering}
-                  className="rounded-lg border border-stone-700/60 px-3 py-1.5 text-sm text-stone-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-11 rounded-lg border border-stone-700/60 px-3 py-1.5 text-sm text-stone-300 transition hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {delivering ? "Checking..." : "Check due reminders"}
                 </button>
@@ -276,9 +298,10 @@ export default function SettingsStatusPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border border-stone-700/45 bg-stone-950/35 p-6 text-sm text-stone-500">
-                  Could not load reminder diagnostics.
-                </div>
+                <InlineError
+                  message={diagnosticsError ?? "Could not load reminder diagnostics."}
+                  onRetry={load}
+                />
               )}
             </section>
           </>
@@ -289,6 +312,21 @@ export default function SettingsStatusPage() {
         )}
       </main>
     </AuthGuard>
+  );
+}
+
+function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-200 sm:flex-row sm:items-center sm:justify-between">
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-300/30 px-4 text-sm text-red-100 transition hover:bg-red-300/10"
+      >
+        Retry
+      </button>
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 interface Command {
@@ -16,6 +16,9 @@ export default function CommandPalette() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const listboxId = useId();
   const router = useRouter();
 
   const commands: Command[] = [
@@ -95,7 +98,13 @@ export default function CommandPalette() {
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+      previousFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
+      return () => {
+        window.clearTimeout(focusTimer);
+        previousFocusRef.current?.focus();
+      };
     }
   }, [open]);
 
@@ -114,6 +123,18 @@ export default function CommandPalette() {
       e.preventDefault();
       filtered[selected].action();
       setOpen(false);
+    } else if (e.key === "Tab") {
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   };
 
@@ -127,18 +148,31 @@ export default function CommandPalette() {
         aria-label="Close command palette"
         onClick={() => setOpen(false)}
       />
-      <div className="relative w-full max-w-md rounded-xl border border-stone-700 bg-stone-900 shadow-2xl">
+      <div
+        ref={dialogRef}
+        className="relative w-full max-w-md rounded-xl border border-stone-700 bg-stone-900 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onKeyDown={handleKeyDown}
+      >
         <div className="p-3 border-b border-stone-800">
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder="Search decisions, pages, settings..."
             className="w-full bg-transparent text-sm focus:outline-none placeholder-stone-500"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls={listboxId}
+            aria-activedescendant={
+              filtered[selected] ? `command-${filtered[selected].id}` : undefined
+            }
+            aria-autocomplete="list"
           />
         </div>
-        <div className="max-h-64 overflow-y-auto py-1">
+        <div id={listboxId} className="max-h-64 overflow-y-auto py-1" role="listbox">
           {filtered.length === 0 ? (
             <p className="text-sm text-stone-500 px-4 py-3">No matching commands.</p>
           ) : (
@@ -146,6 +180,9 @@ export default function CommandPalette() {
               <button
                 type="button"
                 key={cmd.id}
+                id={`command-${cmd.id}`}
+                role="option"
+                aria-selected={i === selected}
                 onClick={() => {
                   cmd.action();
                   setOpen(false);
@@ -170,4 +207,18 @@ export default function CommandPalette() {
       </div>
     </div>
   );
+}
+
+function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      [
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "a[href]",
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(","),
+    ),
+  ).filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
 }

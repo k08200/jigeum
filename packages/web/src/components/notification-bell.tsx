@@ -48,11 +48,14 @@ const typeIcon: Record<string, string> = {
 
 function isAgentNotification(title: string): boolean {
   const legacyPrefix = "[EV" + "E]";
-  return title.startsWith("[Eve]") || title.startsWith(legacyPrefix);
+  return (
+    title.startsWith("[Jigeum]") || title.startsWith("[Eve]") || title.startsWith(legacyPrefix)
+  );
 }
 
 function notificationTitle(title: string): string {
   const legacyPrefix = "[EV" + "E]";
+  if (title.startsWith("[Jigeum]")) return title.slice(8).trim();
   if (title.startsWith("[Eve]")) return title.slice(5).trim();
   if (title.startsWith(legacyPrefix)) return title.slice(5).trim();
   return title;

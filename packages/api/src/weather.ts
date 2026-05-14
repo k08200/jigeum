@@ -67,7 +67,7 @@ export async function getWeather(
   { location: string; current: WeatherCurrent; forecast: WeatherForecast[] } | { error: string }
 > {
   const geo = await geocode(location);
-  if (!geo) return { error: `위치를 찾을 수 없습니다: ${location}` };
+  if (!geo) return { error: `Could not find location: ${location}` };
 
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}` +

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
+import { useConfirm } from "../../components/confirm-dialog";
 import { useToast } from "../../components/toast";
 import { apiFetch } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -107,6 +108,7 @@ type SectionError = { endpoint: string; message: string };
 function AdminDashboard() {
   const { user, token } = useAuth();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ops, setOps] = useState<OpsMetrics | null>(null);
@@ -187,7 +189,17 @@ function AdminDashboard() {
   };
 
   const deleteUser = async (id: string, email: string) => {
-    if (!confirm(`Delete ${email} and all account data?`)) return;
+    if (user?.email === email) {
+      toast("You cannot delete the account you are currently using.", "error");
+      return;
+    }
+    const confirmed = await confirm({
+      title: "Delete account data?",
+      message: `This permanently deletes ${email}, conversations, tasks, mail cache, and usage data from Jigeum.`,
+      confirmLabel: "Delete user",
+      danger: true,
+    });
+    if (!confirmed) return;
     try {
       await apiFetch(`/api/admin/users/${id}`, { method: "DELETE" });
       setUsers((prev) => prev.filter((u) => u.id !== id));

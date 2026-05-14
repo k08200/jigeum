@@ -11,8 +11,8 @@ describe("senderName", () => {
   });
 
   it("handles missing input", () => {
-    expect(senderName(null)).toBe("발신자 불명");
-    expect(senderName("")).toBe("발신자 불명");
+    expect(senderName(null)).toBe("Unknown sender");
+    expect(senderName("")).toBe("Unknown sender");
   });
 
   it("truncates very long display names", () => {
@@ -21,9 +21,9 @@ describe("senderName", () => {
 });
 
 describe("humanizeAutoExec", () => {
-  it("translates classify_emails into human Korean", () => {
+  it("translates classify_emails into clear English", () => {
     const out = humanizeAutoExec("classify_emails", {});
-    expect(out.autoTitle).toBe("[Eve] 메일 분류 완료");
+    expect(out.autoTitle).toBe("[Jigeum] Mail prioritized");
     expect(out.autoMessage).not.toContain("classify_emails");
     expect(out.autoMessage).not.toContain("{");
   });
@@ -33,7 +33,7 @@ describe("humanizeAutoExec", () => {
       to: "Sequoia Capital <ops@sequoia.com>",
       subject: "Re: term sheet review",
     });
-    expect(out.autoTitle).toBe("[Eve] 메일 발송 완료");
+    expect(out.autoTitle).toBe("[Jigeum] Email sent");
     expect(out.autoMessage).toContain("Sequoia Capital");
     expect(out.autoMessage).toContain("term sheet review");
     expect(out.autoMessage).not.toContain("send_email");
@@ -41,7 +41,7 @@ describe("humanizeAutoExec", () => {
 
   it("falls back gracefully on unknown tool", () => {
     const out = humanizeAutoExec("frobnicate_widgets", { foo: "bar" });
-    expect(out.autoTitle).toBe("[Eve] 작업 완료");
+    expect(out.autoTitle).toBe("[Jigeum] Action complete");
     expect(out.autoMessage).toContain("frobnicate widgets");
     expect(out.autoMessage).not.toContain("{");
   });
@@ -86,7 +86,7 @@ describe("formatUrgentEmailBody", () => {
       { from: "Bob <b@y.com>", subject: "Second", summary: null },
       { from: "Carol <c@z.com>", subject: "Third", summary: null },
     ]);
-    expect(out).toContain("긴급 메일 3건");
+    expect(out).toContain("3 urgent emails");
     expect(out).toContain("Alice");
     expect(out).toContain("First");
   });

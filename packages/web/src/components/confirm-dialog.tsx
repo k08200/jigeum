@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 interface ConfirmOptions {
   title: string;
@@ -24,6 +24,8 @@ export function useConfirm() {
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
     setOptions(opts);
@@ -38,12 +40,49 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setOptions(null);
   };
 
+  useEffect(() => {
+    if (!options) return;
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = window.setTimeout(() => {
+      getFocusableElements(dialogRef.current)[0]?.focus();
+    }, 0);
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleClose(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handler);
+      previousFocusRef.current?.focus();
+    };
+  }, [options]);
+
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
       {options && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] px-4">
           <div
+            ref={dialogRef}
             className="bg-stone-950 border border-stone-700 rounded-xl p-6 w-full max-w-sm animate-slide-up"
             role="dialog"
             aria-modal="true"
@@ -60,14 +99,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => handleClose(false)}
-                className="px-4 py-2 rounded-lg text-sm text-stone-400 hover:text-white transition"
+                className="min-h-11 px-4 py-2 rounded-lg text-sm text-stone-400 hover:text-white transition"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleClose(true)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                className={`min-h-11 px-4 py-2 rounded-lg text-sm font-medium transition ${
                   options.danger
                     ? "bg-red-600 hover:bg-red-500 text-white"
                     : "bg-amber-300 hover:bg-amber-200 text-stone-950"
@@ -81,4 +120,20 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       )}
     </ConfirmContext.Provider>
   );
+}
+
+function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      [
+        "a[href]",
+        "button:not([disabled])",
+        "textarea:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(","),
+    ),
+  ).filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
 }

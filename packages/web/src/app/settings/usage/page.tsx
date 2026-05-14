@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../../components/auth-guard";
 import { EveSignalField } from "../../../components/brand-visuals";
 import { apiFetch } from "../../../lib/api";
@@ -39,15 +39,42 @@ function UsagePageContent() {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [convUsages, setConvUsages] = useState<ConvUsage[]>([]);
   const [period, setPeriod] = useState("month");
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [threadsLoading, setThreadsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [threadsError, setThreadsError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadUsage = useCallback(() => {
+    setStatsLoading(true);
+    setStatsError(null);
     apiFetch<UsageStats>(`/api/usage?period=${period}`)
       .then(setStats)
-      .catch((err) => captureClientError(err, { scope: "usage.load-stats", period }));
+      .catch((err) => {
+        captureClientError(err, { scope: "usage.load-stats", period });
+        setStatsError("Could not load usage totals.");
+      })
+      .finally(() => setStatsLoading(false));
+  }, [period]);
+
+  const loadThreads = useCallback(() => {
+    setThreadsLoading(true);
+    setThreadsError(null);
     apiFetch<{ conversations: ConvUsage[] }>("/api/usage/conversations")
       .then((d) => setConvUsages(d.conversations))
-      .catch((err) => captureClientError(err, { scope: "usage.load-conversations" }));
-  }, [period]);
+      .catch((err) => {
+        captureClientError(err, { scope: "usage.load-conversations" });
+        setThreadsError("Could not load thread usage.");
+      })
+      .finally(() => setThreadsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadUsage();
+  }, [loadUsage]);
+
+  useEffect(() => {
+    loadThreads();
+  }, [loadThreads]);
 
   const formatTokens = (n: number) => {
     if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -86,7 +113,7 @@ function UsagePageContent() {
             key={p.value}
             type="button"
             onClick={() => setPeriod(p.value)}
-            className={`rounded-full border px-3 py-1.5 text-xs transition ${
+            className={`min-h-11 rounded-full border px-4 py-1.5 text-xs transition ${
               period === p.value
                 ? "border-amber-300 bg-amber-300 text-stone-950"
                 : "border-stone-700/55 bg-stone-950/45 text-stone-400 hover:bg-stone-900/70 hover:text-stone-200"
@@ -96,6 +123,8 @@ function UsagePageContent() {
           </button>
         ))}
       </div>
+
+      {statsError && <InlineError message={statsError} onRetry={loadUsage} />}
 
       {stats && (
         <>
@@ -149,7 +178,15 @@ function UsagePageContent() {
         </>
       )}
 
+      {statsLoading && !stats && (
+        <div className="flex items-center justify-center py-20 text-stone-500" role="status">
+          Loading usage...
+        </div>
+      )}
+
       {/* Per-conversation usage */}
+      {threadsError && <InlineError message={threadsError} onRetry={loadThreads} />}
+
       {convUsages.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-medium text-stone-300">Highest-usage threads</h2>
@@ -182,11 +219,26 @@ function UsagePageContent() {
         </div>
       )}
 
-      {!stats && (
-        <div className="flex items-center justify-center py-20 text-stone-500">
-          Loading usage...
+      {!threadsLoading && !threadsError && convUsages.length === 0 && (
+        <div className="rounded-lg border border-stone-700/45 bg-stone-950/35 p-6 text-center text-sm text-stone-500">
+          No thread usage yet.
         </div>
       )}
+    </div>
+  );
+}
+
+function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-200 sm:flex-row sm:items-center sm:justify-between">
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-red-300/30 px-4 text-sm text-red-100 transition hover:bg-red-300/10"
+      >
+        Retry
+      </button>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 const SHORTCUTS = [
@@ -15,6 +15,9 @@ const SHORTCUTS = [
 export default function KeyboardShortcuts() {
   const router = useRouter();
   const [showHelp, setShowHelp] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -50,6 +53,39 @@ export default function KeyboardShortcuts() {
     return () => window.removeEventListener("keydown", handler);
   }, [router, showHelp]);
 
+  useEffect(() => {
+    if (!showHelp) return;
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = window.setTimeout(() => {
+      getFocusableElements(dialogRef.current)[0]?.focus();
+    }, 0);
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowHelp(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handler);
+      previousFocusRef.current?.focus();
+    };
+  }, [showHelp]);
+
   if (!showHelp) return null;
 
   return (
@@ -58,10 +94,16 @@ export default function KeyboardShortcuts() {
       onClick={() => setShowHelp(false)}
     >
       <div
+        ref={dialogRef}
         className="bg-stone-950 border border-stone-700 rounded-xl p-6 w-full max-w-sm"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
-        <h3 className="font-semibold mb-4">Keyboard shortcuts</h3>
+        <h3 id={titleId} className="font-semibold mb-4">
+          Keyboard shortcuts
+        </h3>
         <div className="space-y-3">
           {SHORTCUTS.map((s) => (
             <div key={s.label} className="flex items-center justify-between">
@@ -82,7 +124,23 @@ export default function KeyboardShortcuts() {
         <p className="text-xs text-stone-600 mt-4 text-center">
           Press Esc or click outside to close.
         </p>
+        <button
+          type="button"
+          onClick={() => setShowHelp(false)}
+          className="mt-4 w-full min-h-11 rounded-lg border border-stone-700 text-sm text-stone-300 transition hover:border-amber-500/40 hover:text-amber-100"
+        >
+          Close
+        </button>
       </div>
     </div>
   );
+}
+
+function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      ["button:not([disabled])", "a[href]", '[tabindex]:not([tabindex="-1"])'].join(","),
+    ),
+  ).filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
 }
