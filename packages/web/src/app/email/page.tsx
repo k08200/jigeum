@@ -93,6 +93,7 @@ interface BulkActionResponse {
 }
 
 type UndoableEmailAction = "archive" | "delete";
+type EmailReminderKey = "later-today" | "tomorrow" | "next-week";
 
 interface UndoNotice {
   action: UndoableEmailAction;
@@ -115,6 +116,33 @@ interface UndoActionResponse {
   success: boolean;
   gmailId: string;
   emailId: string;
+}
+
+interface EmailReminderOption {
+  key: EmailReminderKey;
+  label: string;
+}
+
+const EMAIL_REMINDER_OPTIONS: EmailReminderOption[] = [
+  { key: "later-today", label: "Today" },
+  { key: "tomorrow", label: "Tomorrow" },
+  { key: "next-week", label: "Next week" },
+];
+
+function getReminderDate(option: EmailReminderKey): Date {
+  const date = new Date();
+  if (option === "later-today") {
+    date.setHours(date.getHours() + 4);
+    return date;
+  }
+  if (option === "tomorrow") {
+    date.setDate(date.getDate() + 1);
+    date.setHours(9, 0, 0, 0);
+    return date;
+  }
+  date.setDate(date.getDate() + 7);
+  date.setHours(9, 0, 0, 0);
+  return date;
 }
 
 function parseUndoNotice(searchParams: ReturnType<typeof useSearchParams>): UndoNotice | null {
@@ -222,6 +250,7 @@ function EmailView() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [undoBusy, setUndoBusy] = useState(false);
   const [bulkUndoNotice, setBulkUndoNotice] = useState<BulkUndoNotice | null>(null);
+  const [rowReminderBusy, setRowReminderBusy] = useState<string | null>(null);
 
   const load = useCallback(async (f: Filter, keyword = "") => {
     setLoading(true);
@@ -419,6 +448,34 @@ function EmailView() {
     }
   };
 
+  const createRowReminder = async (email: EmailRow, option: EmailReminderOption) => {
+    const busyKey = `${email.id}:${option.key}`;
+    if (rowReminderBusy) return;
+    setRowReminderBusy(busyKey);
+    setError(null);
+    try {
+      const remindAt = getReminderDate(option.key);
+      await apiFetch("/api/reminders", {
+        method: "POST",
+        body: JSON.stringify({
+          title: `${email.needsReply ? "Reply to" : "Review"}: ${email.subject || "No subject"}`,
+          remindAt: remindAt.toISOString(),
+          description: [`From: ${email.from}`, `Open: /email/${email.id}`].join("\n"),
+        }),
+      });
+      toast(`Reminder set for ${option.label.toLowerCase()}.`, "success");
+    } catch (err) {
+      captureClientError(err, {
+        scope: "email.list.reminder",
+        emailId: email.id,
+        option: option.key,
+      });
+      setError("Could not create a reminder for that email.");
+    } finally {
+      setRowReminderBusy(null);
+    }
+  };
+
   const unreadCount = emails.filter((email) => !email.isRead).length;
   const urgentCount = emails.filter((email) => email.priority === "URGENT").length;
   const replyCount = emails.filter((email) => email.needsReply).length;
@@ -601,7 +658,9 @@ function EmailView() {
               key={e.id}
               email={e}
               queue={filter}
+              reminderBusyKey={rowReminderBusy}
               selected={selectedIds.has(e.id)}
+              onCreateReminder={createRowReminder}
               onToggleSelected={toggleSelected}
             />
           ))}
@@ -860,13 +919,17 @@ function FilterTabs({ current, onChange }: { current: Filter; onChange: (f: Filt
 
 function EmailRowItem({
   email,
+  reminderBusyKey,
   queue,
   selected,
+  onCreateReminder,
   onToggleSelected,
 }: {
   email: EmailRow;
+  reminderBusyKey: string | null;
   queue: Filter;
   selected: boolean;
+  onCreateReminder: (email: EmailRow, option: EmailReminderOption) => void;
   onToggleSelected: (id: string) => void;
 }) {
   const unread = !email.isRead;
@@ -884,39 +947,78 @@ function EmailRowItem({
             : "border-white/15 bg-[#11161A] hover:border-white/30"
         }`}
       />
-      <Link
-        href={`/email/${email.id}?${detailParams.toString()}`}
-        className="block rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20 hover:bg-white/5 active:bg-white/10"
-      >
-        <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">
-          <div className="min-w-0 flex-1">
-            <EmailBadges email={email} unread={unread} />
-            <p
-              className={`mt-2 truncate text-sm ${unread ? "font-semibold text-stone-100" : "text-stone-300"}`}
-            >
-              {senderName(email.from)}
-            </p>
-            <p className="mt-1 truncate text-[13px] text-stone-400">
-              {email.subject || "No subject"}
-            </p>
-            {email.summary ? (
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-400">
-                <span className="mr-1 text-stone-500">Summary:</span>
-                {email.summary}
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-[#11161A] transition hover:border-white/20">
+        <Link
+          href={`/email/${email.id}?${detailParams.toString()}`}
+          className="block transition hover:bg-white/5 active:bg-white/10"
+        >
+          <div className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-start">
+            <div className="min-w-0 flex-1">
+              <EmailBadges email={email} unread={unread} />
+              <p
+                className={`mt-2 truncate text-sm ${unread ? "font-semibold text-stone-100" : "text-stone-300"}`}
+              >
+                {senderName(email.from)}
               </p>
-            ) : email.snippet ? (
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">{email.snippet}</p>
-            ) : null}
-            {email.candidateProfilePreview && (
-              <CandidatePreview profile={email.candidateProfilePreview} />
-            )}
+              <p className="mt-1 truncate text-[13px] text-stone-400">
+                {email.subject || "No subject"}
+              </p>
+              {email.summary ? (
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-400">
+                  <span className="mr-1 text-stone-500">Summary:</span>
+                  {email.summary}
+                </p>
+              ) : email.snippet ? (
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-stone-600">
+                  {email.snippet}
+                </p>
+              ) : null}
+              {email.candidateProfilePreview && (
+                <CandidatePreview profile={email.candidateProfilePreview} />
+              )}
+            </div>
+            <time className="shrink-0 text-[11px] tabular-nums text-stone-500 md:pt-1">
+              {formatRelative(email.date)}
+            </time>
           </div>
-          <time className="shrink-0 text-[11px] tabular-nums text-stone-500 md:pt-1">
-            {formatRelative(email.date)}
-          </time>
-        </div>
-      </Link>
+        </Link>
+        <EmailRowReminderActions
+          email={email}
+          busyKey={reminderBusyKey}
+          onCreateReminder={onCreateReminder}
+        />
+      </div>
     </li>
+  );
+}
+
+function EmailRowReminderActions({
+  busyKey,
+  email,
+  onCreateReminder,
+}: {
+  busyKey: string | null;
+  email: EmailRow;
+  onCreateReminder: (email: EmailRow, option: EmailReminderOption) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 px-4 py-2 text-[11px] text-stone-500">
+      <span className="mr-1">Remind</span>
+      {EMAIL_REMINDER_OPTIONS.map((option) => {
+        const key = `${email.id}:${option.key}`;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onCreateReminder(email, option)}
+            disabled={busyKey !== null}
+            className="min-h-8 rounded-md border border-white/10 bg-black/15 px-2.5 text-[11px] text-stone-400 transition hover:border-[#7DD3FC]/35 hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busyKey === key ? "Setting..." : option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
