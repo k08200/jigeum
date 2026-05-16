@@ -41,6 +41,7 @@ interface CommitmentItem {
   sourceType: string;
   confidence: number;
   createdAt: string;
+  trustBadge?: "reliable" | "mostly_reliable" | "unreliable" | "unknown" | null;
 }
 
 type StatusFilter = "pending" | "all";
@@ -164,7 +165,7 @@ function InboxView() {
       window.dispatchEvent(new Event("conversations-updated"));
     } catch (err) {
       captureClientError(err, { scope: "inbox.commitment_status", commitmentId, status });
-      alert("Could not update the commitment. Please try again soon.");
+      toast("Could not update the commitment. Please try again soon.", "error");
     } finally {
       setCommitmentLoading((prev) => ({ ...prev, [commitmentId]: null }));
     }
@@ -219,9 +220,17 @@ function InboxView() {
               />
               <FilterTab active={filter === "all"} label="All" onClick={() => setFilter("all")} />
             </div>
-            <p className="text-xs text-stone-600">
-              Review the signal, judgment, and action before approval.
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-xs text-stone-600">
+                Review the signal, judgment, and action before approval.
+              </p>
+              <Link
+                href="/inbox/receipt"
+                className="shrink-0 text-xs text-teal-400 hover:text-teal-300 transition"
+              >
+                Today's receipt →
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -359,6 +368,11 @@ function CommitmentCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <CommitmentOwnerBadge owner={commitment.owner} />
+            {commitment.owner === "COUNTERPARTY" &&
+              commitment.trustBadge &&
+              commitment.trustBadge !== "unknown" && (
+                <TrustBadge badge={commitment.trustBadge} />
+              )}
             <span className="text-[11px] text-stone-500">
               {commitmentKindLabel(commitment.kind)}
             </span>
@@ -657,6 +671,30 @@ function splitReasoning(reasoning: string | null): {
 
 function CommitmentOwnerBadge({ owner }: { owner: CommitmentItem["owner"] }) {
   const entry = commitmentOwnerEntry(owner);
+  return (
+    <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}>
+      {entry.label}
+    </span>
+  );
+}
+
+function TrustBadge({ badge }: { badge: NonNullable<CommitmentItem["trustBadge"]> }) {
+  const map: Record<string, { label: string; className: string }> = {
+    reliable: {
+      label: "Reliable",
+      className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20",
+    },
+    mostly_reliable: {
+      label: "Usually reliable",
+      className: "text-teal-300 bg-teal-400/10 border-teal-400/20",
+    },
+    unreliable: {
+      label: "Often late",
+      className: "text-red-300 bg-red-500/10 border-red-500/20",
+    },
+  };
+  const entry = map[badge];
+  if (!entry) return null;
   return (
     <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}>
       {entry.label}

@@ -10,6 +10,7 @@ import {
   type NotificationGroup,
   unreadGroupCount,
 } from "../lib/notification-grouping";
+import { useToast } from "./toast";
 import { useWebSocket } from "./use-websocket";
 
 interface Notification {
@@ -70,6 +71,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const router = useRouter();
+  const { toast } = useToast();
   const { connected, on, connectedClients } = useWebSocket(userId);
 
   // Compute fixed position for dropdown based on bell button location.
@@ -201,7 +203,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     } catch (err) {
       console.error("[notification-bell] approve failed", err);
       // Let the user retry — don't silently swallow
-      alert("Could not approve this action. Try again shortly.");
+      toast("Could not approve this action. Try again shortly.", "error");
     } finally {
       setPendingActionLoading((prev) => ({ ...prev, [notif.id]: null }));
     }
@@ -224,7 +226,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       apiFetch(`/api/notifications/${notif.id}/read`, { method: "PATCH" }).catch(() => {});
     } catch (err) {
       console.error("[notification-bell] reject failed", err);
-      alert("Could not reject this action. Try again shortly.");
+      toast("Could not reject this action. Try again shortly.", "error");
     } finally {
       setPendingActionLoading((prev) => ({ ...prev, [notif.id]: null }));
     }
