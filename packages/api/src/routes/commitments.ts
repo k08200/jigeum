@@ -15,8 +15,7 @@ import {
 } from "../commitments.js";
 import { prisma } from "../db.js";
 import { recordFeedback } from "../feedback.js";
-import { getTrustScoresBulk } from "../trust-score.js";
-import { updateTrustScore } from "../trust-score.js";
+import { getTrustScoresBulk, updateTrustScore } from "../trust-score.js";
 
 const ALLOWED_STATUSES = new Set(["OPEN", "DONE", "DISMISSED", "SNOOZED"]);
 
