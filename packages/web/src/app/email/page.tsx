@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
 import { useToast } from "../../components/toast";
 import { apiFetch } from "../../lib/api";
@@ -235,7 +235,7 @@ function EmailView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const undoNotice = parseUndoNotice(searchParams);
+  const undoNotice = useMemo(() => parseUndoNotice(searchParams), [searchParams]);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -251,6 +251,8 @@ function EmailView() {
   const [undoBusy, setUndoBusy] = useState(false);
   const [bulkUndoNotice, setBulkUndoNotice] = useState<BulkUndoNotice | null>(null);
   const [rowReminderBusy, setRowReminderBusy] = useState<string | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState(0);
+  const [bulkUndoCountdown, setBulkUndoCountdown] = useState(0);
 
   const load = useCallback(async (f: Filter, keyword = "") => {
     setLoading(true);
@@ -394,6 +396,40 @@ function EmailView() {
     setBulkUndoNotice(null);
   };
 
+  const UNDO_DISMISS_SECONDS = 8;
+
+  useEffect(() => {
+    if (!undoNotice) return;
+    setUndoCountdown(UNDO_DISMISS_SECONDS);
+    const id = setInterval(() => {
+      setUndoCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          router.replace("/email");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [undoNotice, router]);
+
+  useEffect(() => {
+    if (!bulkUndoNotice) return;
+    setBulkUndoCountdown(UNDO_DISMISS_SECONDS);
+    const id = setInterval(() => {
+      setBulkUndoCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setBulkUndoNotice(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [bulkUndoNotice]);
+
   const undoLastAction = async () => {
     if (!undoNotice || undoBusy) return;
     setUndoBusy(true);
@@ -527,6 +563,7 @@ function EmailView() {
         <UndoActionBanner
           notice={undoNotice}
           busy={undoBusy}
+          countdown={undoCountdown}
           onDismiss={dismissUndoNotice}
           onUndo={undoLastAction}
         />
@@ -536,6 +573,7 @@ function EmailView() {
         <BulkUndoActionBanner
           notice={bulkUndoNotice}
           busy={undoBusy}
+          countdown={bulkUndoCountdown}
           onDismiss={dismissBulkUndoNotice}
           onUndo={undoBulkArchive}
         />
@@ -705,11 +743,13 @@ function updateEmailsAfterBulk(
 function UndoActionBanner({
   notice,
   busy,
+  countdown,
   onDismiss,
   onUndo,
 }: {
   notice: UndoNotice;
   busy: boolean;
+  countdown: number;
   onDismiss: () => void;
   onUndo: () => void;
 }) {
@@ -737,7 +777,7 @@ function UndoActionBanner({
           disabled={busy}
           className="min-h-10 rounded-md border border-white/10 px-3 text-xs text-stone-300 transition hover:bg-white/5 disabled:opacity-50"
         >
-          Dismiss
+          Dismiss {countdown > 0 && `(${countdown}s)`}
         </button>
       </div>
     </div>
@@ -747,11 +787,13 @@ function UndoActionBanner({
 function BulkUndoActionBanner({
   notice,
   busy,
+  countdown,
   onDismiss,
   onUndo,
 }: {
   notice: BulkUndoNotice;
   busy: boolean;
+  countdown: number;
   onDismiss: () => void;
   onUndo: () => void;
 }) {
@@ -783,7 +825,7 @@ function BulkUndoActionBanner({
           disabled={busy}
           className="min-h-10 rounded-md border border-white/10 px-3 text-xs text-stone-300 transition hover:bg-white/5 disabled:opacity-50"
         >
-          Dismiss
+          Dismiss {countdown > 0 && `(${countdown}s)`}
         </button>
       </div>
     </div>
