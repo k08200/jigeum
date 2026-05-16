@@ -491,9 +491,7 @@ export async function buildPlaybookHintForPrompt(userId: string): Promise<string
     const active = PLAYBOOKS.filter((p) => activeIds.has(p.id));
     if (active.length === 0) return "";
 
-    const lines = active.map(
-      (p) => `- **${p.name}**: ${p.description} Cadence: ${p.cadence}.`,
-    );
+    const lines = active.map((p) => `- **${p.name}**: ${p.description} Cadence: ${p.cadence}.`);
 
     return `\n\n## Active Operating Playbooks
 The user has enabled the following operating modes. Prioritize actions that serve these domains:
