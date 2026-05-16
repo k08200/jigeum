@@ -15,8 +15,13 @@
  */
 
 import { useEffect, useState } from "react";
-import { API_BASE, authHeaders } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import {
+  fetchVapidKey,
+  getOrCreatePushSubscription,
+  getSwRegistration,
+  registerSubscriptionWithServer,
+} from "../lib/push";
 
 const DISMISS_KEY = "jigeum-push-banner-dismissed-at";
 const LEGACY_KEY_PREFIX = "ev" + "e";
@@ -68,34 +73,12 @@ export default function PushOnboardingBanner() {
         return;
       }
 
-      // Use the explicit /sw.js registration so we get the SW that has the
-      // push event handler (navigator.serviceWorker.ready can resolve to a
-      // different SW that ignores push events).
-      let reg = await navigator.serviceWorker.getRegistration("/");
-      if (!reg) {
-        reg = await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
-      }
-
-      const vapidRes = await fetch(`${API_BASE}/api/notifications/vapid-key`, {
-        headers: authHeaders(),
-      });
-      if (!vapidRes.ok) throw new Error("Could not fetch the notification key.");
-      const { publicKey } = (await vapidRes.json()) as { publicKey?: string };
+      const publicKey = await fetchVapidKey();
       if (!publicKey) throw new Error("The server has no notification key.");
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
-      });
-
-      const subJson = sub.toJSON();
-      const regRes = await fetch(`${API_BASE}/api/notifications/push/subscribe`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-      });
-      if (!regRes.ok) throw new Error(`Server registration failed. (${regRes.status})`);
+      const reg = await getSwRegistration();
+      const sub = await getOrCreatePushSubscription(reg, publicKey);
+      await registerSubscriptionWithServer(sub);
 
       setShow(false);
     } catch (err) {
@@ -192,13 +175,4 @@ async function isEligible(): Promise<boolean> {
   }
 
   return true;
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-  return arr;
 }
