@@ -472,7 +472,10 @@ function CommitmentCard({
       const next = new Set(materializedSteps);
       for (let i = 0; i < pathData.steps.length; i++) next.add(i);
       setMaterializedSteps(next);
-      toast(`${result.taskIds.length} task${result.taskIds.length === 1 ? "" : "s"} created.`, "success");
+      toast(
+        `${result.taskIds.length} task${result.taskIds.length === 1 ? "" : "s"} created.`,
+        "success",
+      );
     } catch {
       toast("Could not create tasks.", "error");
     } finally {
@@ -1079,9 +1082,7 @@ function CommitmentPathPanel({
             <li
               key={`${step.dueIso}-${i}`}
               className={`flex items-start gap-3 rounded-lg p-3 text-xs border ${
-                isMaterialized
-                  ? "border-teal-500/20 bg-teal-400/5"
-                  : "border-stone-800 bg-black/15"
+                isMaterialized ? "border-teal-500/20 bg-teal-400/5" : "border-stone-800 bg-black/15"
               }`}
             >
               <span className="mt-0.5 w-4 shrink-0 text-center font-mono text-[10px] text-stone-500">
