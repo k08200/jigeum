@@ -1286,6 +1286,7 @@ function AttachmentAnalysis({
     Record<string, AttachmentConversionTarget>
   >({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const downloadBrief = async () => {
     if (downloading) return;
@@ -1306,7 +1307,7 @@ function AttachmentAnalysis({
       URL.revokeObjectURL(url);
     } catch (err) {
       captureClientError(err, { scope: "email.attachment.brief.download", emailId });
-      alert("Could not create the attachment brief.");
+      toast("Could not create the attachment brief.", "error");
     } finally {
       setDownloading(null);
     }
@@ -1332,7 +1333,7 @@ function AttachmentAnalysis({
       URL.revokeObjectURL(url);
     } catch (err) {
       captureClientError(err, { scope: "email.attachment.download", attachmentId: attachment.id });
-      alert("Could not download the original attachment. Check Gmail connection.");
+      toast("Could not download the original attachment. Check Gmail connection.", "error");
     } finally {
       setDownloading(null);
     }
@@ -1376,7 +1377,7 @@ function AttachmentAnalysis({
         attachmentId: attachment.id,
         target,
       });
-      alert(err instanceof Error ? err.message : "Attachment conversion failed.");
+      toast(err instanceof Error ? err.message : "Attachment conversion failed.", "error");
     } finally {
       setConverting(null);
     }

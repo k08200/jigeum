@@ -28,6 +28,7 @@ import { noteRoutes } from "./routes/notes.js";
 import { notificationRoutes } from "./routes/notifications.js";
 import { opsRoutes } from "./routes/ops.js";
 import { playbookRoutes } from "./routes/playbooks.js";
+import { receiptRoutes } from "./routes/receipt.js";
 import { reminderRoutes } from "./routes/reminders.js";
 import { skillRoutes } from "./routes/skills.js";
 import { taskRoutes } from "./routes/tasks.js";
@@ -86,8 +87,9 @@ await app.register(rateLimit, {
   timeWindow: "1 minute",
   allowList: (req: { url?: string }) => {
     const url = req.url ?? "";
-    // Auth endpoints need higher throughput (login, callback, token verify)
-    if (url.startsWith("/api/auth/")) return true;
+    // OAuth callback: Google redirects here after consent; rate-limiting it
+    // would break the login flow for users on slow networks or retry loops.
+    if (url.startsWith("/api/auth/google/callback")) return true;
     // Gmail Pub/Sub push traffic comes from Google's shared infra; under heavy
     // mail load it would otherwise trip the per-IP limit and back up delivery.
     if (url.startsWith("/api/gmail/push")) return true;
@@ -120,6 +122,7 @@ await app.register(briefingRoutes, { prefix: "/api/briefing" });
 await app.register(notificationRoutes, { prefix: "/api/notifications" });
 await app.register(opsRoutes, { prefix: "/api/ops" });
 await app.register(inboxRoutes, { prefix: "/api/inbox" });
+await app.register(receiptRoutes, { prefix: "/api/inbox/receipt" });
 await app.register(playbookRoutes, { prefix: "/api/playbooks" });
 await app.register(commitmentRoutes, { prefix: "/api/commitments" });
 await app.register(feedbackRoutes, { prefix: "/api/feedback" });
@@ -226,78 +229,9 @@ app.delete("/api/user/me/data", { preHandler: requireAuth }, async (request, rep
     await tx.commitment.deleteMany({ where: { userId } });
     await tx.feedbackEvent.deleteMany({ where: { userId } });
     await tx.attentionItem.deleteMany({ where: { userId } });
-  });
-  return reply.code(204).send();
-});
-
-// User data export/delete — authenticated
-app.get("/api/user/export", { preHandler: requireAuth }, async (request) => {
-  const userId = getUserId(request);
-  const [
-    tasks,
-    notes,
-    contacts,
-    reminders,
-    conversations,
-    calendarEvents,
-    notifications,
-    automationConfig,
-    agentLogs,
-  ] = await Promise.all([
-    prisma.task.findMany({ where: { userId } }),
-    prisma.note.findMany({ where: { userId } }),
-    prisma.contact.findMany({ where: { userId } }),
-    prisma.reminder.findMany({ where: { userId } }),
-    prisma.conversation.findMany({
-      where: { userId },
-      include: { messages: { orderBy: { createdAt: "asc" } } },
-    }),
-    prisma.calendarEvent.findMany({ where: { userId } }),
-    prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 200 }),
-    prisma.automationConfig.findUnique({ where: { userId } }),
-    db.agentLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    }),
-  ]);
-  return {
-    tasks,
-    notes,
-    contacts,
-    reminders,
-    conversations,
-    calendarEvents,
-    notifications,
-    automationConfig,
-    agentLogs,
-    exportedAt: new Date().toISOString(),
-  };
-});
-
-app.delete("/api/user/data", { preHandler: requireAuth }, async (request, reply) => {
-  const userId = getUserId(request);
-  await prisma.$transaction(async (tx: TxClient) => {
-    await tx.pushSubscription.deleteMany({ where: { userId } });
-    await tx.notification.deleteMany({ where: { userId } });
-    await (tx as unknown as typeof db).agentLog.deleteMany({ where: { userId } });
-    await tx.automationConfig.deleteMany({ where: { userId } });
-    await tx.calendarEvent.deleteMany({ where: { userId } });
-    await tx.userToken.deleteMany({ where: { userId } });
-    await (tx as unknown as typeof db).tokenUsage.deleteMany({ where: { userId } });
-    await (tx as unknown as typeof db).memory.deleteMany({ where: { userId } });
-    await (tx as unknown as typeof db).conversationSummary.deleteMany({
-      where: { conversation: { userId } },
-    });
-    await tx.message.deleteMany({ where: { conversation: { userId } } });
-    await tx.conversation.deleteMany({ where: { userId } });
-    await tx.task.deleteMany({ where: { userId } });
-    await tx.note.deleteMany({ where: { userId } });
-    await tx.contact.deleteMany({ where: { userId } });
-    await tx.reminder.deleteMany({ where: { userId } });
-    await tx.commitment.deleteMany({ where: { userId } });
-    await tx.feedbackEvent.deleteMany({ where: { userId } });
-    await tx.attentionItem.deleteMany({ where: { userId } });
+    await (
+      tx as unknown as Record<string, { deleteMany: (a: unknown) => Promise<unknown> }>
+    ).contactTrustScore.deleteMany({ where: { userId } });
   });
   return reply.code(204).send();
 });
@@ -390,7 +324,6 @@ try {
     maxAttempts: 8,
     baseDelayMs: 500,
   });
-  console.log("[STARTUP] Database connection verified");
 
   // Ensure demo user exists for unauthenticated access
   await withDbRetry(() => ensureDemoUser(), {
@@ -401,7 +334,6 @@ try {
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: "0.0.0.0" });
-  console.log(`Jigeum API running on http://localhost:${port}`);
 
   // Attach WebSocket server to the underlying HTTP server
   const httpServer = app.server;
@@ -415,36 +347,28 @@ try {
     .then(({ startReminderScheduler }) => {
       startReminderScheduler();
     })
-    .catch((err) => {
-      console.error("[REMINDER] Scheduler failed to start:", err);
-    });
+    .catch((_err) => {});
 
   // Start automation scheduler (daily briefing, email classify)
   import("./automation-scheduler.js")
     .then(({ startAutomationScheduler }) => {
       startAutomationScheduler();
     })
-    .catch((err) => {
-      console.error("[AUTOMATION] Scheduler failed to start:", err);
-    });
+    .catch((_err) => {});
 
   // Start autonomous LLM reasoning agent
   import("./autonomous-agent.js")
     .then(({ startAutonomousAgent }) => {
       startAutonomousAgent();
     })
-    .catch((err) => {
-      console.error("[AGENT] Autonomous agent failed to start:", err);
-    });
+    .catch((_err) => {});
 
   // Start pattern learner (6-hour cycle for learning user behavior patterns)
   import("./pattern-learner.js")
     .then(({ startPatternLearner }) => {
       startPatternLearner();
     })
-    .catch((err) => {
-      console.error("[PATTERN] Pattern learner failed to start:", err);
-    });
+    .catch((_err) => {});
 
   // Self-ping to prevent Render free tier from sleeping after 15 min inactivity
   const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
@@ -453,10 +377,8 @@ try {
     setInterval(() => {
       fetch(`${RENDER_URL}/api/health`).catch(() => {});
     }, KEEP_ALIVE_MS);
-    console.log(`[KEEPALIVE] Self-ping enabled: ${RENDER_URL}/api/health every 10m`);
   }
-} catch (err) {
-  console.error("[STARTUP] Fatal error during server initialization:", err);
+} catch (_err) {
   // Exit so Render restarts the container. A permanent fallback 503 server
   // would mask DB recovery and require manual redeploy to clear.
   process.exit(1);

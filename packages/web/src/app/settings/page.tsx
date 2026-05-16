@@ -10,6 +10,13 @@ import { TeamRiskPanel } from "../../components/team-risk-panel";
 import { useToast } from "../../components/toast";
 import { API_BASE, apiFetch, authHeaders, getStoredAuthToken } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import {
+  fetchVapidKey,
+  getOrCreatePushSubscription,
+  getSwRegistration,
+  registerSubscriptionWithServer,
+  unregisterPushSubscription,
+} from "../../lib/push";
 import { captureClientError } from "../../lib/sentry";
 
 type AgentMode = "SHADOW" | "SUGGEST" | "AUTO";
@@ -210,41 +217,11 @@ export default function SettingsPage() {
     if (perm === "granted" && "serviceWorker" in navigator) {
       (async () => {
         try {
-          const reg = await navigator.serviceWorker.ready;
-          const existingSub = await reg.pushManager.getSubscription();
-          if (!existingSub) {
-            console.log("[PUSH-REPAIR] Permission granted but no subscription — re-subscribing...");
-            const res = await fetch(`${API_BASE}/api/notifications/vapid-key`, {
-              headers: authHeaders(),
-            });
-            if (!res.ok) return;
-            const { publicKey } = await res.json();
-            if (!publicKey) return;
-            const sub = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
-            });
-            console.log("[PUSH-REPAIR] Subscription created:", sub.endpoint.slice(0, 60));
-            const subJson = sub.toJSON();
-            const subRes = await fetch(`${API_BASE}/api/notifications/push/subscribe`, {
-              method: "POST",
-              headers: authHeaders(),
-              body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-            });
-            console.log("[PUSH-REPAIR] Sent to server:", subRes.ok ? "OK" : subRes.status);
-          } else {
-            console.log(
-              "[PUSH-REPAIR] Subscription already exists:",
-              existingSub.endpoint.slice(0, 60),
-            );
-            // Ensure server has it too (re-send)
-            const subJson = existingSub.toJSON();
-            await fetch(`${API_BASE}/api/notifications/push/subscribe`, {
-              method: "POST",
-              headers: authHeaders(),
-              body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-            }).catch(() => {});
-          }
+          const publicKey = await fetchVapidKey();
+          if (!publicKey) return;
+          const reg = await getSwRegistration();
+          const sub = await getOrCreatePushSubscription(reg, publicKey);
+          await registerSubscriptionWithServer(sub).catch(() => {});
         } catch (err) {
           console.error("[PUSH-REPAIR] Error:", err);
         }
@@ -304,46 +281,20 @@ export default function SettingsPage() {
   };
 
   const enablePush = async () => {
-    console.log("[PUSH-SETTINGS] Enable clicked");
     if (!("Notification" in window)) {
-      console.warn("[PUSH-SETTINGS] Notification API not available");
       toast("This browser does not support notifications.", "error");
       return;
     }
-    console.log("[PUSH-SETTINGS] Current permission:", Notification.permission);
     const permission = await Notification.requestPermission();
-    console.log("[PUSH-SETTINGS] Permission result:", permission);
     setPushStatus(permission as "granted" | "denied" | "default");
     if (permission === "granted") {
       try {
-        // Re-trigger subscription registration
-        if ("serviceWorker" in navigator) {
-          const reg = await navigator.serviceWorker.ready;
-          console.log("[PUSH-SETTINGS] Service Worker ready");
-          const res = await fetch(`${API_BASE}/api/notifications/vapid-key`, {
-            headers: authHeaders(),
-          });
-          const { publicKey } = await res.json();
-          console.log("[PUSH-SETTINGS] VAPID key:", publicKey ? "OK" : "MISSING");
-          if (publicKey) {
-            const sub = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
-            });
-            console.log("[PUSH-SETTINGS] Subscription created:", sub.endpoint.slice(0, 60));
-            const subJson = sub.toJSON();
-            const subRes = await fetch(`${API_BASE}/api/notifications/push/subscribe`, {
-              method: "POST",
-              headers: authHeaders(),
-              body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
-            });
-            console.log("[PUSH-SETTINGS] Sent to server:", subRes.ok ? "OK" : subRes.status);
-            if (subRes.ok) {
-              toast("macOS notifications enabled.", "success");
-            } else {
-              toast("Server registration failed. Try again.", "error");
-            }
-          }
+        const publicKey = await fetchVapidKey();
+        if (publicKey) {
+          const reg = await getSwRegistration();
+          const sub = await getOrCreatePushSubscription(reg, publicKey);
+          await registerSubscriptionWithServer(sub);
+          toast("macOS notifications enabled.", "success");
         }
       } catch (err) {
         console.error("[PUSH-SETTINGS] Error:", err);
@@ -355,18 +306,7 @@ export default function SettingsPage() {
   };
 
   const disablePush = async () => {
-    if (!("serviceWorker" in navigator)) return;
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      const endpoint = sub.endpoint;
-      await sub.unsubscribe();
-      await fetch(`${API_BASE}/api/notifications/push/unsubscribe`, {
-        method: "DELETE",
-        headers: authHeaders(),
-        body: JSON.stringify({ endpoint }),
-      });
-    }
+    await unregisterPushSubscription();
     setPushStatus("default");
     toast("Push notifications disabled.", "info");
   };
@@ -1842,15 +1782,4 @@ export default function SettingsPage() {
       </main>
     </AuthGuard>
   );
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) {
-    arr[i] = raw.charCodeAt(i);
-  }
-  return arr;
 }

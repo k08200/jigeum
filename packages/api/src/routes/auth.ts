@@ -185,123 +185,139 @@ async function evaluateBetaAutoPro(): Promise<{
 
 export function authRoutes(app: FastifyInstance) {
   // POST /api/auth/register — Create account
-  app.post("/register", { schema: { body: registerBodySchema } }, async (request, reply) => {
-    const { email, password, name } = request.body as {
-      email: string;
-      password: string;
-      name?: string;
-    };
-    const normalizedEmail = normalizeEmail(email);
-    const normalizedName = hasMeaningfulText(name) ? name.trim() : undefined;
+  app.post(
+    "/register",
+    {
+      schema: { body: registerBodySchema },
+      config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    },
+    async (request, reply) => {
+      const { email, password, name } = request.body as {
+        email: string;
+        password: string;
+        name?: string;
+      };
+      const normalizedEmail = normalizeEmail(email);
+      const normalizedName = hasMeaningfulText(name) ? name.trim() : undefined;
 
-    if (!hasMeaningfulText(normalizedEmail) || !hasMeaningfulText(password)) {
-      return reply.code(400).send({ error: "Email and password required" });
-    }
-    if (password.length < 8) {
-      return reply.code(400).send({ error: "Password must be at least 8 characters" });
-    }
-    if (name !== undefined && !hasMeaningfulText(name)) {
-      return reply.code(400).send({ error: "Name cannot be empty" });
-    }
+      if (!hasMeaningfulText(normalizedEmail) || !hasMeaningfulText(password)) {
+        return reply.code(400).send({ error: "Email and password required" });
+      }
+      if (password.length < 8) {
+        return reply.code(400).send({ error: "Password must be at least 8 characters" });
+      }
+      if (name !== undefined && !hasMeaningfulText(name)) {
+        return reply.code(400).send({ error: "Name cannot be empty" });
+      }
 
-    // Beta gate: when BETA_GATE_ENABLED=true, registration is restricted to
-    // waitlist entries that an admin has approved. APPROVED registrants are
-    // auto-granted PRO so yongrean doesn't have to run prod SQL after every
-    // signup.
-    const betaGateEnabled = process.env.BETA_GATE_ENABLED === "true";
-    const waitlistEntry = betaGateEnabled
-      ? await prisma.waitlist.findUnique({
-          where: { email: normalizedEmail },
-          select: { status: true },
-        })
-      : null;
-    if (betaGateEnabled && waitlistEntry?.status !== "APPROVED") {
-      return reply.code(403).send({
-        error: "Early access is invite-only. Request access at /early-access.",
+      // Beta gate: when BETA_GATE_ENABLED=true, registration is restricted to
+      // waitlist entries that an admin has approved. APPROVED registrants are
+      // auto-granted PRO so yongrean doesn't have to run prod SQL after every
+      // signup.
+      const betaGateEnabled = process.env.BETA_GATE_ENABLED === "true";
+      const waitlistEntry = betaGateEnabled
+        ? await prisma.waitlist.findUnique({
+            where: { email: normalizedEmail },
+            select: { status: true },
+          })
+        : null;
+      if (betaGateEnabled && waitlistEntry?.status !== "APPROVED") {
+        return reply.code(403).send({
+          error: "Early access is invite-only. Request access at /early-access.",
+        });
+      }
+
+      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (existing) {
+        return reply.code(409).send({ error: "Email already registered" });
+      }
+
+      const betaAutoProGrant = await evaluateBetaAutoPro();
+
+      const verifyToken = crypto.randomBytes(32).toString("hex");
+      const verifyTokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      const user = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash: await hashPassword(password),
+          name: normalizedName || normalizedEmail.split("@")[0],
+          ...(betaGateEnabled && { plan: "PRO" }),
+          ...(betaAutoProGrant ?? {}),
+          verifyToken,
+          verifyTokenExp,
+        },
       });
-    }
 
-    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (existing) {
-      return reply.code(409).send({ error: "Email already registered" });
-    }
+      // Send verification email (non-blocking)
+      sendVerificationEmail(normalizedEmail, verifyToken).catch(() => {});
 
-    const betaAutoProGrant = await evaluateBetaAutoPro();
+      // Auto-create AutomationConfig with defaults
+      prisma.automationConfig.create({ data: { userId: user.id } }).catch(() => {});
 
-    const verifyToken = crypto.randomBytes(32).toString("hex");
-    const verifyTokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const token = signToken({ userId: user.id, email: user.email });
 
-    const user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        passwordHash: await hashPassword(password),
-        name: normalizedName || normalizedEmail.split("@")[0],
-        ...(betaGateEnabled && { plan: "PRO" }),
-        ...(betaAutoProGrant ?? {}),
-        verifyToken,
-        verifyTokenExp,
-      },
-    });
+      // Register device session
+      const ip =
+        (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || request.ip;
+      const ua = request.headers["user-agent"] || "";
+      await registerDevice(user.id, token, {
+        deviceName: parseDeviceName(ua),
+        deviceType: parseDeviceType(ua),
+        ipAddress: ip,
+      });
+      triggerDueLoginBriefing(user.id, 10_000);
 
-    // Send verification email (non-blocking)
-    sendVerificationEmail(normalizedEmail, verifyToken).catch(() => {});
-
-    // Auto-create AutomationConfig with defaults
-    prisma.automationConfig.create({ data: { userId: user.id } }).catch(() => {});
-
-    const token = signToken({ userId: user.id, email: user.email });
-
-    // Register device session
-    const ip = (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || request.ip;
-    const ua = request.headers["user-agent"] || "";
-    await registerDevice(user.id, token, {
-      deviceName: parseDeviceName(ua),
-      deviceType: parseDeviceType(ua),
-      ipAddress: ip,
-    });
-    triggerDueLoginBriefing(user.id, 10_000);
-
-    return reply.code(201).send({
-      token,
-      user: { id: user.id, email: user.email, name: user.name, plan: user.plan, role: user.role },
-    });
-  });
+      return reply.code(201).send({
+        token,
+        user: { id: user.id, email: user.email, name: user.name, plan: user.plan, role: user.role },
+      });
+    },
+  );
 
   // POST /api/auth/login — Sign in
-  app.post("/login", { schema: { body: loginBodySchema } }, async (request, reply) => {
-    const { email, password } = request.body as { email: string; password: string };
-    const normalizedEmail = normalizeEmail(email);
+  app.post(
+    "/login",
+    {
+      schema: { body: loginBodySchema },
+      config: { rateLimit: { max: 10, timeWindow: "15 minutes" } },
+    },
+    async (request, reply) => {
+      const { email, password } = request.body as { email: string; password: string };
+      const normalizedEmail = normalizeEmail(email);
 
-    if (!hasMeaningfulText(normalizedEmail) || !hasMeaningfulText(password)) {
-      return reply.code(400).send({ error: "Email and password required" });
-    }
+      if (!hasMeaningfulText(normalizedEmail) || !hasMeaningfulText(password)) {
+        return reply.code(400).send({ error: "Email and password required" });
+      }
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (!user?.passwordHash) {
-      return reply.code(401).send({ error: "Invalid email or password" });
-    }
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (!user?.passwordHash) {
+        return reply.code(401).send({ error: "Invalid email or password" });
+      }
 
-    const valid = await comparePassword(password, user.passwordHash);
-    if (!valid) {
-      return reply.code(401).send({ error: "Invalid email or password" });
-    }
+      const valid = await comparePassword(password, user.passwordHash);
+      if (!valid) {
+        return reply.code(401).send({ error: "Invalid email or password" });
+      }
 
-    const token = signToken({ userId: user.id, email: user.email });
+      const token = signToken({ userId: user.id, email: user.email });
 
-    // Register device session
-    const ip = (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || request.ip;
-    const ua = request.headers["user-agent"] || "";
-    await registerDevice(user.id, token, {
-      deviceName: parseDeviceName(ua),
-      deviceType: parseDeviceType(ua),
-      ipAddress: ip,
-    });
+      // Register device session
+      const ip =
+        (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || request.ip;
+      const ua = request.headers["user-agent"] || "";
+      await registerDevice(user.id, token, {
+        deviceName: parseDeviceName(ua),
+        deviceType: parseDeviceType(ua),
+        ipAddress: ip,
+      });
 
-    return reply.send({
-      token,
-      user: { id: user.id, email: user.email, name: user.name, plan: user.plan, role: user.role },
-    });
-  });
+      return reply.send({
+        token,
+        user: { id: user.id, email: user.email, name: user.name, plan: user.plan, role: user.role },
+      });
+    },
+  );
 
   // GET /api/auth/me — Get current user
   app.get("/me", async (request, reply) => {
@@ -439,14 +455,39 @@ export function authRoutes(app: FastifyInstance) {
     return reply.send({ hasPassword: !!user?.passwordHash });
   });
 
-  // In-memory store for desktop login tokens (nonce -> jwt)
-  const desktopLoginTokens = new Map<string, string>();
+  // In-memory store for desktop login (server-generated nonce → { jwt, expiresAt }).
+  // Only nonces generated by /desktop-nonce are accepted — prevents arbitrary polling.
+  const desktopLoginTokens = new Map<string, { jwt?: string; expiresAt: number }>();
+
+  // In-memory store for OAuth exchange codes (?code in the redirect instead of ?token).
+  // Expires after 60 s; deleted on first use. Prevents JWT leakage via browser history.
+  const exchangeCodes = new Map<string, { jwt: string; expiresAt: number }>();
+
+  // GET /api/auth/desktop-nonce — Desktop app must call this FIRST to obtain a
+  // server-generated nonce before opening the browser for Google login. Calling
+  // /desktop-token with a nonce that was never issued here returns 404, so
+  // attackers cannot enumerate or poll for arbitrary nonces.
+  app.get("/desktop-nonce", async (_request, reply) => {
+    const nonce = crypto.randomBytes(32).toString("hex");
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min window for user to complete login
+    desktopLoginTokens.set(nonce, { expiresAt });
+    setTimeout(() => desktopLoginTokens.delete(nonce), 10 * 60 * 1000);
+    return reply.send({ nonce });
+  });
 
   // GET /api/auth/google/login — Start Google social login flow
-  // Accepts ?source=desktop&nonce=xxx for desktop app login
+  // Desktop flow: call /desktop-nonce first, then open this URL with ?source=desktop&nonce=
   app.get("/google/login", async (request, reply) => {
     const { source, nonce } = request.query as { source?: string; nonce?: string };
     const isDesktop = source === "desktop" && nonce;
+    if (isDesktop) {
+      const entry = desktopLoginTokens.get(nonce as string);
+      if (!entry || entry.jwt !== undefined || entry.expiresAt < Date.now()) {
+        return reply
+          .code(400)
+          .send({ error: "Invalid or expired nonce. Call /api/auth/desktop-nonce first." });
+      }
+    }
     const loginState = signToken({
       userId: isDesktop ? nonce : "__login__",
       email: isDesktop ? "__google_login_desktop__" : "__google_login__",
@@ -455,16 +496,46 @@ export function authRoutes(app: FastifyInstance) {
     return reply.redirect(url);
   });
 
-  // GET /api/auth/desktop-token/:nonce — Desktop app polls this to get the token after Google login
-  app.get("/desktop-token/:nonce", async (request, reply) => {
-    const { nonce } = request.params as { nonce: string };
-    const token = desktopLoginTokens.get(nonce);
-    if (!token) {
-      return reply.code(202).send({ status: "pending" });
-    }
-    desktopLoginTokens.delete(nonce);
-    return { status: "ok", token };
-  });
+  // GET /api/auth/desktop-token/:nonce — Desktop app polls this after login.
+  // Returns 404 for nonces that were not issued by /desktop-nonce so attackers
+  // cannot extract tokens by enumerating arbitrary nonces.
+  app.get(
+    "/desktop-token/:nonce",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { nonce } = request.params as { nonce: string };
+      const entry = desktopLoginTokens.get(nonce);
+      if (!entry) return reply.code(404).send({ error: "Not found" });
+      if (entry.expiresAt < Date.now()) {
+        desktopLoginTokens.delete(nonce);
+        return reply.code(410).send({ error: "Expired" });
+      }
+      if (!entry.jwt) return reply.code(202).send({ status: "pending" });
+      desktopLoginTokens.delete(nonce);
+      return { status: "ok", token: entry.jwt };
+    },
+  );
+
+  // POST /api/auth/exchange-code — One-time exchange of the short-lived OAuth code
+  // for the actual JWT. Eliminates JWT exposure in redirect URLs / browser history.
+  app.post(
+    "/exchange-code",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { code } = (request.body ?? {}) as { code?: string };
+      if (!code || typeof code !== "string") {
+        return reply.code(400).send({ error: "Missing code" });
+      }
+      const entry = exchangeCodes.get(code);
+      if (!entry) return reply.code(404).send({ error: "Invalid code" });
+      if (entry.expiresAt < Date.now()) {
+        exchangeCodes.delete(code);
+        return reply.code(410).send({ error: "Code expired" });
+      }
+      exchangeCodes.delete(code);
+      return { token: entry.jwt };
+    },
+  );
 
   // GET /api/auth/google — Start OAuth flow for Gmail/Calendar integration (signed state)
   // Accepts auth via Authorization header OR ?token= query param (needed for <a href> navigation)
@@ -609,13 +680,13 @@ export function authRoutes(app: FastifyInstance) {
         });
         triggerDueLoginBriefing(user.id, 10_000);
 
-        // Desktop app: store token for polling, show success page
+        // Desktop app: update the server-side nonce entry with the JWT
         if (isDesktopLogin) {
           const nonce = statePayload.userId; // nonce was stored in userId field
-          desktopLoginTokens.set(nonce, token);
-          // Auto-cleanup after 5 minutes
-          setTimeout(() => desktopLoginTokens.delete(nonce), 5 * 60 * 1000);
-
+          const existing = desktopLoginTokens.get(nonce);
+          if (existing) {
+            desktopLoginTokens.set(nonce, { ...existing, jwt: token });
+          }
           reply.type("text/html");
           return reply.send(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Jigeum Login</title>
@@ -626,7 +697,12 @@ export function authRoutes(app: FastifyInstance) {
 </div></body></html>`);
         }
 
-        return reply.redirect(`${webUrl}/auth/callback?token=${token}`);
+        // Issue a short-lived exchange code instead of putting the JWT in the URL.
+        // The frontend exchanges it via POST /api/auth/exchange-code (60 s window).
+        const xcode = crypto.randomBytes(20).toString("hex");
+        exchangeCodes.set(xcode, { jwt: token, expiresAt: Date.now() + 60_000 });
+        setTimeout(() => exchangeCodes.delete(xcode), 60_000);
+        return reply.redirect(`${webUrl}/auth/callback?code=${xcode}`);
       }
 
       // --- Gmail/Calendar integration flow (state signed with __oauth_state__ marker) ---
@@ -706,7 +782,10 @@ export function authRoutes(app: FastifyInstance) {
   // POST /api/auth/forgot-password — Request password reset
   app.post(
     "/forgot-password",
-    { schema: { body: forgotPasswordBodySchema } },
+    {
+      schema: { body: forgotPasswordBodySchema },
+      config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    },
     async (request, reply) => {
       const { email } = request.body as { email: string };
       const normalizedEmail = normalizeEmail(email);
@@ -820,27 +899,31 @@ export function authRoutes(app: FastifyInstance) {
   );
 
   // POST /api/auth/resend-verification — Resend verification email
-  app.post("/resend-verification", async (request, reply) => {
-    const userId = getUserId(request);
-    if (isDemoUser(userId)) {
-      return reply.code(403).send({ error: "Demo user" });
-    }
+  app.post(
+    "/resend-verification",
+    { config: { rateLimit: { max: 3, timeWindow: "15 minutes" } } },
+    async (request, reply) => {
+      const userId = getUserId(request);
+      if (isDemoUser(userId)) {
+        return reply.code(403).send({ error: "Demo user" });
+      }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return reply.code(404).send({ error: "User not found" });
-    if (user.emailVerified) return reply.send({ success: true, alreadyVerified: true });
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) return reply.code(404).send({ error: "User not found" });
+      if (user.emailVerified) return reply.send({ success: true, alreadyVerified: true });
 
-    const verifyToken = crypto.randomBytes(32).toString("hex");
-    const verifyTokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const verifyToken = crypto.randomBytes(32).toString("hex");
+      const verifyTokenExp = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { verifyToken, verifyTokenExp },
-    });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verifyToken, verifyTokenExp },
+      });
 
-    await sendVerificationEmail(user.email, verifyToken);
-    return reply.send({ success: true });
-  });
+      await sendVerificationEmail(user.email, verifyToken);
+      return reply.send({ success: true });
+    },
+  );
 
   // POST /api/auth/init-sync — Trigger initial sync after login (calendar + email contacts)
   app.post("/init-sync", async (request) => {

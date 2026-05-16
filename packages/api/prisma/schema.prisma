@@ -60,6 +60,7 @@ model User {
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
   emailProcessingLogs       EmailProcessingLog[]
+  contactTrustScores        ContactTrustScore[]
 }
 
 enum UserRole {
@@ -95,7 +96,7 @@ model Workspace {
 model WorkspaceMember {
   id          String        @id @default(uuid())
   userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId String
   workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   role        WorkspaceRole @default(MEMBER)
@@ -116,7 +117,7 @@ model Agent {
   endpoint  String
   apiKey    String?
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   testRuns  TestRun[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -131,9 +132,9 @@ model TestRun {
   warnCount     Int?
   scenarioCount Int          @default(100)
   agentId       String
-  agent         Agent        @relation(fields: [agentId], references: [id])
+  agent         Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
   userId        String
-  user          User         @relation(fields: [userId], references: [id])
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   evaluations   Evaluation[]
   startedAt     DateTime?
   completedAt   DateTime?
@@ -143,7 +144,7 @@ model TestRun {
 model Evaluation {
   id         String   @id @default(uuid())
   testRunId  String
-  testRun    TestRun  @relation(fields: [testRunId], references: [id])
+  testRun    TestRun  @relation(fields: [testRunId], references: [id], onDelete: Cascade)
   scenario   String
   category   String
   verdict    Verdict
@@ -180,7 +181,7 @@ model Conversation {
   pinned         Boolean               @default(false)
   source         String                @default("user") // "user" | "agent"
   userId         String
-  user           User                  @relation(fields: [userId], references: [id])
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages       Message[]
   pendingActions PendingAction[]
   tokenUsages    TokenUsage[]
@@ -211,7 +212,7 @@ enum Role {
 model UserToken {
   id                  String    @id @default(uuid())
   userId              String
-  user                User      @relation(fields: [userId], references: [id])
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider            String // "google"
   accessToken         String
   refreshToken        String?
@@ -228,7 +229,7 @@ model UserToken {
 model Task {
   id          String     @id @default(uuid())
   userId      String
-  user        User       @relation(fields: [userId], references: [id])
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?
   status      TaskStatus @default(TODO)
@@ -254,7 +255,7 @@ enum Priority {
 model Note {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   content   String
   category  String   @default("general")
@@ -265,7 +266,7 @@ model Note {
 model Reminder {
   id          String         @id @default(uuid())
   userId      String
-  user        User           @relation(fields: [userId], references: [id])
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?
   remindAt    DateTime
@@ -282,7 +283,7 @@ enum ReminderStatus {
 model Contact {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   email     String?
   phone     String?
@@ -297,7 +298,7 @@ model Contact {
 model CalendarEvent {
   id          String   @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?
   startTime   DateTime
@@ -314,7 +315,7 @@ model CalendarEvent {
 model AutomationConfig {
   id                   String   @id @default(uuid())
   userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id])
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   meetingAutoJoin      Boolean  @default(true)
   meetingAutoSummarize Boolean  @default(true)
   emailAutoClassify    Boolean  @default(true)
@@ -346,7 +347,7 @@ model AutomationConfig {
 model AgentLog {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String // "notify" | "tool_call" | "skip" | "error"
   tool      String? // tool name if action is tool_call
   summary   String // what the agent decided/did
@@ -362,7 +363,7 @@ model AgentLog {
 model EmailProcessingLog {
   id          String   @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailId     String // EmailMessage.id (soft reference — no FK so we can retain history if email is deleted)
   mode        String // "SHADOW" | "SUGGEST" | "AUTO"
   action      String // "mark_read" | "reply" | "classify" | "archive"
@@ -375,7 +376,7 @@ model EmailProcessingLog {
 model Notification {
   id              String         @id @default(uuid())
   userId          String
-  user            User           @relation(fields: [userId], references: [id])
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   type            String // "reminder" | "calendar" | "email" | "task" | "meeting" | "briefing" | "agent_proposal"
   title           String
   message         String
@@ -395,7 +396,7 @@ model Notification {
 model PushSubscription {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoint  String   @unique
   p256dh    String
   auth      String
@@ -431,7 +432,7 @@ model PushDeliveryLog {
 model Memory {
   id         String     @id @default(uuid())
   userId     String
-  user       User       @relation(fields: [userId], references: [id])
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   type       MemoryType
   key        String // short label, e.g. "preferred_language"
   content    String // the remembered fact
@@ -474,7 +475,7 @@ model Skill {
 model TokenUsage {
   id               String        @id @default(uuid())
   userId           String
-  user             User          @relation(fields: [userId], references: [id])
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversationId   String?
   conversation     Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   model            String // e.g. "google/gemma-4-31b-it:free"
@@ -537,7 +538,7 @@ enum ActionStatus {
 model EmailMessage {
   id                   String        @id @default(uuid())
   userId               String
-  user                 User          @relation(fields: [userId], references: [id])
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   gmailId              String // Gmail message ID
   threadId             String? // Gmail thread ID for conversation grouping
   from                 String
@@ -664,7 +665,7 @@ enum EmailPriority {
 model EmailRule {
   id              String          @id @default(uuid())
   userId          String
-  user            User            @relation(fields: [userId], references: [id])
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String // Rule display name
   description     String?
   isActive        Boolean         @default(true)
@@ -729,15 +730,23 @@ model AttentionItem {
   costOfIgnoring  String? // "Misses close window", "Loses Q2 budget"
   evidence        Json? // Supporting links/snippets backing the judgment
 
-  surfacedAt   DateTime  @default(now())
-  resolvedAt   DateTime?
-  snoozedUntil DateTime?
+  // 5-tier escalation policy. Populated by attention-mirror tier selector.
+  // SILENT = recorded only | QUEUE = inbox only, no push | PUSH = send push
+  // AUTO = auto-handled, no interrupt | null = legacy / not yet classified
+  tier       String? // "SILENT" | "QUEUE" | "PUSH" | "AUTO"
+  tierReason String? // why this tier was chosen
+
+  surfacedAt      DateTime  @default(now())
+  resolvedAt      DateTime?
+  snoozedUntil    DateTime?
+  lastAmplifiedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([source, sourceId])
   @@index([userId, status, surfacedAt])
+  @@index([userId, tier, surfacedAt])
 }
 
 enum AttentionSource {
@@ -785,8 +794,9 @@ model Commitment {
   // will send X" (they owe), TEAM = shared, UNKNOWN = couldn't tell.
   owner       CommitmentOwner  @default(USER)
 
-  counterpartyName String?
-  contactId        String?
+  counterpartyName  String?
+  counterpartyEmail String? // lowercased sender email; set by ingestion pipeline
+  contactId         String?
 
   // The promise: parsed dueAt is the machine-usable form, dueText preserves
   // the original phrasing ("end of week", "다음 주") for display.
@@ -959,6 +969,30 @@ model FeedbackPolicyPreference {
   @@unique([userId, candidateId])
   @@index([userId, action])
   @@index([userId, toolName])
+}
+
+// ─── Contact Trust Score ───────────────────────────────────────────────────
+// Tracks how reliably a counterparty (identified by email) fulfills commitments.
+// Updated whenever a COUNTERPARTY commitment transitions to DONE with a known dueAt.
+// Confidence rating: "reliable" ≥80% on-time, "mostly_reliable" ≥50%, "unreliable" <50%.
+// Requires ≥3 tracked commitments before issuing a badge.
+model ContactTrustScore {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactEmail String   // counterparty email, lowercased
+  displayName  String?
+  // raw counters — never computed on the fly so queries are O(1)
+  totalCount     Int      @default(0)
+  onTimeCount    Int      @default(0)
+  lateCount      Int      @default(0)
+  totalDelayDays Int      @default(0) // sum of days late (for avg computation)
+  lastUpdatedAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, contactEmail])
+  @@index([userId])
 }
 
 // Public early-access waitlist. Submissions land here before the founder

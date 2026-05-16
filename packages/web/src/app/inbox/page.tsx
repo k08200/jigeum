@@ -41,6 +41,7 @@ interface CommitmentItem {
   sourceType: string;
   confidence: number;
   createdAt: string;
+  trustBadge?: "reliable" | "mostly_reliable" | "unreliable" | "unknown" | null;
 }
 
 type StatusFilter = "pending" | "all";
@@ -59,9 +60,9 @@ function InboxView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("pending");
-  const [actionLoading, setActionLoading] = useState<Record<string, "approve" | "reject" | null>>(
-    {},
-  );
+  const [actionLoading, setActionLoading] = useState<
+    Record<string, "approve" | "reject" | "snooze" | null>
+  >({});
   const [commitmentLoading, setCommitmentLoading] = useState<
     Record<string, "done" | "dismiss" | null>
   >({});
@@ -151,6 +152,29 @@ function InboxView() {
     }
   };
 
+  const handleSnooze = async (actionId: string, hours = 1) => {
+    if (actionLoading[actionId]) return;
+    setActionLoading((prev) => ({ ...prev, [actionId]: "snooze" }));
+    try {
+      const snoozeUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+      await apiFetch(`/api/chat/pending-actions/${actionId}/snooze`, {
+        method: "POST",
+        body: JSON.stringify({ snoozeUntil }),
+      });
+      setActions((prev) =>
+        filter === "pending"
+          ? prev.filter((a) => a.id !== actionId)
+          : prev.map((a) => (a.id === actionId ? { ...a, status: "REJECTED" } : a)),
+      );
+      toast(`Snoozed for ${hours}h — will resurface automatically.`, "success");
+    } catch (err) {
+      captureClientError(err, { scope: "inbox.snooze", actionId });
+      toast("Could not snooze this action. Please try again.", "error");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [actionId]: null }));
+    }
+  };
+
   const handleCommitmentStatus = async (commitmentId: string, status: "DONE" | "DISMISSED") => {
     if (commitmentLoading[commitmentId]) return;
     const loadingState = status === "DONE" ? "done" : "dismiss";
@@ -164,7 +188,7 @@ function InboxView() {
       window.dispatchEvent(new Event("conversations-updated"));
     } catch (err) {
       captureClientError(err, { scope: "inbox.commitment_status", commitmentId, status });
-      alert("Could not update the commitment. Please try again soon.");
+      toast("Could not update the commitment. Please try again soon.", "error");
     } finally {
       setCommitmentLoading((prev) => ({ ...prev, [commitmentId]: null }));
     }
@@ -219,9 +243,25 @@ function InboxView() {
               />
               <FilterTab active={filter === "all"} label="All" onClick={() => setFilter("all")} />
             </div>
-            <p className="text-xs text-stone-600">
-              Review the signal, judgment, and action before approval.
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-xs text-stone-600">
+                Review the signal, judgment, and action before approval.
+              </p>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/inbox/receipt"
+                  className="shrink-0 text-xs text-teal-400 hover:text-teal-300 transition"
+                >
+                  Today's receipt →
+                </Link>
+                <Link
+                  href="/agent"
+                  className="shrink-0 text-xs text-stone-500 hover:text-stone-300 transition"
+                >
+                  Agent timeline →
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -285,6 +325,7 @@ function InboxView() {
                   loading={actionLoading[action.id] ?? null}
                   onApprove={() => handleApprove(action.id)}
                   onReject={() => handleReject(action.id)}
+                  onSnooze={() => handleSnooze(action.id, 1)}
                 />
               </li>
             ))}
@@ -359,6 +400,9 @@ function CommitmentCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <CommitmentOwnerBadge owner={commitment.owner} />
+            {commitment.owner === "COUNTERPARTY" &&
+              commitment.trustBadge &&
+              commitment.trustBadge !== "unknown" && <TrustBadge badge={commitment.trustBadge} />}
             <span className="text-[11px] text-stone-500">
               {commitmentKindLabel(commitment.kind)}
             </span>
@@ -440,11 +484,13 @@ function ActionCard({
   loading,
   onApprove,
   onReject,
+  onSnooze,
 }: {
   action: PendingActionItem;
-  loading: "approve" | "reject" | null;
+  loading: "approve" | "reject" | "snooze" | null;
   onApprove: () => void;
   onReject: () => void;
+  onSnooze: () => void;
 }) {
   const toolName = action.toolName || "prepared_action";
   const toolArgs = action.toolArgs || "{}";
@@ -556,6 +602,19 @@ function ActionCard({
                   "Reject"
                 )}
               </button>
+              <button
+                type="button"
+                onClick={onSnooze}
+                disabled={!!loading}
+                title="Remind me in 1 hour"
+                className="inline-flex items-center justify-center gap-1 px-3 py-2 text-xs text-stone-500 hover:text-stone-300 transition disabled:opacity-50"
+              >
+                {loading === "snooze" ? (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-stone-500/30 border-t-stone-400" />
+                ) : (
+                  "Snooze 1h"
+                )}
+              </button>
               <Link
                 href={`/chat/${action.conversationId}`}
                 className="text-xs text-amber-300 hover:text-amber-200 ml-auto transition"
@@ -657,6 +716,30 @@ function splitReasoning(reasoning: string | null): {
 
 function CommitmentOwnerBadge({ owner }: { owner: CommitmentItem["owner"] }) {
   const entry = commitmentOwnerEntry(owner);
+  return (
+    <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}>
+      {entry.label}
+    </span>
+  );
+}
+
+function TrustBadge({ badge }: { badge: NonNullable<CommitmentItem["trustBadge"]> }) {
+  const map: Record<string, { label: string; className: string }> = {
+    reliable: {
+      label: "Reliable",
+      className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20",
+    },
+    mostly_reliable: {
+      label: "Usually reliable",
+      className: "text-teal-300 bg-teal-400/10 border-teal-400/20",
+    },
+    unreliable: {
+      label: "Often late",
+      className: "text-red-300 bg-red-500/10 border-red-500/20",
+    },
+  };
+  const entry = map[badge];
+  if (!entry) return null;
   return (
     <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}>
       {entry.label}
