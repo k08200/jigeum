@@ -85,7 +85,9 @@ export async function upsertCommitment(
       return commitment;
     }
   }
-  commitment = await (prisma.commitment.create as unknown as (args: unknown) => Promise<Commitment>)({
+  commitment = await (
+    prisma.commitment.create as unknown as (args: unknown) => Promise<Commitment>
+  )({
     data: {
       userId,
       title: input.title,
