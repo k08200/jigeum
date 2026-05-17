@@ -70,7 +70,9 @@ function CommitmentRow({
   const dueLabel = formatDue(commitment.dueAt, commitment.dueText);
   const trust = commitment.trustBadge;
   const counterparty =
-    commitment.counterpartyName || commitment.counterpartyEmail || (commitment.owner === "COUNTERPARTY" ? "Them" : null);
+    commitment.counterpartyName ||
+    commitment.counterpartyEmail ||
+    (commitment.owner === "COUNTERPARTY" ? "Them" : null);
 
   return (
     <div

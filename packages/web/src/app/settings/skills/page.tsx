@@ -13,13 +13,7 @@ interface Skill {
   updatedAt: string;
 }
 
-function SkillCard({
-  skill,
-  onDelete,
-}: {
-  skill: Skill;
-  onDelete: (id: string) => void;
-}) {
+function SkillCard({ skill, onDelete }: { skill: Skill; onDelete: (id: string) => void }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -124,7 +118,11 @@ function NewSkillForm({ onCreated }: { onCreated: (skill: Skill) => void }) {
     try {
       const skill = await apiFetch<Skill>("/api/skills", {
         method: "POST",
-        body: JSON.stringify({ name: name.trim(), description: description.trim(), prompt: prompt.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          prompt: prompt.trim(),
+        }),
       });
       onCreated(skill);
       reset();
