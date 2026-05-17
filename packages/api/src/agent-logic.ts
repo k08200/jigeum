@@ -23,6 +23,7 @@ export const TOOL_RISK_LEVELS = new Map<string, RiskLevel>([
   ["create_task", "LOW"],
   ["update_note", "LOW"],
   ["mark_read", "LOW"],
+  ["generate_briefing", "LOW"],
 
   // MEDIUM — external-facing, requires user approval before sending
   ["send_email", "MEDIUM"],
