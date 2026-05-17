@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../../components/auth-guard";
 import PlaybookRecommendations from "../../../components/playbook-recommendations";
+import type { JigeumPlaybook } from "../../../lib/playbooks";
 import { apiFetch } from "../../../lib/api";
 import { captureClientError } from "../../../lib/sentry";
-import type { JigeumPlaybook } from "../../../lib/playbooks";
 
 const DOMAIN_META: Record<string, { label: string; color: string }> = {
   investment: {
