@@ -107,9 +107,7 @@ function ContactCard({ contact }: { contact: Contact }) {
             {[contact.role, contact.company].filter(Boolean).join(" · ")}
           </p>
         )}
-        {contact.email && (
-          <p className="mt-0.5 text-[11px] text-stone-600">{contact.email}</p>
-        )}
+        {contact.email && <p className="mt-0.5 text-[11px] text-stone-600">{contact.email}</p>}
       </div>
 
       {/* Trust stats */}
