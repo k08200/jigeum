@@ -51,17 +51,30 @@ export async function commitmentRoutes(app: FastifyInstance) {
           .filter((e): e is string => typeof e === "string" && e.length > 0),
       ),
     ];
-    const trustMap = new Map<string, string>();
+    const trustMap = new Map<
+      string,
+      { badge: string; label: string; onTimeRate: number; totalCount: number }
+    >();
     if (counterpartyEmails.length > 0) {
       const scores = await getTrustScoresBulk(userId, counterpartyEmails);
       for (const [email, result] of scores) {
-        trustMap.set(email, result.badge);
+        trustMap.set(email, {
+          badge: result.badge,
+          label: result.label,
+          onTimeRate: result.onTimeRate,
+          totalCount: result.totalCount,
+        });
       }
     }
     const enriched = commitments.map((c) => {
       const row = c as unknown as Record<string, unknown>;
       const email = typeof row.counterpartyEmail === "string" ? row.counterpartyEmail : null;
-      return { ...row, trustBadge: email ? (trustMap.get(email) ?? null) : null };
+      const trust = email ? (trustMap.get(email) ?? null) : null;
+      return {
+        ...row,
+        trustBadge: trust?.badge ?? null,
+        trustLabel: trust?.label ?? null,
+      };
     });
 
     return { commitments: enriched };

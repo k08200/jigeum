@@ -38,6 +38,7 @@ interface CommitmentItem {
   confidence: number;
   createdAt: string;
   trustBadge?: "reliable" | "mostly_reliable" | "unreliable" | "unknown" | null;
+  trustLabel?: string | null;
 }
 
 interface PathStep {
@@ -843,7 +844,9 @@ function CommitmentCard({
             <CommitmentOwnerBadge owner={commitment.owner} />
             {commitment.owner === "COUNTERPARTY" &&
               commitment.trustBadge &&
-              commitment.trustBadge !== "unknown" && <TrustBadge badge={commitment.trustBadge} />}
+              commitment.trustBadge !== "unknown" && (
+                <TrustBadge badge={commitment.trustBadge} label={commitment.trustLabel ?? null} />
+              )}
             <span className="text-[11px] text-stone-500">
               {commitmentKindLabel(commitment.kind)}
             </span>
@@ -930,26 +933,35 @@ function CommitmentOwnerBadge({ owner }: { owner: CommitmentItem["owner"] }) {
   );
 }
 
-function TrustBadge({ badge }: { badge: NonNullable<CommitmentItem["trustBadge"]> }) {
-  const map: Record<string, { label: string; className: string }> = {
+function TrustBadge({
+  badge,
+  label,
+}: {
+  badge: NonNullable<CommitmentItem["trustBadge"]>;
+  label: string | null;
+}) {
+  const map: Record<string, { shortLabel: string; className: string }> = {
     reliable: {
-      label: "Reliable",
+      shortLabel: "Reliable",
       className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20",
     },
     mostly_reliable: {
-      label: "Usually reliable",
+      shortLabel: "Usually reliable",
       className: "text-teal-300 bg-teal-400/10 border-teal-400/20",
     },
     unreliable: {
-      label: "Often late",
+      shortLabel: "Often late",
       className: "text-red-300 bg-red-500/10 border-red-500/20",
     },
   };
   const entry = map[badge];
   if (!entry) return null;
   return (
-    <span className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}>
-      {entry.label}
+    <span
+      className={`text-[11px] font-medium border rounded px-1.5 py-0.5 ${entry.className}`}
+      title={label ?? undefined}
+    >
+      {entry.shortLabel}
     </span>
   );
 }
