@@ -39,7 +39,7 @@ interface ToolPattern {
   commonArgs: string[];
 }
 
-interface LearnedPattern {
+export interface LearnedPattern {
   type: "temporal" | "tool_preference" | "rejection" | "workflow";
   description: string;
   confidence: number;
@@ -379,20 +379,8 @@ async function analyzeNotificationPatterns(userId: string): Promise<LearnedPatte
  */
 export async function analyzePatterns(userId: string): Promise<string> {
   try {
-    const [temporal, tools, notifications] = await Promise.all([
-      analyzeTemporalPatterns(userId),
-      analyzeToolPatterns(userId),
-      analyzeNotificationPatterns(userId),
-    ]);
-
-    const allPatterns = [...temporal, ...tools, ...notifications].filter(
-      (p) => p.confidence >= 0.3,
-    );
-
+    const allPatterns = await getLearnedPatterns(userId);
     if (allPatterns.length === 0) return "";
-
-    // Sort by confidence (highest first)
-    allPatterns.sort((a, b) => b.confidence - a.confidence);
 
     let result = "\n## Learned Patterns (from user behavior analysis)\n";
     result += "Use these patterns to make better decisions:\n\n";
@@ -407,6 +395,17 @@ export async function analyzePatterns(userId: string): Promise<string> {
     console.error("[PATTERN] Analysis failed:", err);
     return "";
   }
+}
+
+export async function getLearnedPatterns(userId: string): Promise<LearnedPattern[]> {
+  const [temporal, tools, notifications] = await Promise.all([
+    analyzeTemporalPatterns(userId),
+    analyzeToolPatterns(userId),
+    analyzeNotificationPatterns(userId),
+  ]);
+  const all = [...temporal, ...tools, ...notifications].filter((p) => p.confidence >= 0.3);
+  all.sort((a, b) => b.confidence - a.confidence);
+  return all;
 }
 
 // ─── Periodic Pattern Persistence ───────────────────────────────────────
