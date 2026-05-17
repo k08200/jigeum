@@ -197,6 +197,16 @@ export default function SettingsPage() {
     Array<{ id: string; action: string; summary: string; tool?: string; createdAt: string }>
   >([]);
   const [agentLogsLoading, setAgentLogsLoading] = useState(false);
+  const [learnedPatterns, setLearnedPatterns] = useState<
+    Array<{
+      type: "temporal" | "tool_preference" | "rejection" | "workflow";
+      description: string;
+      confidence: number;
+      evidence: number;
+    }>
+  >([]);
+  const [patternsLoading, setPatternsLoading] = useState(false);
+  const [patternsLoaded, setPatternsLoaded] = useState(false);
   const [gmailPushConfigured, setGmailPushConfigured] = useState(false);
   const [gmailPushEnabled, setGmailPushEnabled] = useState(false);
   const [gmailPushExpiresAt, setGmailPushExpiresAt] = useState<string | null>(null);
@@ -599,6 +609,27 @@ export default function SettingsPage() {
       setAgentLogs([]);
     }
     setAgentLogsLoading(false);
+  };
+
+  const loadLearnedPatterns = async () => {
+    if (patternsLoading) return;
+    setPatternsLoading(true);
+    try {
+      const data = await apiFetch<{
+        patterns: Array<{
+          type: "temporal" | "tool_preference" | "rejection" | "workflow";
+          description: string;
+          confidence: number;
+          evidence: number;
+        }>;
+      }>("/api/patterns");
+      setLearnedPatterns(Array.isArray(data.patterns) ? data.patterns : []);
+      setPatternsLoaded(true);
+    } catch {
+      setLearnedPatterns([]);
+      setPatternsLoaded(true);
+    }
+    setPatternsLoading(false);
   };
 
   const toggleAgent = async (enabled: boolean) => {
@@ -1558,6 +1589,62 @@ export default function SettingsPage() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Learned patterns */}
+            <div>
+              <button
+                type="button"
+                onClick={loadLearnedPatterns}
+                disabled={patternsLoading}
+                className="inline-flex min-h-11 items-center text-sm text-amber-300 transition hover:text-amber-200 disabled:opacity-50"
+              >
+                {patternsLoading
+                  ? "Analyzing..."
+                  : patternsLoaded
+                    ? "Refresh learned patterns"
+                    : "What has Jigeum learned about you?"}
+              </button>
+              {patternsLoaded && (
+                <div className="mt-3">
+                  {learnedPatterns.length === 0 ? (
+                    <p className="text-xs text-stone-500">
+                      Not enough data yet — patterns emerge after a few days of use.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {learnedPatterns.slice(0, 8).map((p, i) => {
+                        const confidenceLabel =
+                          p.confidence >= 0.8 ? "HIGH" : p.confidence >= 0.5 ? "MED" : "LOW";
+                        const typeColor =
+                          p.type === "rejection"
+                            ? "border-red-400/20 bg-red-400/5 text-red-300"
+                            : p.type === "temporal"
+                              ? "border-blue-400/20 bg-blue-400/5 text-blue-300"
+                              : p.type === "tool_preference"
+                                ? "border-emerald-400/20 bg-emerald-400/5 text-emerald-300"
+                                : "border-amber-300/20 bg-amber-300/5 text-amber-300";
+                        return (
+                          <div
+                            key={i}
+                            className="bg-stone-900/60 border border-stone-700/40 rounded-lg px-3 py-2 text-sm flex items-start gap-2"
+                          >
+                            <span
+                              className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-medium ${typeColor}`}
+                            >
+                              {confidenceLabel}
+                            </span>
+                            <span className="text-stone-300 flex-1">{p.description}</span>
+                            <span className="shrink-0 text-[11px] text-stone-500">
+                              {p.evidence}×
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
