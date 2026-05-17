@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
-import { GoogleConnectRedirect } from "../../components/google-connect-redirect";
 import { useConfirm } from "../../components/confirm-dialog";
 import { FeedbackPolicyPanel } from "../../components/feedback-policy-panel";
+import { GoogleConnectRedirect } from "../../components/google-connect-redirect";
 import { ListSkeleton } from "../../components/skeleton";
 import { TeamRiskPanel } from "../../components/team-risk-panel";
 import { useToast } from "../../components/toast";

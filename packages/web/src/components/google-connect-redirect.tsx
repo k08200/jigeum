@@ -19,8 +19,7 @@ export function GoogleConnectRedirect() {
   useEffect(() => {
     const isGoogleCallback = searchParams.get("google") === "connected";
     const isOnboarding =
-      typeof window !== "undefined" &&
-      localStorage.getItem(ONBOARDING_ACTIVE_KEY) === "true";
+      typeof window !== "undefined" && localStorage.getItem(ONBOARDING_ACTIVE_KEY) === "true";
 
     if (isGoogleCallback && isOnboarding) {
       localStorage.removeItem(ONBOARDING_ACTIVE_KEY);
