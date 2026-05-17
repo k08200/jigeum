@@ -377,8 +377,26 @@ describe("inbox routes", () => {
     });
     // Pre-populate queue rows as the attention-mirror would (priority: PA=100 > HIGH overdue task=80)
     attentionItems.push(
-      { id: "ai-1", userId: "user-1", source: "PENDING_ACTION", sourceId: "pa-1", type: "DECISION", status: "OPEN", priority: 100, surfacedAt: new Date() },
-      { id: "ai-2", userId: "user-1", source: "TASK", sourceId: "t-1", type: "DEADLINE", status: "OPEN", priority: 80, surfacedAt: new Date() },
+      {
+        id: "ai-1",
+        userId: "user-1",
+        source: "PENDING_ACTION",
+        sourceId: "pa-1",
+        type: "DECISION",
+        status: "OPEN",
+        priority: 100,
+        surfacedAt: new Date(),
+      },
+      {
+        id: "ai-2",
+        userId: "user-1",
+        source: "TASK",
+        sourceId: "t-1",
+        type: "DEADLINE",
+        status: "OPEN",
+        priority: 80,
+        surfacedAt: new Date(),
+      },
     );
 
     const app = await buildApp();
@@ -455,8 +473,26 @@ describe("inbox routes", () => {
     });
     // Pre-populate queue rows as the attention-mirror would (PA priority=100 > URGENT overdue=90)
     attentionItems.push(
-      { id: "ai-pa", userId: "user-1", source: "PENDING_ACTION", sourceId: "pa-base", type: "DECISION", status: "OPEN", priority: 100, surfacedAt: new Date() },
-      { id: "ai-t", userId: "user-1", source: "TASK", sourceId: "t-urgent-overdue", type: "DEADLINE", status: "OPEN", priority: 90, surfacedAt: new Date() },
+      {
+        id: "ai-pa",
+        userId: "user-1",
+        source: "PENDING_ACTION",
+        sourceId: "pa-base",
+        type: "DECISION",
+        status: "OPEN",
+        priority: 100,
+        surfacedAt: new Date(),
+      },
+      {
+        id: "ai-t",
+        userId: "user-1",
+        source: "TASK",
+        sourceId: "t-urgent-overdue",
+        type: "DEADLINE",
+        status: "OPEN",
+        priority: 90,
+        surfacedAt: new Date(),
+      },
     );
 
     const app = await buildApp();
