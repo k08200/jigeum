@@ -6,6 +6,7 @@ import AuthGuard from "../../components/auth-guard";
 import BriefingCard from "../../components/briefing-card";
 import CommandCenterSummary from "../../components/command-center-summary";
 import { useToast } from "../../components/toast";
+import WorkGraphSummaryCard from "../../components/work-graph-summary";
 import { apiFetch } from "../../lib/api";
 import type { ReplyNeededEmail } from "../../lib/inbox-summary";
 import { captureClientError } from "../../lib/sentry";
@@ -356,6 +357,7 @@ function CommandCenterView() {
         {/* ── RIGHT: Context sidebar ── */}
         <div className="space-y-4">
           <CommandCenterSummary />
+          <WorkGraphSummaryCard />
           <ReplyNeededPanel />
           <QuickLinksPanel />
         </div>
