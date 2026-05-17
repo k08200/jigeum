@@ -39,9 +39,11 @@ function kindLabel(kind: WorkGraphContext["kind"]): string {
 
 function signalChips(signals: WorkGraphContext["signals"]): string[] {
   const chips: string[] = [];
-  if (signals.pendingActions) chips.push(`${signals.pendingActions} approval${signals.pendingActions > 1 ? "s" : ""}`);
+  if (signals.pendingActions)
+    chips.push(`${signals.pendingActions} approval${signals.pendingActions > 1 ? "s" : ""}`);
   if (signals.overdueCommitments) chips.push(`${signals.overdueCommitments} overdue`);
-  if (signals.commitments) chips.push(`${signals.commitments} commitment${signals.commitments > 1 ? "s" : ""}`);
+  if (signals.commitments)
+    chips.push(`${signals.commitments} commitment${signals.commitments > 1 ? "s" : ""}`);
   if (signals.urgentEmails) chips.push(`${signals.urgentEmails} urgent`);
   if (signals.unreadEmails) chips.push(`${signals.unreadEmails} unread`);
   if (chips.length === 0 && signals.emails) chips.push(`${signals.emails} mail`);
@@ -224,9 +226,7 @@ function WorkGraphContent() {
                   }`}
                 >
                   {r === "all" ? "All risk" : `${r.charAt(0).toUpperCase()}${r.slice(1)}`}
-                  {r !== "all" && (
-                    <span className="ml-1 text-stone-700">{counts[r]}</span>
-                  )}
+                  {r !== "all" && <span className="ml-1 text-stone-700">{counts[r]}</span>}
                 </button>
               ))}
             </div>
