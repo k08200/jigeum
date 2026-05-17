@@ -375,6 +375,11 @@ describe("inbox routes", () => {
       priority: "HIGH",
       dueDate: yesterday,
     });
+    // Pre-populate queue rows as the attention-mirror would (priority: PA=100 > HIGH overdue task=80)
+    attentionItems.push(
+      { id: "ai-1", userId: "user-1", source: "PENDING_ACTION", sourceId: "pa-1", type: "DECISION", status: "OPEN", priority: 100, surfacedAt: new Date() },
+      { id: "ai-2", userId: "user-1", source: "TASK", sourceId: "t-1", type: "DEADLINE", status: "OPEN", priority: 80, surfacedAt: new Date() },
+    );
 
     const app = await buildApp();
     const res = await app.inject({
@@ -389,7 +394,7 @@ describe("inbox routes", () => {
     await app.close();
   });
 
-  it("backfills AttentionItems for orphaned PendingActions on read", async () => {
+  it("surfaces a PendingAction from the attention queue", async () => {
     pendingActions.push({
       id: "pa-orphan",
       userId: "user-1",
@@ -400,7 +405,17 @@ describe("inbox routes", () => {
       reasoning: "old PA created before mirror existed",
       createdAt: new Date(),
     });
-    expect(attentionItems).toHaveLength(0);
+    // Mirror would have created this row proactively; pre-populate to simulate that
+    attentionItems.push({
+      id: "ai-orphan",
+      userId: "user-1",
+      source: "PENDING_ACTION",
+      sourceId: "pa-orphan",
+      type: "DECISION",
+      status: "OPEN",
+      priority: 100,
+      surfacedAt: new Date(),
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -410,12 +425,6 @@ describe("inbox routes", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(attentionItems).toHaveLength(1);
-    expect(attentionItems[0]).toMatchObject({
-      source: "PENDING_ACTION",
-      sourceId: "pa-orphan",
-      status: "OPEN",
-    });
     expect(res.json().top3[0]).toMatchObject({ kind: "pending_action", id: "pa-orphan" });
     await app.close();
   });
@@ -444,6 +453,11 @@ describe("inbox routes", () => {
       priority: "URGENT",
       dueDate: oldDue,
     });
+    // Pre-populate queue rows as the attention-mirror would (PA priority=100 > URGENT overdue=90)
+    attentionItems.push(
+      { id: "ai-pa", userId: "user-1", source: "PENDING_ACTION", sourceId: "pa-base", type: "DECISION", status: "OPEN", priority: 100, surfacedAt: new Date() },
+      { id: "ai-t", userId: "user-1", source: "TASK", sourceId: "t-urgent-overdue", type: "DEADLINE", status: "OPEN", priority: 90, surfacedAt: new Date() },
+    );
 
     const app = await buildApp();
     const res = await app.inject({
@@ -652,6 +666,17 @@ describe("inbox routes", () => {
       dueText: "내일",
       confidence: 0.55,
     });
+    // Pre-populate queue row as the attention-mirror would (no dueAt → COMMITMENT_UNCONFIRMED, priority=40)
+    attentionItems.push({
+      id: "ai-cm-1",
+      userId: "user-1",
+      source: "COMMITMENT",
+      sourceId: "cm-1",
+      type: "COMMITMENT_UNCONFIRMED",
+      status: "OPEN",
+      priority: 40,
+      surfacedAt: new Date(),
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -660,11 +685,6 @@ describe("inbox routes", () => {
       headers: auth(),
     });
     expect(res.statusCode).toBe(200);
-    expect(attentionItems[0]).toMatchObject({
-      source: "COMMITMENT",
-      sourceId: "cm-1",
-      type: "COMMITMENT_UNCONFIRMED",
-    });
     expect(res.json().top3[0]).toMatchObject({
       kind: "commitment",
       id: "cm-1",
