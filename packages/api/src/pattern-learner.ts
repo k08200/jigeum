@@ -11,10 +11,7 @@
  * Runs periodically (every 6 hours) or on-demand after proposal feedback.
  */
 
-import {
-  PATTERN_ANALYSIS_HOURS as CFG_PATTERN_HOURS,
-  PATTERN_MIN_OCCURRENCES,
-} from "./config.js";
+import { PATTERN_ANALYSIS_HOURS as CFG_PATTERN_HOURS, PATTERN_MIN_OCCURRENCES } from "./config.js";
 import { db, prisma } from "./db.js";
 import { runFeedbackAdaptationForAllUsers } from "./feedback-adaptor.js";
 import { buildInteractionGraphsForAllUsers } from "./interaction-graph.js";

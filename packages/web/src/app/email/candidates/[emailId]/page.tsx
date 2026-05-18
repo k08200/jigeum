@@ -160,9 +160,7 @@ function CandidateDetailView() {
       </div>
 
       {loading && <LoadingState rows={3} rowHeight="h-24" label="Loading candidate" />}
-      {error && !loading && (
-        <ErrorAlert onRetry={load}>{error}</ErrorAlert>
-      )}
+      {error && !loading && <ErrorAlert onRetry={load}>{error}</ErrorAlert>}
       {commitmentToast && (
         <div
           role="status"

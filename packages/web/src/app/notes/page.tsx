@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AuthGuard from "../../components/auth-guard";
 import ErrorAlert from "../../components/ui/error-alert";
 import LoadingState from "../../components/ui/loading-state";
-import AuthGuard from "../../components/auth-guard";
 import { apiFetch } from "../../lib/api";
 import { captureClientError } from "../../lib/sentry";
 
