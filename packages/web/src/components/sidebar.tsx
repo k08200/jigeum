@@ -998,6 +998,16 @@ export default function Sidebar({
                   Notes
                 </Link>
                 <Link
+                  href="/receipt"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    onMobileClose();
+                  }}
+                  className="block px-3 py-2 text-sm text-stone-300 hover:bg-stone-800 rounded-md mx-1 transition"
+                >
+                  Today&apos;s receipt
+                </Link>
+                <Link
                   href="/settings/email-feedback"
                   onClick={() => {
                     setShowUserMenu(false);
