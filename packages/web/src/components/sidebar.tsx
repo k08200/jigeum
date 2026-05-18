@@ -77,6 +77,7 @@ const NAV_ITEMS = [
   { href: "/chat", label: "Threads", icon: "chat" },
   { href: "/email", label: "Mail", icon: "mail" },
   { href: "/commitments", label: "Commitments", icon: "flag" },
+  { href: "/tasks", label: "Tasks", icon: "check-square" },
   { href: "/calendar", label: "Calendar", icon: "calendar" },
   { href: "/briefing", label: "Briefing", icon: "bell" },
   { href: "/contacts", label: "Contacts", icon: "user" },
@@ -161,6 +162,17 @@ function NavIcon({ type, size = 16 }: { type: string; size?: number }) {
         <svg aria-hidden="true" {...props}>
           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
           <line x1="4" y1="22" x2="4" y2="15" />
+        </svg>
+      );
+    case "check-square":
+      return (
+        <svg aria-hidden="true" {...props}>
+          <polyline points="3 17 5 19 9 15" />
+          <polyline points="3 11 5 13 9 9" />
+          <polyline points="3 5 5 7 9 3" />
+          <line x1="13" y1="6" x2="21" y2="6" />
+          <line x1="13" y1="12" x2="21" y2="12" />
+          <line x1="13" y1="18" x2="21" y2="18" />
         </svg>
       );
     case "settings":
