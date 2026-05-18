@@ -267,8 +267,8 @@ export default function LandingPage() {
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-stone-300 md:text-lg md:leading-8">
               An attention firewall for your inbox, calendar, and tasks. Silenced, queued, pushed,
-              called, or auto-handled — every signal gets a tier, every tier gets a reason, and
-              you see the daily receipt of what we did on your behalf.
+              called, or auto-handled — every signal gets a tier, every tier gets a reason, and you
+              see the daily receipt of what we did on your behalf.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link

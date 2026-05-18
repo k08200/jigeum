@@ -42,6 +42,11 @@ import {
   bulkResolveAttentionForPendingActions,
   upsertAttentionForPendingAction,
 } from "./attention-mirror.js";
+import {
+  AGENT_CHECK_INTERVAL_MS,
+  AGENT_MAX_CONTEXT_ITEMS,
+  AGENT_MAX_TOOLS_PER_LOOP,
+} from "./config.js";
 import { db, prisma } from "./db.js";
 import { recipientFromToolArgs, recordFeedback } from "./feedback.js";
 import { isNoReplyAddress, markAsRead } from "./gmail.js";
@@ -52,11 +57,6 @@ import type { NotifCategory } from "./notification-prefs.js";
 import { AGENT_MODEL, createCompletion, openai, resolveUserAgentModel } from "./openai.js";
 import { getFeedbackPolicyContextForPrompt } from "./policy-extraction.js";
 import { sendPushNotification } from "./push.js";
-import {
-  AGENT_CHECK_INTERVAL_MS,
-  AGENT_MAX_CONTEXT_ITEMS,
-  AGENT_MAX_TOOLS_PER_LOOP,
-} from "./config.js";
 import { captureError } from "./sentry.js";
 import { planHasFeature } from "./stripe.js";
 import { ALL_TOOLS, executeToolCall, isToolAllowedForPlan } from "./tool-executor.js";

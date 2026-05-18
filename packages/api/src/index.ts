@@ -8,7 +8,6 @@ import { briefingRoutes } from "./briefing.js";
 import { db, prisma } from "./db.js";
 import { withDbRetry } from "./db-retry.js";
 import { attachPerfMonitor } from "./perf-monitor.js";
-import { captureError } from "./sentry.js";
 import { adminRoutes } from "./routes/admin.js";
 import { agentRoutes } from "./routes/agents.js";
 import { authRoutes } from "./routes/auth.js";
@@ -40,6 +39,7 @@ import { waitlistRoutes } from "./routes/waitlist.js";
 import { webhookRoutes } from "./routes/webhook.js";
 import { workGraphRoutes } from "./routes/work-graph.js";
 import { workspaceRoutes } from "./routes/workspace.js";
+import { captureError } from "./sentry.js";
 import { slackEventRoutes } from "./slack.js";
 import { getClientCount, initWebSocket } from "./websocket.js";
 

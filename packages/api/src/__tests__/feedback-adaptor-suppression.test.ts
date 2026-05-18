@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isSuppressed,
-  priorityBucket,
-  suppressionKey,
-} from "../feedback-adaptor.js";
+import { isSuppressed, priorityBucket, suppressionKey } from "../feedback-adaptor.js";
 
 describe("priorityBucket", () => {
   it("classifies high/medium/low correctly", () => {

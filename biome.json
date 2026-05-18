@@ -109,7 +109,8 @@
       "!!**/.next",
       "!!**/.next-dev",
       "!!**/prisma/migrations",
-      "!!**/.turbo"
+      "!!**/.turbo",
+      "!!**/test-results"
     ]
   }
 }

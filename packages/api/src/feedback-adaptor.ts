@@ -156,9 +156,9 @@ export async function runFeedbackAdaptation(userId: string): Promise<number> {
     // bucket them and avoid over-broad suppression.
     const items = await (
       prisma.attentionItem as unknown as {
-        findMany: (args: unknown) => Promise<
-          Array<{ id: string; source: string; type: string; priority: number }>
-        >;
+        findMany: (
+          args: unknown,
+        ) => Promise<Array<{ id: string; source: string; type: string; priority: number }>>;
       }
     ).findMany({
       where: { id: { in: attentionIds } },

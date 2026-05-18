@@ -132,7 +132,10 @@ vi.mock("../db.js", () => {
             if (where.resetTokenExp && (!user.resetTokenExp || user.resetTokenExp < new Date())) {
               continue;
             }
-            if (where.verifyTokenExp && (!user.verifyTokenExp || user.verifyTokenExp < new Date())) {
+            if (
+              where.verifyTokenExp &&
+              (!user.verifyTokenExp || user.verifyTokenExp < new Date())
+            ) {
               continue;
             }
             userStore.set(id, { ...user, ...data } as StoredUser);
