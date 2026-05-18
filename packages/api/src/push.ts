@@ -29,6 +29,26 @@ const PUSH_RECEIPT_BASE_URL =
   process.env.PUSH_RECEIPT_BASE_URL || process.env.RENDER_EXTERNAL_URL || "";
 const AGENT_PROPOSAL_PUSH_COOLDOWN_HOURS = 6;
 
+// In-process retry with exponential backoff for transient FCM/WPS failures.
+// We do NOT retry permanent failures (410 gone, 404 not found) — those mean
+// the subscription is dead and gets cleaned up. We retry on 5xx, 429, and
+// network errors, which empirically account for the bulk of "user said
+// they didn't get the push" reports during dogfood (see memory:
+// project_eve_dogfood_pain).
+const PUSH_RETRY_DELAYS_MS = [3_000, 9_000]; // total ≤12s — bounded so the
+// caller's tick doesn't stall.
+
+export function shouldRetryPushError(statusCode: number | undefined): boolean {
+  if (statusCode === undefined) return true; // network / no response
+  if (statusCode >= 500 && statusCode < 600) return true;
+  if (statusCode === 429) return true;
+  return false;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 interface PushSubscriptionRow {
   id: string;
   endpoint: string;
@@ -125,29 +145,56 @@ export async function sendPushNotification(
       category,
       title: payload.title,
     });
-    try {
-      await webPush.sendNotification(
-        {
-          endpoint: sub.endpoint,
-          keys: { p256dh: sub.p256dh, auth: sub.auth },
-        },
-        JSON.stringify({
-          ...payload,
-          deliveryId,
-          receiptUrl: pushReceiptUrl(deliveryId),
-        }),
-      );
+
+    let lastStatusCode: number | undefined;
+    let lastBody: string | undefined;
+    let lastError: unknown;
+    let delivered = false;
+    const maxAttempts = 1 + PUSH_RETRY_DELAYS_MS.length;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await webPush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          JSON.stringify({
+            ...payload,
+            deliveryId,
+            receiptUrl: pushReceiptUrl(deliveryId),
+          }),
+        );
+        delivered = true;
+        if (attempt > 0) {
+          console.log(`[PUSH] Recovered on retry ${attempt} for subscription ${sub.id}`);
+        }
+        break;
+      } catch (err) {
+        lastError = err;
+        lastStatusCode = (err as { statusCode?: number })?.statusCode;
+        lastBody = (err as { body?: string })?.body;
+        // Permanent failures: stop retrying so we can clean up below.
+        if (!shouldRetryPushError(lastStatusCode)) break;
+        const nextDelay = PUSH_RETRY_DELAYS_MS[attempt];
+        if (nextDelay === undefined) break;
+        console.warn(
+          `[PUSH] Transient failure status=${lastStatusCode ?? "network"} for ${sub.id}; retrying in ${nextDelay}ms`,
+        );
+        await sleep(nextDelay);
+      }
+    }
+
+    if (delivered) {
       await markPushAccepted(deliveryId);
       accepted++;
-    } catch (err) {
+    } else {
       failed++;
-      const statusCode = (err as { statusCode?: number })?.statusCode;
-      const body = (err as { body?: string })?.body;
-      await markPushFailed(deliveryId, { statusCode, body });
+      await markPushFailed(deliveryId, { statusCode: lastStatusCode, body: lastBody });
       console.error(
-        `[PUSH] Failed to send to subscription ${sub.id}: status=${statusCode}, body=${body}, error=${err}`,
+        `[PUSH] Failed to send to subscription ${sub.id} after ${maxAttempts} attempts: status=${lastStatusCode}, body=${lastBody}, error=${lastError}`,
       );
-      if (statusCode === 410 || statusCode === 404) {
+      if (lastStatusCode === 410 || lastStatusCode === 404) {
         await prisma.pushSubscription.delete({
           where: { id: sub.id },
         });
