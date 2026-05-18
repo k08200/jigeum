@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
-import { getTrustScoresBulk } from "../trust-score.js";
+import { getTrustScore, getTrustScoresBulk } from "../trust-score.js";
 
 export async function contactRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
@@ -55,6 +55,34 @@ export async function contactRoutes(app: FastifyInstance) {
       });
 
     return { contacts: enriched };
+  });
+
+  // GET /api/contacts/:id — single contact with trust + commitments
+  app.get("/:id", async (request, reply) => {
+    const userId = getUserId(request);
+    const { id } = request.params as { id: string };
+    const contact = await prisma.contact.findUnique({ where: { id } });
+    if (!contact) return reply.code(404).send({ error: "Contact not found" });
+    if (contact.userId !== userId) return reply.code(403).send({ error: "Forbidden" });
+
+    const trust = contact.email ? await getTrustScore(userId, contact.email) : null;
+
+    const commitmentWhere: Record<string, unknown> = { userId };
+    if (contact.email) {
+      commitmentWhere.OR = [
+        { counterpartyEmail: contact.email.toLowerCase().trim() },
+        { contactId: contact.id },
+      ];
+    } else {
+      commitmentWhere.contactId = contact.id;
+    }
+    const commitments = await prisma.commitment.findMany({
+      where: commitmentWhere,
+      orderBy: [{ status: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }],
+      take: 50,
+    });
+
+    return { contact, trust, commitments };
   });
 
   app.post("/", async (request, reply) => {

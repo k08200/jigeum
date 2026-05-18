@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AuthGuard from "../../components/auth-guard";
 import { apiFetch } from "../../lib/api";
@@ -90,7 +91,10 @@ function ContactCard({ contact }: { contact: Contact }) {
   const ini = initials(contact.name);
 
   return (
-    <div className="group flex items-start gap-3 rounded-xl border border-stone-800 bg-stone-900/40 px-4 py-3 transition hover:border-stone-700 hover:bg-stone-900/70">
+    <Link
+      href={`/contacts/${contact.id}`}
+      className="group flex items-start gap-3 rounded-xl border border-stone-800 bg-stone-900/40 px-4 py-3 transition hover:border-stone-700 hover:bg-stone-900/70"
+    >
       {/* Avatar */}
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-600 to-stone-800 text-xs font-bold text-stone-200">
         {ini}
@@ -123,7 +127,7 @@ function ContactCard({ contact }: { contact: Contact }) {
           <p className="text-[11px] text-stone-700">No data</p>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
