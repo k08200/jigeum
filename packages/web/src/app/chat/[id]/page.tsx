@@ -14,7 +14,10 @@ interface Message {
   id: string;
   role: "USER" | "ASSISTANT" | "SYSTEM";
   content: string;
-  metadata?: string | null;
+  // JSONB after migration 20260519070000 — server now returns a
+  // parsed object instead of a JSON-string. Kept as `unknown` because
+  // the client does not actually read it today.
+  metadata?: unknown;
   createdAt: string;
 }
 

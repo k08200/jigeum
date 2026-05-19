@@ -232,7 +232,7 @@ export async function receiptRoutes(app: FastifyInstance) {
           conversationId: action.conversationId,
           role: "ASSISTANT",
           content: `You requested an undo for the action: **${action.toolName.replace(/_/g, " ")}**. Tap Approve to reverse it.`,
-          metadata: JSON.stringify({ source: "agent", hasAction: true }),
+          metadata: { source: "agent", hasAction: true },
         },
       });
 
