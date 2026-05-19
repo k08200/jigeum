@@ -206,7 +206,10 @@ model Message {
   conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           Role
   content        String
-  metadata       String? // JSON: { source: "agent" | "user", pendingActionId?: string }
+  // JSONB after migration 20260519070000. Shape varies by source:
+  //   { source: "agent" | "user" | "chat", hasAction?, actionResult?,
+  //     actionFailed?, actionRejected?, pendingActionId?: string }
+  metadata       Json?
   pendingAction  PendingAction?
   createdAt      DateTime       @default(now())
 

@@ -204,7 +204,7 @@ async function proposeSkillCreation(userId: string, seq: ToolSequence): Promise<
       conversationId: convo.id,
       role: "ASSISTANT",
       content: `**Pattern detected**: You repeatedly use ${seq.tools.map((t) => `\`${t}\``).join(" → ")} (${seq.count}× in 30 days).\n\n${reasoning}\n\n**Proposal**: Save this as the **"${skillName}"** skill so you can run it any time with one command.`,
-      metadata: JSON.stringify({ source: "agent", hasAction: true }),
+      metadata: { source: "agent", hasAction: true },
     },
   });
 

@@ -708,7 +708,7 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
                   conversationId: agentConvo.id,
                   role: "ASSISTANT",
                   content: args.message,
-                  metadata: JSON.stringify({ source: "agent", hasAction: true }),
+                  metadata: { source: "agent", hasAction: true },
                 },
               });
 
@@ -1004,11 +1004,11 @@ Silently ignore. The user does not want a push every time a newsletter arrives o
                   conversationId: agentConvo.id,
                   role: "ASSISTANT",
                   content: proposalMessage,
-                  metadata: JSON.stringify({
+                  metadata: {
                     source: "agent",
                     hasAction: true,
                     riskLevel,
-                  }),
+                  },
                 },
               });
 

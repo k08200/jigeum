@@ -177,7 +177,7 @@ async function createPendingActionFromProposal(input: {
       conversationId: input.conversationId,
       role: "ASSISTANT",
       content: message,
-      metadata: JSON.stringify({ source: "chat", hasAction: true }),
+      metadata: { source: "chat", hasAction: true },
     },
   });
 
@@ -1543,7 +1543,7 @@ export function chatRoutes(app: FastifyInstance) {
             conversationId: action.conversationId,
             role: "ASSISTANT",
             content: `${action.toolName.replace(/_/g, " ")} completed.`,
-            metadata: JSON.stringify({ source: "agent", actionResult: true }),
+            metadata: { source: "agent", actionResult: true },
           },
         });
 
@@ -1604,7 +1604,7 @@ export function chatRoutes(app: FastifyInstance) {
             conversationId: action.conversationId,
             role: "ASSISTANT",
             content: `Execution failed: ${message}`,
-            metadata: JSON.stringify({ source: "agent", actionFailed: true }),
+            metadata: { source: "agent", actionFailed: true },
           },
         });
 
@@ -1669,7 +1669,7 @@ export function chatRoutes(app: FastifyInstance) {
           conversationId: action.conversationId,
           role: "ASSISTANT",
           content: rejectMsg,
-          metadata: JSON.stringify({ source: "agent", actionRejected: true }),
+          metadata: { source: "agent", actionRejected: true },
         },
       });
 
