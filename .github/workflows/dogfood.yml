@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: "Target URL (defaults to jigeum.ai)"
+        description: "Target URL (defaults to hire-eve-web.vercel.app)"
         required: false
-        default: "https://jigeum.ai"
+        default: "https://hire-eve-web.vercel.app"
 
 concurrency:
   group: dogfood
@@ -38,7 +38,7 @@ jobs:
 
       - name: Run E2E tests against prod
         env:
-          E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://jigeum.ai' }}
+          E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://hire-eve-web.vercel.app' }}
         run: cd packages/web && npx playwright test --reporter=list
 
       - name: Upload test report
